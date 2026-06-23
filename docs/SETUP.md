@@ -104,7 +104,10 @@ az webapp auth update -g "$RG" -n "$APP" --enabled true \
 
 ## 3. CI deploys via GitHub Actions (optional)
 
-`.github/workflows/deploy.yml` deploys on push to `main` using OIDC (no stored passwords):
+`.github/deploy.workflow.yml` deploys on push to `main` using OIDC (no stored passwords). It lives
+at that path (not `.github/workflows/`) because the initial push token lacked the `workflow` scope —
+**to activate, move it to `.github/workflows/deploy.yml`** and push with a `workflow`-scoped token
+(`gh auth refresh -s workflow`):
 
 ```bash
 # Federated credential so the repo can get tokens for the deploy app identity:

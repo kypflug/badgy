@@ -1,3 +1,8 @@
+# CI deploy workflow — kept here (not under .github/workflows/) because the push token
+# lacked the `workflow` GitHub scope. To ACTIVATE: move this file to
+# `.github/workflows/deploy.yml` and push with a token that has the `workflow` scope
+# (e.g. `gh auth refresh -s workflow`), then set the repo secrets/vars per docs/SETUP.md.
+
 name: Deploy
 
 on:
