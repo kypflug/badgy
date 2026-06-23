@@ -1,0 +1,16 @@
+@import url("./mai-tokens.css");
+
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--smtc-text-style-default-regular-font-family, system-ui, sans-serif);
+  background: var(--smtc-background-window-primary-solid, #fff);
+  color: var(--smtc-foreground-ctrl-neutral-primary-rest, #272320);
+}

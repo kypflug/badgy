@@ -1,0 +1,39 @@
+{
+  "name": "rto-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hybrid Attendance Modeler — RTO/BELT planner (MAI-styled, AAD-gated SPA for badge-in compliance planning).",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "packages/shared",
+    "packages/web",
+    "packages/server"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w @rto/shared",
+    "build:web": "npm run build -w @rto/web",
+    "build:server": "npm run build -w @rto/server",
+    "build": "npm run build:shared && npm run build:web && npm run build:server",
+    "dev": "npm run dev -w @rto/server",
+    "dev:web": "npm run dev -w @rto/web",
+    "typecheck": "tsc -b && tsc -p packages/web --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "lint:css": "stylelint \"packages/web/src/**/*.css\"",
+    "test": "npm run test --workspaces --if-present",
+    "seed": "npm run seed -w @rto/shared",
+    "gates": "npm run lint && npm run lint:css && npm run typecheck && npm run build && npm run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
+    "@types/node": "^26.0.0",
+    "stylelint": "^17.13.0",
+    "stylelint-config-standard": "^40.0.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
