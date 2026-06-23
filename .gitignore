@@ -26,3 +26,7 @@ test-results/
 # misc
 *.log
 .DS_Store
+
+# deploy artifact
+dist-deploy/
+dist-deploy.zip

@@ -68,18 +68,23 @@ export function toMe(principal: Principal | null): MeResponse {
 }
 
 /**
- * Optional allowlist gate. When `ALLOWED_EMAIL_DOMAINS` is set (comma-separated),
- * only those email domains are admitted — e.g. `microsoft.com`. When unset, any
- * identity the platform authenticated is allowed (the IdP/tenant already gates).
+ * Optional allowlist gate. Admit an identity when:
+ *  - neither `ALLOWED_EMAILS` nor `ALLOWED_EMAIL_DOMAINS` is set (the IdP/tenant gates), or
+ *  - the email exactly matches `ALLOWED_EMAILS` (comma-separated), or
+ *  - the email's domain matches `ALLOWED_EMAIL_DOMAINS` (comma-separated, e.g. microsoft.com).
  */
 export function emailAllowed(email: string | null): boolean {
-  const allow = (process.env.ALLOWED_EMAIL_DOMAINS ?? '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  if (allow.length === 0) return true;
-  const domain = (email ?? '').split('@')[1]?.toLowerCase() ?? '';
-  return allow.includes(domain);
+  const list = (v: string | undefined): string[] =>
+    (v ?? '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+  const emails = list(process.env.ALLOWED_EMAILS);
+  const domains = list(process.env.ALLOWED_EMAIL_DOMAINS);
+  if (emails.length === 0 && domains.length === 0) return true;
+  const addr = (email ?? '').toLowerCase();
+  const domain = addr.split('@')[1] ?? '';
+  return emails.includes(addr) || domains.includes(domain);
 }
 
 export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {

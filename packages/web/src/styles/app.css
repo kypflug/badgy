@@ -90,6 +90,15 @@ button {
   flex-wrap: wrap;
 }
 
+.user-chip {
+  font-size: var(--smtc-text-global-caption1-font-size, 12px);
+  color: var(--smtc-foreground-ctrl-neutral-secondary-rest);
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ------------------------------------------------------------------ controls */
 .mai-button {
   display: inline-flex;

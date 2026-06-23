@@ -2,6 +2,7 @@ import { beltBand } from '@rto/shared';
 import { html, nothing } from 'lit';
 import { formatPct } from '../lib/format.js';
 import { getTheme, toggleTheme } from '../lib/theme.js';
+import { getSession } from '../state/session.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
 import './rto-tracker.js';
@@ -42,6 +43,22 @@ export class RtoApp extends RtoElement {
     this.theme = toggleTheme();
   };
 
+  private renderAuth() {
+    const s = getSession();
+    if (!s.apiAvailable) return nothing;
+    if (s.me?.authenticated) {
+      return html`<span class="user-chip" title=${s.me.email ?? ''}>${s.me.name ?? 'Signed in'}</span>
+        <a
+          class="mai-button mai-button--icon"
+          href="/.auth/logout"
+          title="Sign out"
+          aria-label="Sign out"
+          >⎋</a
+        >`;
+    }
+    return html`<a class="mai-button" href="/.auth/login/aad?post_login_redirect_uri=/">Sign in</a>`;
+  }
+
   override render() {
     const belt = this.latestBelt();
     return html`
@@ -55,6 +72,7 @@ export class RtoApp extends RtoElement {
             </div>
           </div>
           <div class="header-actions">
+            ${this.renderAuth()}
             ${
               belt != null
                 ? html`<div class="belt-chip belt-${beltBand(belt)}">
