@@ -30,13 +30,15 @@ export class Store extends EventTarget {
     super();
   }
 
-  async init(): Promise<void> {
+  async init(persistence?: Persistence): Promise<void> {
+    if (persistence) this.persistence = persistence;
     const loaded = await this.persistence.load();
     this.data = loaded ?? {
       years: { [SEED_YEAR]: structuredClone(SEED_2026) },
       settings: { activeYear: SEED_YEAR, targetBelt: DEFAULT_TARGET },
     };
     this.emit();
+    if (!loaded) this.scheduleSave(); // persist the seeded default for new users
   }
 
   get settings(): AppData['settings'] {

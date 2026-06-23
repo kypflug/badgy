@@ -2,6 +2,7 @@
 
 export * from './belt.js';
 export * from './calendar.js';
+export * from './contract.js';
 export * from './planner.js';
 export { SEED_2026 } from './seed/2026.js';
 export * from './types.js';

@@ -1,17 +1,8 @@
-import type { YearData } from '@rto/shared';
+import type { AppData } from '@rto/shared';
 
-export interface AppSettings {
-  activeYear: number;
-  /** Target BELT as a fraction (e.g. 0.8) for the planner + dashboard. */
-  targetBelt: number;
-}
+export type { AppData };
 
-export interface AppData {
-  years: Record<number, YearData>;
-  settings: AppSettings;
-}
-
-/** Storage backend. LocalPersistence now; an API-backed one lands in P3. */
+/** Storage backend for the user's app data. */
 export interface Persistence {
   load(): Promise<AppData | null>;
   save(data: AppData): Promise<void>;
@@ -19,6 +10,7 @@ export interface Persistence {
 
 const KEY = 'rto-dashboard:v1';
 
+/** Browser-local storage (standalone / signed-out use). */
 export class LocalPersistence implements Persistence {
   async load(): Promise<AppData | null> {
     try {
@@ -31,5 +23,30 @@ export class LocalPersistence implements Persistence {
 
   async save(data: AppData): Promise<void> {
     localStorage.setItem(KEY, JSON.stringify(data));
+  }
+}
+
+/** Server-backed storage (private per signed-in user) via the REST API. */
+export class ApiPersistence implements Persistence {
+  async load(): Promise<AppData | null> {
+    try {
+      const res = await fetch('/api/data', { headers: { accept: 'application/json' } });
+      if (!res.ok) return null;
+      return (await res.json()) as AppData | null;
+    } catch {
+      return null;
+    }
+  }
+
+  async save(data: AppData): Promise<void> {
+    try {
+      await fetch('/api/data', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch {
+      // optimistic: ignore transient failures; next save retries
+    }
   }
 }
