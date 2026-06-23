@@ -5,6 +5,8 @@ using the **BELT** rolling score (Best Eight of Last Twelve). A web port of the 
 *Hybrid Attendance Modeler* — multi-user, AAD-gated to Microsoft employees, with private per-user
 persistence and a forward-looking planning helper. Styled with the **MAI design system**.
 
+**Live:** https://badgy-kp8532.azurewebsites.net (Azure App Service + Table Storage; sign-in enabled).
+
 ## Stack
 
 TypeScript monorepo (npm workspaces):
@@ -38,8 +40,19 @@ npm run gates      # lint + lint:css + typecheck + build + test
 
 ## Deploy
 
-Azure **App Service** (Node) with **Easy Auth** (single-tenant AAD → Microsoft employees) and
-**Azure Table Storage**. Infra in `infra/bicep`; see `docs/SETUP.md`.
+**Live now** at `https://badgy-kp8532.azurewebsites.net` — Azure **App Service** (Free F1, Linux Node)
+serving the SPA + API, backed by **Azure Table Storage**, with **Easy Auth** (Microsoft Entra) sign-in.
+
+Current state (deployed to the Pay-As-You-Go subscription, resource group `rg-badgy`, `westus2`):
+
+- Public page loads anonymously (local-only mode); **data is gated** to specific accounts via
+  `ALLOWED_EMAILS` (currently Kyle's accounts). Sign in from the header.
+- **To open it to all Microsoft employees:** register the auth app in the Microsoft corporate tenant
+  (single-tenant) and set `ALLOWED_EMAIL_DOMAINS=microsoft.com` — one documented step in
+  [`docs/SETUP.md`](docs/SETUP.md) (Option B). The Bicep, packaging, CI workflow, and full runbook
+  all live there.
+
+Re-deploy after changes: `bash scripts/package-app.sh && az webapp deploy -g rg-badgy -n badgy-kp8532 --src-path dist-deploy.zip --type zip`.
 
 ## Provenance
 
