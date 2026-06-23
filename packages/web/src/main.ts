@@ -1,11 +1,7 @@
 import './styles/app.css';
-import { SHARED_VERSION } from '@rto/shared';
+import { applyTheme, getTheme } from './lib/theme.js';
+import { store } from './state/store.js';
 
-// Scaffold bootstrap — real Lit components (app shell, tracker, dashboard, planner) land in P2.
-const root = document.querySelector('rto-app');
-if (root) {
-  const el = document.createElement('div');
-  el.style.padding = '24px';
-  el.textContent = `RTO Dashboard — scaffold OK (shared v${SHARED_VERSION})`;
-  root.appendChild(el);
-}
+applyTheme(getTheme());
+await store.init();
+await import('./components/rto-app.js');

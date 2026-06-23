@@ -6,6 +6,7 @@
     "declaration-empty-line-before": null,
     "comment-empty-line-before": null,
     "no-descending-specificity": null,
+    "property-no-vendor-prefix": null,
     "selector-class-pattern": null
   }
 }
