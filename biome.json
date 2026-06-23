@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": ["**", "!**/seed/2026.ts", "!**/__fixtures__", "!**/dist"]
   },
   "formatter": {
     "enabled": true,
