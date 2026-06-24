@@ -31,7 +31,7 @@ function renderSignIn(): void {
       <button class="mai-button mai-button--primary signin-button" type="button">
         Sign in with Microsoft
       </button>
-      <p class="signin-fine">Uses your Microsoft account and a private app folder in your OneDrive.</p>
+      <p class="signin-fine">Use your <strong>personal</strong> Microsoft account (outlook.com, hotmail, live) — <strong>not</strong> a work or school account. Your data stays in your own OneDrive.</p>
     </div>`;
   screen.querySelector('button')?.addEventListener('click', () => void signIn());
   host.appendChild(screen);

@@ -33,7 +33,9 @@ export function getAccount(): AccountInfo | null {
 }
 
 export async function signIn(): Promise<void> {
-  await pca?.loginRedirect({ scopes });
+  // Always show the account picker so users can choose their personal MSA
+  // instead of silently reusing a work/school SSO session.
+  await pca?.loginRedirect({ scopes, prompt: 'select_account' });
 }
 
 export async function signOut(): Promise<void> {

@@ -37,6 +37,7 @@ button { font-family: inherit; }
   background: var(--smtc-background-ctrl-brand-rest, #272320);
   color: var(--smtc-foreground-ctrl-on-brand-rest, #fff); border-color: transparent;
 }
+.mai-button--primary:hover { background: var(--smtc-background-ctrl-brand-hover, #000); color: var(--smtc-foreground-ctrl-on-brand-rest, #fff); }
 .mai-button--icon { width: var(--smtc-size-ctrl-sm-default, 36px); padding: 0; font-size: 16px; }
 .nav-btn {
   width: 32px; height: 32px; border-radius: 999px; border: none; cursor: pointer;
