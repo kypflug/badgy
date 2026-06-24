@@ -1,148 +1,66 @@
-# Deployment runbook
+# Deployment runbook — badgy
 
-Deploys **badgy** (the Hybrid Attendance Modeler) to **Azure App Service** (Node, Linux) with
-**Azure Table Storage** for per-user data and **Easy Auth** (Microsoft Entra) for sign-in.
-
-The app is a single Node process that serves the built SPA *and* the REST API. Persistence picks a
-backend from env: a storage **connection string** or **account + Managed Identity**, else local files.
+**Client‑only** SPA: sign‑in is **MSAL** (Microsoft accounts), data is each user's **own OneDrive
+app folder** via Microsoft Graph, hosting is **Azure Static Web Apps** (free, global CDN, no cold
+start). There is **no backend and no server‑side data store**.
 
 ## Prerequisites
+- Azure CLI (`az login` — use your **personal** subscription/tenant)
+- Node 24, repo built (`npm ci`)
 
-- Azure CLI (`az`) logged in: `az login`
-- An Azure subscription you can create resources in
-- Node 24 + this repo built (`npm ci`)
-
-## 1. Provision + deploy (one pass)
+## 1. Register the MSAL public client (one time)
 
 ```bash
-# --- choose your names/sub/region ---
-SUB="<subscription-id-or-name>"        # e.g. the Visual Studio Enterprise sub
-RG="rg-badgy"
-LOCATION="westus2"
-APP="badgy-<unique-suffix>"            # global; becomes https://<APP>.azurewebsites.net
-
-az account set --subscription "$SUB"
-az group create -n "$RG" -l "$LOCATION" -o none
-
-# Infra: App Service plan + Web App + Storage (+ connection-string app setting)
-az deployment group create -g "$RG" \
-  --template-file infra/bicep/main.bicep \
-  --parameters appName="$APP" location="$LOCATION" \
-  -o none
-
-# Build + package the self-contained artifact, then deploy it
-bash scripts/package-app.sh
-az webapp deploy -g "$RG" -n "$APP" --src-path dist-deploy.zip --type zip -o none
-
-echo "→ https://$APP.azurewebsites.net"
-```
-
-## 2. Sign-in (Easy Auth) — pick one
-
-### Option A — Private to you (fastest; personal account / your tenant)
-
-Registers an app and turns on Easy Auth in **anonymous-allowed** mode (the public page works in
-local-only mode; *data* is gated to your accounts by `ALLOWED_EMAILS`).
-
-```bash
-APP_HOST="$APP.azurewebsites.net"
+# Personal tenant; MSA + work/school accounts; PKCE public client (no secret).
 APP_ID=$(az ad app create --display-name "badgy" \
   --sign-in-audience AzureADandPersonalMicrosoftAccount \
-  --web-redirect-uris "https://$APP_HOST/.auth/login/aad/callback" \
   --query appId -o tsv)
-SECRET=$(az ad app credential reset --id "$APP_ID" --query password -o tsv)
+OBJ_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
 
-az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
-  MICROSOFT_PROVIDER_AUTHENTICATION_SECRET="$SECRET" \
-  ALLOWED_EMAILS="kyle.pflug@live.com,kypflug@microsoft.com"
-
-az webapp auth microsoft update -g "$RG" -n "$APP" \
-  --client-id "$APP_ID" \
-  --client-secret-setting-name MICROSOFT_PROVIDER_AUTHENTICATION_SECRET \
-  --issuer "https://login.microsoftonline.com/common/v2.0" --yes -o none
-
-# Allow anonymous (public page); the app gates data via ALLOWED_EMAILS.
-az webapp auth update -g "$RG" -n "$APP" --enabled true \
-  --action AllowAnonymous --redirect-provider azureactivedirectory -o none
+# Register SPA redirect URIs (the SWA host + local dev). Update the host after step 2.
+az rest --method PATCH --uri "https://graph.microsoft.com/v1.0/applications/$OBJ_ID" \
+  --headers "Content-Type=application/json" \
+  --body '{"spa":{"redirectUris":["https://<swa-host>","http://localhost:5173"]}}'
 ```
 
-Sign in from the app via `https://$APP_HOST/.auth/login/aad`; sign out via `/.auth/logout`.
+The only delegated scopes the app requests are `User.Read` + `Files.ReadWrite.AppFolder` — it can
+read/write **only its own folder** in the user's OneDrive. Each user consents for themselves; no
+admin consent and no secret. (Work accounts are subject to *their* tenant's consent policy; personal
+Microsoft accounts always work.)
 
-### Option B — Open to all Microsoft employees (the real goal)
-
-Register the auth app in the **Microsoft corporate tenant** so only `@microsoft.com` users can sign in.
+## 2. Create the Static Web App + deploy
 
 ```bash
-# Log in to the corporate tenant for the app registration (your @microsoft.com identity):
-az login --tenant 72f988bf-86f1-41af-91ab-2d7cd011db47 --allow-no-subscriptions
+RG="rg-badgy"
+az group create -n "$RG" -l westus2 -o none
+SWA_HOST=$(az staticwebapp create -n badgy -g "$RG" -l westus2 --sku Free \
+  --query defaultHostname -o tsv)
+# → re-run the SPA redirect PATCH from step 1 with https://$SWA_HOST
 
-APP_HOST="$APP.azurewebsites.net"
-APP_ID=$(az ad app create --display-name "badgy" \
-  --sign-in-audience AzureADMyOrg \
-  --web-redirect-uris "https://$APP_HOST/.auth/login/aad/callback" \
-  --query appId -o tsv)
-SECRET=$(az ad app credential reset --id "$APP_ID" --query password -o tsv)
-
-# Back to the hosting subscription/tenant to configure the site:
-az account set --subscription "$SUB"
-az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
-  MICROSOFT_PROVIDER_AUTHENTICATION_SECRET="$SECRET" \
-  ALLOWED_EMAIL_DOMAINS="microsoft.com"
-
-az webapp auth microsoft update -g "$RG" -n "$APP" \
-  --client-id "$APP_ID" \
-  --client-secret-setting-name MICROSOFT_PROVIDER_AUTHENTICATION_SECRET \
-  --issuer "https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47/v2.0" --yes -o none
-
-az webapp auth update -g "$RG" -n "$APP" --enabled true \
-  --action RedirectToLoginPage --redirect-provider azureactivedirectory -o none
+# Build with the client id baked in, then deploy the static output:
+MSAL_CLIENT_ID="$APP_ID" MSAL_AUTHORITY="https://login.microsoftonline.com/common" npm run build
+TOKEN=$(az staticwebapp secrets list -n badgy -g "$RG" --query "properties.apiKey" -o tsv)
+npx -y @azure/static-web-apps-cli deploy ./packages/web/dist --deployment-token "$TOKEN" --env production
 ```
 
-> Single-tenant (`AzureADMyOrg`) already restricts sign-in to `microsoft.com`; `ALLOWED_EMAIL_DOMAINS`
-> is belt-and-suspenders. The first sign-in may require **tenant admin consent** for the app — if so,
-> have an admin grant consent (the app only requests basic sign-in/openid).
+`packages/web/staticwebapp.config.json` provides the SPA navigation fallback.
 
-## 3. CI deploys via GitHub Actions (optional)
-
-`.github/deploy.workflow.yml` deploys on push to `main` using OIDC (no stored passwords). It lives
-at that path (not `.github/workflows/`) because the initial push token lacked the `workflow` scope —
-**to activate, move it to `.github/workflows/deploy.yml`** and push with a `workflow`-scoped token
-(`gh auth refresh -s workflow`):
+## 3. Custom domain (optional, nicer URL)
 
 ```bash
-# Federated credential so the repo can get tokens for the deploy app identity:
-az ad app federated-credential create --id "$APP_ID" --parameters '{
-  "name": "github-main",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:kypflug/badgy:ref:refs/heads/main",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
-# Give that identity contributor on the resource group, then set repo secrets/vars:
-#   secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
-#   vars:    AZURE_WEBAPP_NAME = <APP>
+az staticwebapp hostname set -n badgy -g rg-badgy --hostname app.example.com
+# then add the new origin to the app's spa.redirectUris (step 1 PATCH)
 ```
 
-## Hardening — Managed Identity for storage (no connection string)
+## Build‑time config
 
-The web app has a system-assigned identity. To drop the storage key:
-
-```bash
-PRINCIPAL=$(az webapp identity show -g "$RG" -n "$APP" --query principalId -o tsv)
-STORAGE_ID=$(az storage account show -g "$RG" -n <storageName> --query id -o tsv)
-az role assignment create --assignee "$PRINCIPAL" \
-  --role "Storage Table Data Contributor" --scope "$STORAGE_ID"
-# then remove AZURE_STORAGE_CONNECTION_STRING (the app falls back to AZURE_STORAGE_ACCOUNT + MI)
-az webapp config appsettings delete -g "$RG" -n "$APP" --setting-names AZURE_STORAGE_CONNECTION_STRING
-```
-
-## Environment variables
-
-| Setting | Purpose |
+| Var | Purpose |
 |---|---|
-| `AZURE_STORAGE_CONNECTION_STRING` | Table Storage (also Azurite). Wins over account+MI. |
-| `AZURE_STORAGE_ACCOUNT` | Storage account for Managed-Identity access. |
-| `ALLOWED_EMAILS` | Exact emails allowed (comma-separated). |
-| `ALLOWED_EMAIL_DOMAINS` | Allowed email domains, e.g. `microsoft.com`. |
-| `DEV_USER` | Local only: pretend to be this signed-in user. |
-| `PORT` | Listen port (App Service sets this). |
-| `WEB_DIST` | Path to the built SPA (defaults to `./web`). |
+| `MSAL_CLIENT_ID` | App (client) ID. Empty → dev mode (mock "remote", no sign‑in). |
+| `MSAL_AUTHORITY` | Default `https://login.microsoftonline.com/common` (MSA + work/school). |
+
+## Notes
+- **CI:** a GitHub Actions deploy can be added, but the initial push token lacked the `workflow`
+  scope. To wire it: `az staticwebapp secrets list … apiKey` → repo secret `AZURE_STATIC_WEB_APPS_API_TOKEN`,
+  then a standard `Azure/static-web-apps-deploy` workflow under `.github/workflows/`.
+- **Cost:** SWA Free + per‑user OneDrive storage = $0 to operate.

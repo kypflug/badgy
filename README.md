@@ -1,11 +1,16 @@
-# Hybrid Attendance Modeler (RTO / BELT planner)
+# Hybrid Attendance Modeler (badgy)
 
-An elegant single-page web app for planning office attendance against **badge-in (RTO) compliance**,
+An elegant single‑page web app for planning office attendance against **badge‑in (RTO) compliance**,
 using the **BELT** rolling score (Best Eight of Last Twelve). A web port of the Excel
-*Hybrid Attendance Modeler* — multi-user, AAD-gated to Microsoft employees, with private per-user
-persistence and a forward-looking planning helper. Styled with the **MAI design system**.
+*Hybrid Attendance Modeler*, with a forward‑looking planning helper. Styled with the **MAI design system**.
 
-**Live:** https://badgy-kp8532.azurewebsites.net (Azure App Service + Table Storage; sign-in enabled).
+**Live:** https://ashy-desert-004fdfe1e.7.azurestaticapps.net
+
+## How your data is stored
+
+Sign in with your **Microsoft account**. Your data is saved **privately to your own OneDrive**
+(a hidden per‑app folder), synced across your devices with conflict‑free merge. The app is **100%
+client‑side** — there's no server and **no operator‑held data**; even the app owner can't see yours.
 
 ## Stack
 
@@ -13,48 +18,46 @@ TypeScript monorepo (npm workspaces):
 
 | Package | What | Tech |
 |---|---|---|
-| `packages/shared` | Canonical types + BELT calculation + seed data | TypeScript, vitest |
-| `packages/web` | Single-page app (UI) | Lit + esbuild, MAI tokens |
-| `packages/server` | REST API + serves the SPA in prod | Hono, @azure/data-tables, zod |
+| `packages/shared` | Types, BELT calc, planner, and the **CRDT sync core** | TypeScript, vitest |
+| `packages/web` | The single‑page app (UI + auth + sync) | Lit + esbuild, MSAL, Microsoft Graph |
 
-Tooling: Biome (lint/format), stylelint (CSS), Playwright (visual/a11y/e2e), Node 24.
+Tooling: Biome (lint/format), stylelint, Playwright, Node 24. Hosting: **Azure Static Web Apps** (free, no cold start).
 
 ## BELT score (matches the source spreadsheet exactly)
 
-- **Office Days** for a week = number of Mon–Fri marked `Office` **or** `Planned`.
-- **BELT** = average of the **8 largest** weekly Office-Day counts over the **trailing 12 weeks**,
-  divided by 5 (→ % of a 5-day week). First score appears at the **13th** tracked week.
-- Color bands: `< 80%` red · `80–90%` amber · `≥ 90%` green.
+- **Office Days** for a week = Mon–Fri marked `Office` **or** `Planned`.
+- **BELT** = average of the **8 largest** weekly Office‑Day counts over the **trailing 12 weeks**,
+  ÷5 (→ % of a 5‑day week). First score appears at the **13th** tracked week.
+- Bands: `< 80%` red · `80–90%` amber · `≥ 90%` green.
 
-See `packages/shared/src/belt.ts` for the canonical implementation + tests.
+See `packages/shared/src/belt.ts` (+ parity tests against the Excel's own values).
+
+## Multi‑device sync (how the merge works)
+
+Edits are stored as a sparse **last‑write‑wins map** of overrides, each stamped with a **hybrid
+logical clock** (robust to device clock skew). `merge()` is a commutative, idempotent CRDT, so two
+devices that both edit offline converge to the same state. The engine pulls → merges → writes the
+OneDrive file with **eTag** optimistic concurrency (retry on conflict); localStorage is the offline
+cache. See `packages/shared/src/sync/` and `packages/web/src/sync/`.
 
 ## Develop
 
 ```bash
 nvm use            # Node 24
 npm install
-npm run dev        # API on :8080 (also serves built web in prod)
-npm run dev:web    # web dev server on :5173
+npm run dev        # http://localhost:5173 — dev mode uses a mock "remote" (no sign-in needed)
 npm run gates      # lint + lint:css + typecheck + build + test
+
+# To exercise real OneDrive sign-in locally (needs the registered client id):
+MSAL_CLIENT_ID=<app-client-id> npm run dev
 ```
 
 ## Deploy
 
-**Live now** at `https://badgy-kp8532.azurewebsites.net` — Azure **App Service** (Free F1, Linux Node)
-serving the SPA + API, backed by **Azure Table Storage**, with **Easy Auth** (Microsoft Entra) sign-in.
-
-Current state (deployed to the Pay-As-You-Go subscription, resource group `rg-badgy`, `westus2`):
-
-- Public page loads anonymously (local-only mode); **data is gated** to specific accounts via
-  `ALLOWED_EMAILS` (currently Kyle's accounts). Sign in from the header.
-- **To open it to all Microsoft employees:** register the auth app in the Microsoft corporate tenant
-  (single-tenant) and set `ALLOWED_EMAIL_DOMAINS=microsoft.com` — one documented step in
-  [`docs/SETUP.md`](docs/SETUP.md) (Option B). The Bicep, packaging, CI workflow, and full runbook
-  all live there.
-
-Re-deploy after changes: `bash scripts/package-app.sh && az webapp deploy -g rg-badgy -n badgy-kp8532 --src-path dist-deploy.zip --type zip`.
+Static build → **Azure Static Web Apps**. Build with the MSAL client id, then `swa deploy`.
+Full runbook (app registration + deploy + custom domain): [`docs/SETUP.md`](docs/SETUP.md).
 
 ## Provenance
 
-Ported from `Hybrid Attendance Modeler Template (2026).xlsx`. Meetup-week highlights track the Edge
+Ported from `Hybrid Attendance Modeler Template (2026).xlsx`. Meetup‑week highlights track the Edge
 Cycle calendar (`chatgpm/cycles.yaml`).

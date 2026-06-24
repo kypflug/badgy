@@ -24,6 +24,11 @@ const opts = {
 
 await mkdir(outdir, { recursive: true });
 await copyFile('index.html', `${outdir}/index.html`);
+try {
+  await copyFile('staticwebapp.config.json', `${outdir}/staticwebapp.config.json`);
+} catch {
+  // optional — only needed for Azure Static Web Apps
+}
 
 if (serve) {
   const ctx = await context(opts);

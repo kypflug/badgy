@@ -3,22 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Hybrid Attendance Modeler — RTO/BELT planner (MAI-styled, AAD-gated SPA for badge-in compliance planning).",
+  "description": "Hybrid Attendance Modeler (badgy) — RTO/BELT planner. Client-only SPA; data syncs privately to each user's OneDrive.",
   "engines": {
     "node": ">=24"
   },
   "workspaces": [
     "packages/shared",
-    "packages/web",
-    "packages/server"
+    "packages/web"
   ],
   "scripts": {
     "build:shared": "npm run build -w @rto/shared",
     "build:web": "npm run build -w @rto/web",
-    "build:server": "npm run build -w @rto/server",
-    "build": "npm run build:shared && npm run build:web && npm run build:server",
-    "dev": "npm run dev -w @rto/server",
-    "dev:web": "npm run dev -w @rto/web",
+    "build": "npm run build:shared && npm run build:web",
+    "dev": "npm run dev -w @rto/web",
     "typecheck": "tsc -b && tsc -p packages/web --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
