@@ -146,7 +146,14 @@ export class MonthCalendar extends RtoElement {
         }
       }}
     >
-      <span class="day-num">${Number(d.date.slice(8, 10))}</span>
+      <span class="day-head">
+        <span class="day-num">${Number(d.date.slice(8, 10))}</span>
+        ${
+          d.status !== 'none'
+            ? html`<span class="day-emoji" aria-hidden="true">${STATUS_ICON[d.status]}</span>`
+            : nothing
+        }
+      </span>
       ${d.status !== 'none' ? html`<span class="day-tag">${STATUS_SHORT[d.status]}</span>` : nothing}
     </button>`;
   }

@@ -1,6 +1,7 @@
 import { STATUS_LABEL, type Status } from '@rto/shared';
 import { html, nothing } from 'lit';
 import { getSession } from '../auth/session.js';
+import { STATUS_ICON } from '../lib/status.js';
 import { applyMode, currentTheme } from '../lib/theme.js';
 import { RtoElement } from './base.js';
 import './compliance-bar.js';
@@ -28,16 +29,21 @@ export class RtoApp extends RtoElement {
     year: { state: true },
     month0: { state: true },
     settingsOpen: { state: true },
+    zoom: { state: true },
   };
   year: number;
   month0: number;
   settingsOpen = false;
+  zoom = 1;
 
   constructor() {
     super();
     const now = new Date();
     this.year = now.getFullYear();
     this.month0 = now.getMonth();
+    const raw = localStorage.getItem('badgy.zoom');
+    const z = raw === null ? 1 : Number(raw);
+    this.zoom = z === 0 || z === 1 || z === 2 ? z : 1;
   }
 
   private nav(delta: number): void {
@@ -62,11 +68,18 @@ export class RtoApp extends RtoElement {
     applyMode(currentTheme() === 'dark' ? 'light' : 'dark');
     this.requestUpdate();
   }
+  private setZoom(delta: number): void {
+    const z = Math.min(2, Math.max(0, this.zoom + delta));
+    if (z !== this.zoom) {
+      this.zoom = z;
+      localStorage.setItem('badgy.zoom', String(z));
+    }
+  }
 
   override render() {
     const session = getSession();
     return html`
-      <div class="app">
+      <div class="app" data-zoom=${['s', 'm', 'l'][this.zoom]}>
         <header class="app-bar">
           <div class="brand">
             <div class="brand-mark" aria-hidden="true"></div>
@@ -79,6 +92,10 @@ export class RtoApp extends RtoElement {
             <button class="mai-button today-btn" @click=${() => this.goToday()}>Today</button>
           </div>
           <div class="app-bar-actions">
+            <div class="zoom-group" role="group" aria-label="Calendar zoom">
+              <button class="nav-btn" @click=${() => this.setZoom(-1)} ?disabled=${this.zoom === 0} aria-label="Zoom out" title="Smaller cells">−</button>
+              <button class="nav-btn" @click=${() => this.setZoom(1)} ?disabled=${this.zoom === 2} aria-label="Zoom in" title="Larger cells">+</button>
+            </div>
             <button class="mai-button mai-button--icon" @click=${() => this.quickTheme()} aria-label="Toggle theme">
               ${currentTheme() === 'dark' ? '☾' : '☀'}
             </button>
@@ -108,9 +125,9 @@ export class RtoApp extends RtoElement {
         <div class="legend">
           ${LEGEND.map(
             (s) =>
-              html`<span class="legend-item"><span class="legend-swatch s-${s}"></span>${STATUS_LABEL[s]}</span>`,
+              html`<span class="legend-item"><span class="legend-swatch s-${s}">${STATUS_ICON[s]}</span>${STATUS_LABEL[s]}</span>`,
           )}
-          <span class="legend-item legend-item--hint">Click a day to set it · past solid, future outlined</span>
+          <span class="legend-item legend-item--hint">Click or drag to set days · past filled, future dashed</span>
         </div>
 
         ${
