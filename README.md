@@ -5,7 +5,7 @@ compliance** — tracked with the **BELT** rolling score (Best Eight of Last Twe
 office / remote / time-off across dates, drag-select ranges, set your "usual week", and see at a
 glance whether you're on track. Styled with the **MAI design system**.
 
-**Live:** https://ashy-desert-004fdfe1e.7.azurestaticapps.net
+**Live:** https://badgy.tech
 
 ## How it works
 
