@@ -1,6 +1,7 @@
 import {
   addDays,
   beltForWeek,
+  type CellValue,
   CFG_TARGET,
   type Compliance,
   compliance as computeCompliance,
@@ -11,6 +12,7 @@ import {
   getTarget,
   Hlc,
   isHolidayDate,
+  isMeetupWeek as isMeetupBuiltin,
   isMeetupOverride,
   isWeekend,
   meetupKey,
@@ -34,6 +36,14 @@ import type { SyncTransport } from '../sync/types.js';
 
 const PUSH_DEBOUNCE = 800;
 const PULL_INTERVAL = 30_000;
+const MAX_HISTORY = 200;
+
+/** A reversible edit: the changed keys mapped to their value (undefined = key was absent). */
+type Patch = Record<string, CellValue | undefined>;
+interface HistoryEntry {
+  undo: Patch;
+  redo: Patch;
+}
 
 function docEqual(a: Doc, b: Doc): boolean {
   const ak = Object.keys(a.cells);
@@ -59,6 +69,8 @@ export class Store extends EventTarget {
   private etag: string | null = null;
   private pushTimer: ReturnType<typeof setTimeout> | undefined;
   private syncChain: Promise<void> = Promise.resolve();
+  private undoStack: HistoryEntry[] = [];
+  private redoStack: HistoryEntry[] = [];
 
   async start(transport: SyncTransport, cacheKey: string): Promise<void> {
     this.transport = transport;
@@ -129,6 +141,12 @@ export class Store extends EventTarget {
     const def = this.defaultStatusFor(date);
     this.apply((d) => setCell(d, dateKey(date), def, this.hlc.tick()));
   }
+  /** Reset many days to their defaults in a single undoable step. */
+  clearRange(dates: readonly string[]): void {
+    this.apply((d) => {
+      for (const dt of dates) setCell(d, dateKey(dt), this.defaultStatusFor(dt), this.hlc.tick());
+    });
+  }
   setPattern(weekday: Weekday, status: Status): void {
     this.apply((d) => setCell(d, patternKey(weekday), status, this.hlc.tick()));
   }
@@ -153,8 +171,71 @@ export class Store extends EventTarget {
     return this.pattern[wd] ?? 'office';
   }
 
+  // --- history (undo / redo) ---
+  get canUndo(): boolean {
+    return this.undoStack.length > 0;
+  }
+  get canRedo(): boolean {
+    return this.redoStack.length > 0;
+  }
+  undo(): void {
+    const entry = this.undoStack.pop();
+    if (!entry) return;
+    this.applyPatch(entry.undo);
+    this.redoStack.push(entry);
+  }
+  redo(): void {
+    const entry = this.redoStack.pop();
+    if (!entry) return;
+    this.applyPatch(entry.redo);
+    this.undoStack.push(entry);
+  }
+  /** Re-apply a patch with fresh stamps so it wins LWW and syncs; absent values restore defaults. */
+  private applyPatch(patch: Patch): void {
+    this.commit((d) => {
+      for (const k of Object.keys(patch)) {
+        const want = patch[k] ?? this.cellDefault(k);
+        if (d.cells[k]?.v !== want) setCell(d, k, want, this.hlc.tick());
+      }
+    });
+  }
+  private snapshot(): Record<string, CellValue> {
+    const out: Record<string, CellValue> = {};
+    for (const k of Object.keys(this.doc.cells)) out[k] = this.doc.cells[k].v;
+    return out;
+  }
+  /** The value an absent cell resolves to — used to reverse a first-time edit. */
+  private cellDefault(key: string): CellValue {
+    if (key.startsWith('d|')) return this.defaultStatusFor(key.slice(2));
+    if (key.startsWith('pat|')) return 'office';
+    if (key.startsWith('m|')) return isMeetupBuiltin(key.slice(2));
+    if (key === CFG_TARGET) return 0.8;
+    return 'none';
+  }
+
   // --- engine internals ---
+  /** A user edit: apply it, persist + sync, and record a reversible undo step. */
   private apply(mutate: (d: Doc) => void): void {
+    const before = this.snapshot();
+    this.commit(mutate);
+    const after = this.snapshot();
+    const undo: Patch = {};
+    const redo: Patch = {};
+    let changed = false;
+    for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      if (before[k] !== after[k]) {
+        undo[k] = before[k];
+        redo[k] = after[k];
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.undoStack.push({ undo, redo });
+      if (this.undoStack.length > MAX_HISTORY) this.undoStack.shift();
+      this.redoStack = [];
+    }
+  }
+  private commit(mutate: (d: Doc) => void): void {
     mutate(this.doc);
     this.saveCache();
     this.emitChange();

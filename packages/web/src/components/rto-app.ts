@@ -3,6 +3,7 @@ import { html, nothing } from 'lit';
 import { getSession } from '../auth/session.js';
 import { STATUS_ICON } from '../lib/status.js';
 import { applyMode, currentTheme } from '../lib/theme.js';
+import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
 import './compliance-bar.js';
 import './month-calendar.js';
@@ -44,6 +45,26 @@ export class RtoApp extends RtoElement {
     const raw = localStorage.getItem('badgy.zoom');
     const z = raw === null ? 1 : Number(raw);
     this.zoom = z === 0 || z === 1 || z === 2 ? z : 1;
+  }
+
+  private readonly onKeydown = (e: KeyboardEvent): void => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'z' && k !== 'y') return;
+    const el = e.target as HTMLElement | null;
+    if (el && (/^(input|select|textarea)$/i.test(el.tagName) || el.isContentEditable)) return;
+    e.preventDefault();
+    if (k === 'y' || e.shiftKey) store.redo();
+    else store.undo();
+  };
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('keydown', this.onKeydown);
+  }
+  override disconnectedCallback(): void {
+    window.removeEventListener('keydown', this.onKeydown);
+    super.disconnectedCallback();
   }
 
   private nav(delta: number): void {
@@ -92,6 +113,10 @@ export class RtoApp extends RtoElement {
             <button class="mai-button today-btn" @click=${() => this.goToday()}>Today</button>
           </div>
           <div class="app-bar-actions">
+            <div class="zoom-group" role="group" aria-label="Edit history">
+              <button class="nav-btn" @click=${() => store.undo()} ?disabled=${!store.canUndo} aria-label="Undo" title="Undo (Ctrl/⌘ Z)">↶</button>
+              <button class="nav-btn" @click=${() => store.redo()} ?disabled=${!store.canRedo} aria-label="Redo" title="Redo (Ctrl/⌘ ⇧ Z)">↷</button>
+            </div>
             <div class="zoom-group" role="group" aria-label="Calendar zoom">
               <button class="nav-btn" @click=${() => this.setZoom(-1)} ?disabled=${this.zoom === 0} aria-label="Zoom out" title="Smaller cells">−</button>
               <button class="nav-btn" @click=${() => this.setZoom(1)} ?disabled=${this.zoom === 2} aria-label="Zoom in" title="Larger cells">+</button>

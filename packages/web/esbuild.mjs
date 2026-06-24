@@ -7,7 +7,7 @@ const outdir = 'dist';
 const define = {
   __MSAL_CLIENT_ID__: JSON.stringify(process.env.MSAL_CLIENT_ID ?? ''),
   __MSAL_AUTHORITY__: JSON.stringify(
-    process.env.MSAL_AUTHORITY ?? 'https://login.microsoftonline.com/common',
+    process.env.MSAL_AUTHORITY ?? 'https://login.microsoftonline.com/consumers',
   ),
 };
 

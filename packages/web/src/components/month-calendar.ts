@@ -110,7 +110,8 @@ export class MonthCalendar extends RtoElement {
     this.clearSel();
   }
   private resetRange(): void {
-    for (const d of this.selectedSet()) store.clearDate(d);
+    const dates = [...this.selectedSet()];
+    if (dates.length) store.clearRange(dates);
     this.clearSel();
   }
 
