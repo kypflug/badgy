@@ -145,7 +145,7 @@ button { font-family: inherit; }
   min-height: clamp(54px, 9vh, 88px); padding: 6px 8px;
   border: 1.5px solid transparent; border-radius: 12px; corner-shape: squircle;
   background: transparent; color: var(--smtc-foreground-ctrl-neutral-primary-rest);
-  cursor: pointer; text-align: left; transition: background .1s linear, border-color .1s linear, transform .08s;
+  cursor: pointer; text-align: left; touch-action: none; transition: background .1s linear, border-color .1s linear, transform .08s;
   --d-bg: transparent; --d-fg: inherit; --d-line: var(--smtc-stroke-ctrl-divider-on-outline);
 }
 .day:hover { transform: translateY(-1px); }
@@ -224,3 +224,15 @@ button { font-family: inherit; }
   .month-nav { order: 3; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ------------------------------------------------------------------ drag-select */
+.day--selected {
+  box-shadow: 0 0 0 2px var(--smtc-ai-brand-stop1);
+  background: color-mix(in srgb, var(--smtc-ai-brand-stop1) 14%, transparent);
+}
+.range-toolbar { position: fixed; z-index: 41; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.rt-count { font-size: var(--smtc-text-global-caption1-font-size, 12px); font-weight: 600; color: var(--smtc-foreground-ctrl-neutral-secondary-rest); white-space: nowrap; }
+.rt-statuses { display: flex; gap: 4px; }
+.rt-chip { width: 30px; height: 30px; border: none; border-radius: 9px; corner-shape: squircle; cursor: pointer; font-size: 14px; display: grid; place-items: center; background: var(--d-bg); }
+.rt-chip:hover { outline: 2px solid color-mix(in srgb, var(--d-line) 50%, transparent); }
+.rt-reset { width: 30px; height: 30px; border-radius: 9px; corner-shape: squircle; border: 1px solid var(--smtc-stroke-ctrl-divider-on-outline); background: transparent; cursor: pointer; color: var(--smtc-foreground-ctrl-neutral-secondary-rest); }
