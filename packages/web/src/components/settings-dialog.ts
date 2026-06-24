@@ -14,8 +14,9 @@ const THEME_MODES: { id: ThemeMode; label: string }[] = [
 ];
 
 export class SettingsDialog extends RtoElement {
-  static override properties = { mode: { state: true } };
+  static override properties = { mode: { state: true }, importMsg: { state: true } };
   mode: ThemeMode = getMode();
+  importMsg = '';
 
   private close(): void {
     this.dispatchEvent(new CustomEvent('close', { bubbles: true }));
@@ -23,6 +24,22 @@ export class SettingsDialog extends RtoElement {
   private setTheme(m: ThemeMode): void {
     applyMode(m);
     this.mode = m;
+  }
+  private async onImport(e: Event): Promise<void> {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.importMsg = 'Reading…';
+    try {
+      const buf = await file.arrayBuffer();
+      const { parseXlsx } = await import('../lib/import-xlsx.js');
+      const entries = parseXlsx(buf);
+      store.importDays(entries);
+      this.importMsg = `Imported ${entries.length} day${entries.length === 1 ? '' : 's'} from your spreadsheet.`;
+    } catch {
+      this.importMsg = "Couldn't read that file. Use the Hybrid Attendance Modeler .xlsx.";
+    }
+    input.value = '';
   }
 
   override render() {
@@ -124,6 +141,24 @@ export class SettingsDialog extends RtoElement {
               ${nonMeetups.map((m) => html`<option value=${m}>${formatWeekLabel(m)}</option>`)}
             </select>
           </label>
+        </section>
+
+        <section class="setting">
+          <h3 class="setting-title">Import from Excel</h3>
+          <p class="setting-help">
+            Bring in your existing Hybrid Attendance Modeler (.xlsx). Office/Planned days are skipped;
+            your remote, time-off, and travel days are imported.
+          </p>
+          <label class="mai-button import-button">
+            Choose .xlsx…
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              @change=${(e: Event) => this.onImport(e)}
+              hidden
+            />
+          </label>
+          ${this.importMsg ? html`<p class="setting-help">${this.importMsg}</p>` : nothing}
         </section>
 
         ${

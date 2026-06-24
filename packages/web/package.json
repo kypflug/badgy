@@ -11,6 +11,7 @@
     "@azure/msal-browser": "^5.15.0",
     "@rto/shared": "*",
     "dompurify": "^3.4.11",
+    "fflate": "^0.8.3",
     "lit": "^3.3.3"
   },
   "devDependencies": {
