@@ -266,20 +266,23 @@ button { font-family: inherit; }
 
 /* ------------------------------------------------------------------ PWA / Window Controls Overlay */
 @media (display-mode: window-controls-overlay) {
-  body { background: var(--smtc-background-window-tab-band-solid, #e7e0db); }
-  .app { padding-top: 0; }
+  /* Draw the app bar as a virtual titlebar confined to the WCO area so our controls
+     never sit under the OS window buttons. Colors follow the normal theme. */
+  .app { padding-top: calc(env(titlebar-area-height, 40px) + 12px); }
   .app-bar {
-    position: sticky; top: 0; z-index: 30;
+    position: fixed; z-index: 30;
+    top: env(titlebar-area-y, 0);
+    left: env(titlebar-area-x, 0);
+    width: env(titlebar-area-width, 100%);
     height: env(titlebar-area-height, 40px);
-    padding-left: max(env(titlebar-area-x, 0px), 6px);
-    padding-right: 6px;
-    margin-bottom: 6px;
-    background: var(--smtc-background-window-tab-band-solid, #e7e0db);
+    margin: 0; padding: 0 max(10px, 1vw);
+    flex-wrap: nowrap;
+    background: var(--smtc-background-window-primary-solid, #fff);
+    border-bottom: 1px solid var(--smtc-stroke-ctrl-divider-on-outline);
     -webkit-app-region: drag; app-region: drag;
   }
-  .app-bar .mai-button,
-  .app-bar .nav-btn,
-  .app-bar .today-btn,
+  .app-bar button,
+  .app-bar .user-chip,
   .app-bar .month-nav,
-  .app-bar .user-chip { -webkit-app-region: no-drag; app-region: no-drag; }
+  .app-bar .zoom-group { -webkit-app-region: no-drag; app-region: no-drag; }
 }
