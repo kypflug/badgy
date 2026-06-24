@@ -178,17 +178,19 @@ export class Store extends EventTarget {
   get canRedo(): boolean {
     return this.redoStack.length > 0;
   }
-  undo(): void {
+  undo(): boolean {
     const entry = this.undoStack.pop();
-    if (!entry) return;
+    if (!entry) return false;
     this.applyPatch(entry.undo);
     this.redoStack.push(entry);
+    return true;
   }
-  redo(): void {
+  redo(): boolean {
     const entry = this.redoStack.pop();
-    if (!entry) return;
+    if (!entry) return false;
     this.applyPatch(entry.redo);
     this.undoStack.push(entry);
+    return true;
   }
   /** Re-apply a patch with fresh stamps so it wins LWW and syncs; absent values restore defaults. */
   private applyPatch(patch: Patch): void {
