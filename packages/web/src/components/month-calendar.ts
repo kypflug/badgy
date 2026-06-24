@@ -214,6 +214,7 @@ export class MonthCalendar extends RtoElement {
     return html`
       <div class="cal">
         <div class="cal-grid cal-head">
+          <div class="cal-gutter cal-gutter--head" aria-hidden="true"></div>
           ${DOW.map((l) => html`<div class="cal-dow">${l}</div>`)}
           <div class="cal-dow cal-dow--belt">BELT</div>
         </div>
@@ -221,7 +222,11 @@ export class MonthCalendar extends RtoElement {
           const mon = mondays[wi];
           const belt = store.weekBelt(mon);
           const beltCls = belt == null ? '' : `belt-${beltBand(belt)}`;
-          return html`<div class="cal-grid cal-row ${store.isMeetupWeek(mon) ? 'cal-row--meetup' : ''}">
+          const meetup = store.isMeetupWeek(mon);
+          return html`<div class="cal-grid cal-row">
+            <div class="cal-gutter">
+              ${meetup ? html`<div class="meetup-mark" title="MAI Meetup week"><span>Meetup</span></div>` : nothing}
+            </div>
             ${week.map((d) => this.dayCell(d, selected))}
             <div class="cal-belt ${beltCls}" title="Best-8-of-12 BELT for this week">${formatPct(belt)}</div>
           </div>`;
