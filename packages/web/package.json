@@ -8,6 +8,7 @@
     "dev": "node esbuild.mjs --serve"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.15.0",
     "@rto/shared": "*",
     "dompurify": "^3.4.11",
     "lit": "^3.3.3"

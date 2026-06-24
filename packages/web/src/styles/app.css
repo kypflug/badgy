@@ -99,6 +99,55 @@ button {
   white-space: nowrap;
 }
 
+/* sign-in gate */
+.signin-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.signin-card {
+  max-width: 420px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 32px;
+}
+
+.signin-card .brand-mark {
+  width: 56px;
+  height: 56px;
+}
+
+.signin-title {
+  margin: 0;
+  font-family: var(--rto-font-display);
+  font-weight: 550;
+  font-size: var(--smtc-text-global-title1-font-size, 24px);
+}
+
+.signin-sub {
+  margin: 0;
+  color: var(--smtc-foreground-ctrl-neutral-secondary-rest);
+  font-size: var(--smtc-text-global-body3-font-size, 14px);
+  line-height: var(--smtc-text-global-body3-line-height, 20px);
+}
+
+.signin-button {
+  min-height: 44px;
+  padding: 0 22px;
+  margin-top: 4px;
+}
+
+.signin-fine {
+  margin: 0;
+  color: var(--smtc-foreground-ctrl-neutral-secondary-rest);
+  font-size: var(--smtc-text-global-caption1-font-size, 12px);
+}
+
 /* ------------------------------------------------------------------ controls */
 .mai-button {
   display: inline-flex;

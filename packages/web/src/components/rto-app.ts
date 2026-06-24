@@ -1,8 +1,8 @@
 import { beltBand } from '@rto/shared';
 import { html, nothing } from 'lit';
+import { getSession } from '../auth/session.js';
 import { formatPct } from '../lib/format.js';
 import { getTheme, toggleTheme } from '../lib/theme.js';
-import { getSession } from '../state/session.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
 import './rto-tracker.js';
@@ -45,18 +45,16 @@ export class RtoApp extends RtoElement {
 
   private renderAuth() {
     const s = getSession();
-    if (!s.apiAvailable) return nothing;
-    if (s.me?.authenticated) {
-      return html`<span class="user-chip" title=${s.me.email ?? ''}>${s.me.name ?? 'Signed in'}</span>
-        <a
-          class="mai-button mai-button--icon"
-          href="/.auth/logout"
-          title="Sign out"
-          aria-label="Sign out"
-          >⎋</a
-        >`;
-    }
-    return html`<a class="mai-button" href="/.auth/login/aad?post_login_redirect_uri=/">Sign in</a>`;
+    if (!s) return nothing;
+    return html`<span class="user-chip" title=${s.email}>${s.name}</span>
+      <button
+        class="mai-button mai-button--icon"
+        @click=${() => s.signOut()}
+        title="Sign out"
+        aria-label="Sign out"
+      >
+        ⎋
+      </button>`;
   }
 
   override render() {

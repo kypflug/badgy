@@ -14,6 +14,12 @@ const opts = {
   minify: !serve,
   outdir,
   loader: { '.svg': 'text' },
+  define: {
+    __MSAL_CLIENT_ID__: JSON.stringify(process.env.MSAL_CLIENT_ID ?? ''),
+    __MSAL_AUTHORITY__: JSON.stringify(
+      process.env.MSAL_AUTHORITY ?? 'https://login.microsoftonline.com/common',
+    ),
+  },
 };
 
 await mkdir(outdir, { recursive: true });
