@@ -7,5 +7,6 @@
     "experimentalDecorators": false,
     "useDefineForClassFields": false
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/sw.ts"]
 }

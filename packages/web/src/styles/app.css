@@ -93,9 +93,8 @@ button { font-family: inherit; }
 .app-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-mark {
-  width: 30px; height: 30px; border-radius: 9px; corner-shape: squircle; flex: none;
-  background: linear-gradient(135deg, var(--smtc-ai-brand-stop1, #296eeb), var(--smtc-ai-brand-stop2, #6cebe2), var(--smtc-ai-brand-stop3, #34cfa9));
-  box-shadow: var(--smtc-shadow-card-rest-key);
+  width: 30px; height: 30px; flex: none;
+  background: url('/favicon.svg') center/contain no-repeat;
 }
 .brand-name { font-family: var(--rto-font-display); font-weight: 600; font-size: 20px; letter-spacing: -0.01em; }
 .month-nav { display: flex; align-items: center; gap: 6px; margin-inline: auto; }
@@ -236,3 +235,23 @@ button { font-family: inherit; }
 .rt-chip { width: 30px; height: 30px; border: none; border-radius: 9px; corner-shape: squircle; cursor: pointer; font-size: 14px; display: grid; place-items: center; background: var(--d-bg); }
 .rt-chip:hover { outline: 2px solid color-mix(in srgb, var(--d-line) 50%, transparent); }
 .rt-reset { width: 30px; height: 30px; border-radius: 9px; corner-shape: squircle; border: 1px solid var(--smtc-stroke-ctrl-divider-on-outline); background: transparent; cursor: pointer; color: var(--smtc-foreground-ctrl-neutral-secondary-rest); }
+
+/* ------------------------------------------------------------------ PWA / Window Controls Overlay */
+@media (display-mode: window-controls-overlay) {
+  body { background: var(--smtc-background-window-tab-band-solid, #e7e0db); }
+  .app { padding-top: 0; }
+  .app-bar {
+    position: sticky; top: 0; z-index: 30;
+    height: env(titlebar-area-height, 40px);
+    padding-left: max(env(titlebar-area-x, 0px), 6px);
+    padding-right: 6px;
+    margin-bottom: 6px;
+    background: var(--smtc-background-window-tab-band-solid, #e7e0db);
+    -webkit-app-region: drag; app-region: drag;
+  }
+  .app-bar .mai-button,
+  .app-bar .nav-btn,
+  .app-bar .today-btn,
+  .app-bar .month-nav,
+  .app-bar .user-chip { -webkit-app-region: no-drag; app-region: no-drag; }
+}
