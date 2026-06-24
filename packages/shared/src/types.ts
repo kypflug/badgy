@@ -1,42 +1,80 @@
-/** Canonical attendance types — shared by web and server. */
+/** Canonical attendance types — shared by the calendar UI and the sync layer. */
 
-/** Day statuses, from the template's `Values` sheet (order = preferred display order). */
+/** User-pickable day statuses (ordered for UI). Only `office` counts toward BELT. */
 export const STATUSES = [
-  'Office',
-  'Planned',
-  'Remote',
-  'DTO',
-  'Holiday',
-  'Sick',
-  'Travel',
+  'office',
+  'remote',
+  'vacation',
+  'sick',
+  'holiday',
+  'travel',
+  'oof',
 ] as const;
-export type Status = (typeof STATUSES)[number];
+export type PickableStatus = (typeof STATUSES)[number];
 
-/** Statuses that count toward a week's Office Days (both badged + intended). */
-export const OFFICE_STATUSES: readonly Status[] = ['Office', 'Planned'];
+/** Resolved status of a day: a pickable status, or `none` (untracked — e.g. weekends). */
+export type Status = PickableStatus | 'none';
 
-/** The default day value (matches the template). */
-export const DEFAULT_STATUS: Status = 'Planned';
+export const STATUS_LABEL: Record<Status, string> = {
+  office: 'In office',
+  remote: 'Remote',
+  vacation: 'Time off',
+  sick: 'Sick',
+  holiday: 'Holiday',
+  travel: 'Travel',
+  oof: 'OOF / Other',
+  none: 'Untracked',
+};
 
-/** Working days tracked per week (Mon–Fri). */
-export const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
-export type DayKey = (typeof DAY_KEYS)[number];
+/** Compact label for dense calendar cells. */
+export const STATUS_SHORT: Record<Status, string> = {
+  office: 'Office',
+  remote: 'Remote',
+  vacation: 'Off',
+  sick: 'Sick',
+  holiday: 'Holiday',
+  travel: 'Travel',
+  oof: 'OOF',
+  none: '',
+};
 
-export type WeekDays = Record<DayKey, Status>;
+/** The only status that counts toward office attendance (BELT). */
+export const OFFICE_STATUS: Status = 'office';
 
-export interface Week {
-  /** ISO date (yyyy-mm-dd) of the Monday that starts the week. */
-  weekStart: string;
-  days: WeekDays;
-  /** MAI Meetup week — highlighted in the tracker. */
-  meetup: boolean;
-}
-
-export interface YearData {
-  year: number;
-  weeks: Week[];
+export function countsAsOffice(status: Status): boolean {
+  return status === 'office';
 }
 
 export function isStatus(value: unknown): value is Status {
-  return typeof value === 'string' && (STATUSES as readonly string[]).includes(value);
+  return (
+    value === 'none' ||
+    (typeof value === 'string' && (STATUSES as readonly string[]).includes(value))
+  );
 }
+
+/** Weekday index per JS `Date.getUTCDay()`: 0=Sun … 6=Sat. */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/** Mon–Fri, for the "usual week" pattern editor + BELT (which counts weekdays only). */
+export const WEEKDAYS: { idx: Weekday; label: string; short: string }[] = [
+  { idx: 1, label: 'Monday', short: 'Mon' },
+  { idx: 2, label: 'Tuesday', short: 'Tue' },
+  { idx: 3, label: 'Wednesday', short: 'Wed' },
+  { idx: 4, label: 'Thursday', short: 'Thu' },
+  { idx: 5, label: 'Friday', short: 'Fri' },
+];
+
+export function isWeekend(weekday: Weekday): boolean {
+  return weekday === 0 || weekday === 6;
+}
+
+/** Map the source spreadsheet's statuses onto the v2 taxonomy (import + legacy migration). */
+export const EXCEL_STATUS_MAP: Record<string, PickableStatus> = {
+  Office: 'office',
+  Planned: 'office',
+  Remote: 'remote',
+  DTO: 'vacation',
+  Holiday: 'holiday',
+  Sick: 'sick',
+  Travel: 'travel',
+};

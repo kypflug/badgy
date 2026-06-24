@@ -1,22 +1,47 @@
-/** Theme management — drives `data-theme` on <html>, persisted in localStorage. */
-
+/** Theme: Light / Dark / System (follows the OS live). Persisted in localStorage. */
+export type ThemeMode = 'light' | 'dark' | 'system';
 export type Theme = 'light' | 'dark';
 
-const KEY = 'rto-dashboard:theme';
+const KEY = 'badgy:theme';
+let media: MediaQueryList | null = null;
 
-export function getTheme(): Theme {
-  const saved = localStorage.getItem(KEY);
-  if (saved === 'light' || saved === 'dark') return saved;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+export function getMode(): ThemeMode {
+  const s = localStorage.getItem(KEY);
+  return s === 'light' || s === 'dark' || s === 'system' ? s : 'system';
 }
 
-export function applyTheme(theme: Theme): void {
+function resolve(mode: ThemeMode): Theme {
+  if (mode === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return mode;
+}
+
+export function currentTheme(): Theme {
+  return resolve(getMode());
+}
+
+function updateThemeColor(theme: Theme): void {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(KEY, theme);
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    document.head.appendChild(meta);
+  }
+  const color = getComputedStyle(document.documentElement)
+    .getPropertyValue('--smtc-background-window-primary-solid')
+    .trim();
+  meta.content = color || (theme === 'dark' ? '#1f2431' : '#ffffff');
 }
 
-export function toggleTheme(): Theme {
-  const next: Theme = getTheme() === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  return next;
+export function applyMode(mode: ThemeMode): void {
+  localStorage.setItem(KEY, mode);
+  updateThemeColor(resolve(mode));
+  if (mode === 'system' && !media) {
+    media = window.matchMedia('(prefers-color-scheme: dark)');
+    media.addEventListener('change', () => {
+      if (getMode() === 'system') updateThemeColor(resolve('system'));
+    });
+  }
 }

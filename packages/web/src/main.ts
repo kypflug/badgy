@@ -2,12 +2,12 @@ import './styles/app.css';
 import { initAuth, signIn, signOut } from './auth/msal.js';
 import { setSession } from './auth/session.js';
 import { CONFIG } from './config.js';
-import { applyTheme, getTheme } from './lib/theme.js';
+import { applyMode, getMode } from './lib/theme.js';
 import { store } from './state/store.js';
 import { graphTransport } from './sync/graph.js';
 import { mockTransport } from './sync/mock.js';
 
-applyTheme(getTheme());
+applyMode(getMode());
 
 function renderSignIn(): void {
   const host = document.querySelector('rto-app');
