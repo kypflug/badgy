@@ -18,7 +18,7 @@ function renderSignIn(): void {
   screen.innerHTML = `
     <div class="signin-card mai-card">
       <div class="brand-mark" aria-hidden="true"></div>
-      <h1 class="signin-title">Hybrid Attendance Modeler</h1>
+      <h1 class="signin-title">Badgy</h1>
       <p class="signin-sub">Plan your office time against your rolling BELT score. Your data is saved
         privately to your own OneDrive — only you can see it.</p>
       <button class="mai-button mai-button--primary signin-button" type="button">
