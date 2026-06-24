@@ -65,7 +65,9 @@ export class Store extends EventTarget {
     this.cacheKey = cacheKey;
     this.loadCache();
     this.emitChange();
-    await this.sync();
+    // Render immediately from the local cache; pull from OneDrive in the background
+    // so first paint after sign-in never waits on a token + Graph round-trip.
+    void this.sync();
     window.addEventListener('focus', () => void this.sync());
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') void this.sync();

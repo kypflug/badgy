@@ -9,6 +9,13 @@ import { mockTransport } from './sync/mock.js';
 
 applyMode(getMode());
 
+function hideSplash(): void {
+  const splash = document.querySelector('.boot-splash');
+  if (!splash) return;
+  splash.classList.add('boot-splash--hide');
+  setTimeout(() => splash.remove(), 240);
+}
+
 function renderSignIn(): void {
   const host = document.querySelector('rto-app');
   if (!host) return;
@@ -35,6 +42,7 @@ async function boot(): Promise<void> {
     const account = await initAuth();
     if (!account) {
       renderSignIn();
+      hideSplash();
       return;
     }
     setSession({
@@ -55,6 +63,13 @@ async function boot(): Promise<void> {
     await store.start(mockTransport, 'badgy:doc:dev');
   }
   await import('./components/rto-app.js');
+  const host = document.querySelector('rto-app') as
+    | (HTMLElement & {
+        updateComplete?: Promise<unknown>;
+      })
+    | null;
+  await host?.updateComplete;
+  hideSplash();
 }
 
 await boot();

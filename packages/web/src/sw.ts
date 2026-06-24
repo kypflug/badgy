@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const VERSION = 'badgy-v2-1';
+const VERSION = 'badgy-v3';
 const SHELL = [
   '/',
   '/index.html',
@@ -15,7 +15,7 @@ sw.addEventListener('install', (e) => {
   e.waitUntil(
     caches
       .open(VERSION)
-      .then((c) => c.addAll(SHELL))
+      .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' }))))
       .then(() => sw.skipWaiting()),
   );
 });
@@ -29,23 +29,22 @@ sw.addEventListener('activate', (e) => {
   );
 });
 
+// Stale-while-revalidate for same-origin GETs: serve the cached shell/assets
+// instantly, then refresh the cache in the background for the next load.
 sw.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req).catch(() => caches.match('/index.html').then((r) => r ?? Response.error())),
-    );
-    return;
-  }
+  const key = req.mode === 'navigate' ? '/index.html' : req;
   e.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
-        const copy = res.clone();
-        void caches.open(VERSION).then((c) => c.put(req, copy));
-        return res;
-      });
+    caches.open(VERSION).then(async (cache) => {
+      const cached = await cache.match(key);
+      const network = fetch(req)
+        .then((res) => {
+          if (res?.status === 200) void cache.put(key, res.clone());
+          return res;
+        })
+        .catch(() => cached ?? Response.error());
+      return cached ?? network;
     }),
   );
 });
