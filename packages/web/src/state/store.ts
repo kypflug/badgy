@@ -32,6 +32,7 @@ import {
   type Weekday,
   weekdayOf,
 } from '@rto/shared';
+import { AUTH_INTERACTION_REQUIRED } from '../auth/msal.js';
 import type { SyncTransport } from '../sync/types.js';
 
 const PUSH_DEBOUNCE = 800;
@@ -71,6 +72,7 @@ export class Store extends EventTarget {
   private syncChain: Promise<void> = Promise.resolve();
   private undoStack: HistoryEntry[] = [];
   private redoStack: HistoryEntry[] = [];
+  private authPaused = false;
 
   async start(transport: SyncTransport, cacheKey: string): Promise<void> {
     this.transport = transport;
@@ -266,8 +268,26 @@ export class Store extends EventTarget {
     this.pushTimer = setTimeout(() => void this.sync(), PUSH_DEBOUNCE);
   }
   private sync(): Promise<void> {
-    this.syncChain = this.syncChain.then(() => this.syncOnce()).catch(() => undefined);
+    this.syncChain = this.syncChain
+      .then(() => this.syncOnce())
+      .then(() => this.setAuthPaused(false))
+      .catch((err) => {
+        // Auth lapsed (e.g. iOS/Safari ITP) → pause and prompt reconnect, keep cached data.
+        // Transient network errors leave the state unchanged and retry on the next tick.
+        if (err instanceof Error && err.message === AUTH_INTERACTION_REQUIRED)
+          this.setAuthPaused(true);
+      });
     return this.syncChain;
+  }
+  /** True when OneDrive sync is paused because the session lapsed and needs interactive re-auth. */
+  get needsReconnect(): boolean {
+    return this.authPaused;
+  }
+  private setAuthPaused(v: boolean): void {
+    if (this.authPaused !== v) {
+      this.authPaused = v;
+      this.emitChange();
+    }
   }
   private async syncOnce(): Promise<void> {
     const transport = this.transport;

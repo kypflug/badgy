@@ -109,6 +109,8 @@ button { font-family: inherit; }
 .month-title { font-family: var(--rto-font-display); font-weight: 550; font-size: 18px; min-width: 9.5ch; text-align: center; }
 .app-bar-actions { display: flex; align-items: center; gap: 8px; }
 .user-chip { font-size: var(--smtc-text-global-caption1-font-size, 12px); color: var(--smtc-foreground-ctrl-neutral-secondary-rest); max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reconnect-pill { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border-radius: 999px; corner-shape: squircle; border: 1px solid color-mix(in srgb, var(--smtc-status-warning-background) 45%, transparent); background: var(--smtc-status-warning-tint-background); color: var(--smtc-status-warning-tint-foreground); font-size: var(--smtc-text-global-caption1-font-size, 12px); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.reconnect-pill:hover { border-color: var(--smtc-status-warning-background); }
 
 /* ------------------------------------------------------------------ compliance bar */
 .compliance {

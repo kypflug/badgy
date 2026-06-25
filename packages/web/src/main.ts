@@ -38,6 +38,9 @@ function renderSignIn(): void {
 }
 
 async function boot(): Promise<void> {
+  // Ask the browser to keep our storage (MSAL token cache + offline doc) — reduces the
+  // eviction that makes iOS/Safari forget the sign-in between launches.
+  void navigator.storage?.persist?.();
   if (CONFIG.clientId.length > 0) {
     const account = await initAuth();
     if (!account) {

@@ -1,5 +1,6 @@
 import { STATUS_LABEL, type Status } from '@rto/shared';
 import { html, nothing } from 'lit';
+import { reconnect } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
 import { STATUS_ICON } from '../lib/status.js';
 import { applyMode, currentTheme } from '../lib/theme.js';
@@ -121,6 +122,11 @@ export class RtoApp extends RtoElement {
             <button class="mai-button today-btn" @click=${() => this.goToday()}>Today</button>
           </div>
           <div class="app-bar-actions">
+            ${
+              store.needsReconnect
+                ? html`<button class="reconnect-pill" @click=${() => reconnect()} title="Your changes aren't syncing to OneDrive. Tap to reconnect.">⟳ Reconnect</button>`
+                : nothing
+            }
             <div class="zoom-group" role="group" aria-label="Edit history">
               <button class="nav-btn" @click=${() => this.doUndo()} ?disabled=${!store.canUndo} aria-label="Undo" title="Undo (Ctrl/⌘ Z)">↶</button>
               <button class="nav-btn" @click=${() => this.doRedo()} ?disabled=${!store.canRedo} aria-label="Redo" title="Redo (Ctrl/⌘ ⇧ Z)">↷</button>
