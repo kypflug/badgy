@@ -2,6 +2,11 @@
 <html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
+    <script>
+      // Canonicalize to the apex host before anything else loads (SW, /api, assets).
+      if (location.hostname === 'www.badgy.tech')
+        location.replace('https://badgy.tech' + location.pathname + location.search + location.hash);
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Badgy</title>
     <meta name="description" content="Plan office attendance against your rolling BELT badge-in compliance score." />

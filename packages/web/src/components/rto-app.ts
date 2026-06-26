@@ -110,6 +110,10 @@ export class RtoApp extends RtoElement {
     const session = getSession();
     return html`
       <div class="app" data-zoom=${['s', 'm', 'l'][this.zoom]}>
+        <div class="titlebar" aria-hidden="true">
+          <span class="brand-mark"></span>
+          <span class="brand-name">Badgy</span>
+        </div>
         <header class="app-bar">
           <div class="brand">
             <div class="brand-mark" aria-hidden="true"></div>
