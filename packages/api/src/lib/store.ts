@@ -60,3 +60,20 @@ export async function deleteCache(uid: string): Promise<void> {
     // already gone — fine
   }
 }
+
+/** Best-effort diagnostics sink (read back with partitionKey 'diag') for hard-to-reach errors. */
+export async function logError(where: string, detail: string): Promise<void> {
+  try {
+    await table().upsertEntity(
+      {
+        partitionKey: 'diag',
+        rowKey: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        where,
+        detail: detail.slice(0, 30000),
+      },
+      'Replace',
+    );
+  } catch {
+    // best effort
+  }
+}
