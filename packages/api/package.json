@@ -1,0 +1,19 @@
+{
+  "name": "@rto/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Badgy BFF — token-mediating backend (MSAL Node confidential client) for durable sign-in.",
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@azure/data-tables": "^13",
+    "@azure/functions": "^4",
+    "@azure/msal-node": "^2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

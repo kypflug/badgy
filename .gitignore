@@ -30,3 +30,7 @@ test-results/
 # deploy artifact
 dist-deploy/
 dist-deploy.zip
+
+# Azure Functions local secrets
+local.settings.json
+packages/api/local.settings.json

@@ -1,72 +1,72 @@
-import {
-  type AccountInfo,
-  InteractionRequiredAuthError,
-  PublicClientApplication,
-} from '@azure/msal-browser';
-import { CONFIG } from '../config.js';
+/**
+ * Client auth via the BFF (token-mediating backend). No tokens live in the browser's storage:
+ * the server holds the long-lived refresh token and we authenticate with an HttpOnly session
+ * cookie. The browser fetches a short-lived Graph access token from /api/token and calls Graph
+ * directly, so attendance data never transits our server.
+ */
 
-let pca: PublicClientApplication | undefined;
-let account: AccountInfo | null = null;
-
-const scopes = [...CONFIG.graphScopes];
-
-/** Thrown by getGraphToken when the silent session has lapsed and interactive re-auth is needed. */
 export const AUTH_INTERACTION_REQUIRED = 'auth_interaction_required';
 
-/** Initialize MSAL and resolve any pending redirect. Returns the active account, if any. */
-export async function initAuth(): Promise<AccountInfo | null> {
-  pca = new PublicClientApplication({
-    auth: {
-      clientId: CONFIG.clientId,
-      authority: CONFIG.authority,
-      redirectUri: window.location.origin,
-    },
-    cache: { cacheLocation: 'localStorage' },
-  });
-  await pca.initialize();
-
-  const result = await pca.handleRedirectPromise();
-  account = result?.account ?? pca.getActiveAccount() ?? pca.getAllAccounts()[0] ?? null;
-  if (account) pca.setActiveAccount(account);
-  return account;
+export interface AuthAccount {
+  id: string;
+  name: string;
+  email: string;
 }
 
-export function getAccount(): AccountInfo | null {
-  return account;
+/** Resolve the current session from the BFF cookie. Returns the account, or null if signed out. */
+export async function initAuth(): Promise<AuthAccount | null> {
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      signedIn: boolean;
+      id: string;
+      name: string;
+      email: string;
+    };
+    return data.signedIn ? { id: data.id, name: data.name, email: data.email } : null;
+  } catch {
+    return null;
+  }
 }
 
-export async function signIn(): Promise<void> {
-  // Always show the account picker so users can choose their personal MSA
-  // instead of silently reusing a work/school SSO session.
-  await pca?.loginRedirect({ scopes, prompt: 'select_account' });
+export function signIn(): void {
+  window.location.assign('/api/auth/login');
+}
+
+/** Re-establish the session after it lapses (rare — e.g. >7 days idle on iOS/Safari). */
+export function reconnect(): void {
+  window.location.assign('/api/auth/login');
 }
 
 export async function signOut(): Promise<void> {
-  await pca?.logoutRedirect({ account: account ?? undefined });
-}
-
-/**
- * User-initiated interactive re-auth, after the silent session lapses (common on iOS/Safari,
- * where ITP blocks the hidden-iframe SSO renewal). Triggered by an explicit tap — never
- * automatically — so opening the app never force-redirects to a login page.
- */
-export async function reconnect(): Promise<void> {
-  if (account) await pca?.acquireTokenRedirect({ account, scopes });
-  else await signIn();
-}
-
-/**
- * Acquire a Graph access token *silently only*. On failure we surface AUTH_INTERACTION_REQUIRED
- * and let the app keep running on cached data; re-auth happens on an explicit user gesture
- * (see reconnect()) rather than an automatic redirect on every launch.
- */
-export async function getGraphToken(): Promise<string> {
-  if (!pca || !account) throw new Error(AUTH_INTERACTION_REQUIRED);
   try {
-    const res = await pca.acquireTokenSilent({ account, scopes });
-    return res.accessToken;
-  } catch (err) {
-    if (err instanceof InteractionRequiredAuthError) throw new Error(AUTH_INTERACTION_REQUIRED);
-    throw err;
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  } finally {
+    window.location.assign('/');
   }
+}
+
+let cached: { token: string; exp: number } | null = null;
+
+/** A Graph access token brokered by the BFF, cached client-side until ~1 min before expiry. */
+export async function getGraphToken(): Promise<string> {
+  const now = Date.now();
+  if (cached && cached.exp - 60_000 > now) return cached.token;
+  const res = await fetch('/api/token', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'x-requested-with': 'badgy' },
+  });
+  if (res.status === 401 || res.status === 403) {
+    cached = null;
+    throw new Error(AUTH_INTERACTION_REQUIRED);
+  }
+  if (!res.ok) throw new Error(`token ${res.status}`);
+  const data = (await res.json()) as { accessToken: string; expiresOn: string | null };
+  cached = {
+    token: data.accessToken,
+    exp: data.expiresOn ? new Date(data.expiresOn).getTime() : now + 50 * 60_000,
+  };
+  return data.accessToken;
 }

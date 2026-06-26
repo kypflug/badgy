@@ -49,12 +49,12 @@ async function boot(): Promise<void> {
       return;
     }
     setSession({
-      name: account.name ?? account.username,
-      email: account.username,
-      id: account.homeAccountId,
+      name: account.name,
+      email: account.email,
+      id: account.id,
       signOut: () => void signOut(),
     });
-    await store.start(graphTransport, `badgy:doc:${account.homeAccountId}`);
+    await store.start(graphTransport, `badgy:doc:${account.id}`);
   } else {
     // Local dev: no app registration yet → in-memory "remote".
     setSession({
