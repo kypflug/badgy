@@ -1,0 +1,51 @@
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swa-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Build shared + web
+        env:
+          # Public client id (not a secret) — flips the client into BFF/production mode.
+          MSAL_CLIENT_ID: 9b7c7443-27bd-4158-99d5-0163198cb949
+        run: |
+          npm ci
+          npm run build:shared
+          npm run build:web
+
+      - name: Build API
+        run: |
+          cd packages/api
+          npm ci
+          npm run build
+          npm prune --omit=dev
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: packages/web/dist
+          api_location: packages/api
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true

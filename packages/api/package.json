@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Badgy BFF — token-mediating backend (MSAL Node confidential client) for durable sign-in.",
+  "engines": {
+    "node": "20"
+  },
   "main": "dist/src/functions/*.js",
   "scripts": {
     "build": "tsc",
