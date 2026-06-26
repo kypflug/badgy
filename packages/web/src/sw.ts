@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const VERSION = 'badgy-v6';
+const VERSION = 'badgy-v7';
 const SHELL = [
   '/',
   '/index.html',
@@ -33,7 +33,10 @@ sw.addEventListener('activate', (e) => {
 // instantly, then refresh the cache in the background for the next load.
 sw.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  // Never intercept the BFF — the SW must not turn /api/auth/login (a 302) into the SPA shell.
+  if (url.pathname.startsWith('/api/')) return;
   const key = req.mode === 'navigate' ? '/index.html' : req;
   e.respondWith(
     caches.open(VERSION).then(async (cache) => {
