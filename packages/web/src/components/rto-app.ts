@@ -1,9 +1,9 @@
-import { STATUS_LABEL, type Status } from '@rto/shared';
+import { beltBand, STATUS_LABEL, type Status } from '@rto/shared';
 import { html, nothing } from 'lit';
 import { reconnect } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
+import { formatPct } from '../lib/format.js';
 import { STATUS_ICON } from '../lib/status.js';
-import { applyMode, currentTheme } from '../lib/theme.js';
 import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
@@ -94,9 +94,18 @@ export class RtoApp extends RtoElement {
     this.year = now.getFullYear();
     this.month0 = now.getMonth();
   }
-  private quickTheme(): void {
-    applyMode(currentTheme() === 'dark' ? 'light' : 'dark');
-    this.requestUpdate();
+  private statusPill() {
+    const c = store.compliance();
+    if (c.current == null) return nothing;
+    const band = beltBand(c.current);
+    const onTrack = c.current + 1e-9 >= c.target;
+    const label = onTrack ? 'On track' : c.current >= c.target - 0.1 ? 'At risk' : 'Off track';
+    return html`<span
+      class="status-pill belt-${band}"
+      title="BELT ${formatPct(c.current)} · target ${formatPct(c.target)}"
+    >
+      <span class="status-dot"></span>${label} · ${formatPct(c.current)}
+    </span>`;
   }
   private setZoom(delta: number): void {
     const z = Math.min(2, Math.max(0, this.zoom + delta));
@@ -110,10 +119,7 @@ export class RtoApp extends RtoElement {
     const session = getSession();
     return html`
       <div class="app" data-zoom=${['s', 'm', 'l'][this.zoom]}>
-        <div class="titlebar" aria-hidden="true">
-          <span class="brand-mark"></span>
-          <span class="brand-name">Badgy</span>
-        </div>
+        <div class="titlebar" aria-hidden="true"></div>
         <header class="app-bar">
           <div class="brand">
             <div class="brand-mark" aria-hidden="true"></div>
@@ -139,9 +145,7 @@ export class RtoApp extends RtoElement {
               <button class="nav-btn" @click=${() => this.setZoom(-1)} ?disabled=${this.zoom === 0} aria-label="Zoom out" title="Smaller cells">−</button>
               <button class="nav-btn" @click=${() => this.setZoom(1)} ?disabled=${this.zoom === 2} aria-label="Zoom in" title="Larger cells">+</button>
             </div>
-            <button class="mai-button mai-button--icon theme-toggle" @click=${() => this.quickTheme()} aria-label="Toggle theme">
-              ${currentTheme() === 'dark' ? '☾' : '☀'}
-            </button>
+            ${this.statusPill()}
             <button
               class="mai-button mai-button--icon"
               @click=${() => {

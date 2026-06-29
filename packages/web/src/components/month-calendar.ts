@@ -211,9 +211,10 @@ export class MonthCalendar extends RtoElement {
     const selected = this.selectedSet();
     const weeks: ResolvedDay[][] = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+    const hasMeetup = mondays.some((m) => store.isMeetupWeek(m));
 
     return html`
-      <div class="cal">
+      <div class="cal ${hasMeetup ? 'cal--has-meetup' : ''}">
         <div class="cal-grid cal-head">
           <div class="cal-gutter cal-gutter--head" aria-hidden="true"></div>
           ${DOW.map((l) => html`<div class="cal-dow">${l}</div>`)}
