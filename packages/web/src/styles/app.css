@@ -164,7 +164,7 @@ button { font-family: inherit; }
 /* ------------------------------------------------------------------ calendar */
 .cal-main { flex: 1; }
 .cal { display: flex; flex-direction: column; gap: 4px; }
-.cal-grid { display: grid; grid-template-columns: var(--cal-gutter, 0) repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, .64fr)) 56px; gap: 5px; }
+.cal-grid { display: grid; grid-template-columns: var(--cal-gutter, 0) minmax(0, .64fr) repeat(5, minmax(0, 1fr)) minmax(0, .64fr) 56px; gap: 5px; }
 .cal--has-meetup { --cal-gutter: 22px; }
 .cal-head { margin-bottom: 2px; }
 .cal-dow { text-align: center; font-size: var(--smtc-text-global-caption1-font-size, 12px); font-weight: 600; color: var(--smtc-foreground-ctrl-neutral-secondary-rest); padding-bottom: 2px; }
@@ -300,7 +300,7 @@ button { font-family: inherit; }
 /* Tablets / large phones: header onto two tidy rows, drop the BELT column, stack the planner. */
 @media (max-width: 720px) {
   .cal-dow--belt, .cal-belt { display: none; }
-  .cal-grid { grid-template-columns: var(--cal-gutter, 0) repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, .64fr)); }
+  .cal-grid { grid-template-columns: var(--cal-gutter, 0) minmax(0, .64fr) repeat(5, minmax(0, 1fr)) minmax(0, .64fr); }
   .app-bar { gap: 10px 8px; }
   .brand { order: 1; }
   .app-bar-actions { order: 2; margin-left: auto; }
@@ -317,7 +317,7 @@ button { font-family: inherit; }
   .compliance-ring { width: 52px; height: 52px; }
   .cal { gap: 3px; }
   .cal--has-meetup { --cal-gutter: 5px; }
-  .cal-grid { grid-template-columns: var(--cal-gutter, 0) repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, .7fr)); gap: 3px; }
+  .cal-grid { grid-template-columns: var(--cal-gutter, 0) minmax(0, .7fr) repeat(5, minmax(0, 1fr)) minmax(0, .7fr); gap: 3px; }
   .cal-dow { font-size: 11px; }
   .day { min-height: 46px; padding: 4px 5px; border-radius: 9px; gap: 0; }
   .day-tag { display: none; }
