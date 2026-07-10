@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import parity from './__fixtures__/belt-parity.json';
-import golden from './__fixtures__/template-2026.json';
 import { beltAt, beltBand, beltOf, beltSeries } from './belt.js';
-import { mondaysOfYear } from './calendar.js';
 import { officeDaysByWeek } from './compliance.js';
 import { emptyDoc } from './sync/doc.js';
 
@@ -42,16 +40,9 @@ describe('parity — independent oracle', () => {
   }
 });
 
-describe('parity — 2026 Excel default (via per-date resolve)', () => {
-  const office = officeDaysByWeek(emptyDoc(), mondaysOfYear(2026), '2026-01-01');
-  it('office days per week match Excel cached (total 250)', () => {
-    expect(office).toEqual(golden.weeks.map((w) => w.officeDays));
-    expect(office.reduce((a, b) => a + b, 0)).toBe(250);
-  });
-  it('BELT series matches Excel cached', () => {
-    expectClose(
-      beltSeries(office),
-      golden.weeks.map((w) => w.beltCached),
-    );
+describe('Sunday-anchored per-date integration', () => {
+  it('groups holidays into the containing Sunday-start week', () => {
+    const office = officeDaysByWeek(emptyDoc(), ['2026-01-11', '2026-01-18'], '2026-01-01');
+    expect(office).toEqual([5, 4]); // MLK Day is Monday Jan 19
   });
 });

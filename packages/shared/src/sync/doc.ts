@@ -1,8 +1,8 @@
 /**
  * Sync document — a sparse last-write-wins map of *overrides* keyed per ISO date / setting,
- * each stamped with an HLC. Unset days resolve from defaults: weekends → untracked, known
- * holidays → holiday, else the user's "usual week" pattern (or `office`). `merge` is a
- * commutative + idempotent CRDT.
+ * each stamped with an HLC. Unset days resolve from defaults: known holidays → holiday,
+ * configured "usual week" pattern, unconfigured weekends → untracked, else `office`.
+ * `merge` is a commutative + idempotent CRDT.
  */
 import {
   addDays,
@@ -100,9 +100,10 @@ export function resolveDay(
   const holiday = isHolidayDate(iso);
   let status: Status;
   if (override != null) status = override;
-  else if (isWeekend(weekday)) status = 'none';
   else if (holiday) status = 'holiday';
-  else status = pattern[weekday] ?? 'office';
+  else if (pattern[weekday] != null) status = pattern[weekday];
+  else if (isWeekend(weekday)) status = 'none';
+  else status = 'office';
   return {
     date: iso,
     status,
@@ -151,6 +152,19 @@ export function migrate(doc: Doc): Doc {
       }
     } else if ((parts[0] === 'cfg' && parts[1] === 'activeYear') || parts[0] === 'y') {
       delete cells[key]; // concepts removed in v2
+      changed = true;
+    } else if (parts[0] === 'm' && parts.length === 2 && weekdayOf(parts[1]) === 1) {
+      const sundayKey = meetupKey(addDays(parts[1], -1));
+      const oldCell = doc.cells[key];
+      const sundayCell = cells[sundayKey];
+      if (
+        !sundayCell ||
+        compareStamp(oldCell.t, sundayCell.t) > 0 ||
+        (compareStamp(oldCell.t, sundayCell.t) === 0 &&
+          tieBreak(oldCell.v) > tieBreak(sundayCell.v))
+      )
+        cells[sundayKey] = oldCell;
+      delete cells[key];
       changed = true;
     }
   }

@@ -104,20 +104,20 @@ export class Store extends EventTarget {
   }
   /** Resolved days for the full month grid (leading/trailing weeks included). */
   monthDays(year: number, month0: number): ResolvedDay[] {
-    const { mondays } = monthGrid(year, month0);
-    return resolveRange(this.doc, mondays[0], addDays(mondays[mondays.length - 1], 6));
+    const { weekStarts } = monthGrid(year, month0);
+    return resolveRange(this.doc, weekStarts[0], addDays(weekStarts[weekStarts.length - 1], 6));
   }
-  monthMondays(year: number, month0: number): string[] {
-    return monthGrid(year, month0).mondays;
+  monthWeekStarts(year: number, month0: number): string[] {
+    return monthGrid(year, month0).weekStarts;
   }
-  weekDays(monday: string): ResolvedDay[] {
-    return resolveRange(this.doc, monday, addDays(monday, 6));
+  weekDays(weekStart: string): ResolvedDay[] {
+    return resolveRange(this.doc, weekStart, addDays(weekStart, 6));
   }
-  weekBelt(monday: string): number | null {
-    return beltForWeek(this.doc, monday, todayISO());
+  weekBelt(weekStart: string): number | null {
+    return beltForWeek(this.doc, weekStart, todayISO());
   }
-  weekOffice(monday: string): number {
-    return officeDaysByWeek(this.doc, [monday], todayISO())[0];
+  weekOffice(weekStart: string): number {
+    return officeDaysByWeek(this.doc, [weekStart], todayISO())[0];
   }
   compliance(): Compliance {
     return computeCompliance(this.doc, this.target, todayISO());
@@ -168,9 +168,9 @@ export class Store extends EventTarget {
 
   private defaultStatusFor(date: string): Status {
     const wd = weekdayOf(date);
-    if (isWeekend(wd)) return 'none';
     if (isHolidayDate(date)) return 'holiday';
-    return this.pattern[wd] ?? 'office';
+    if (this.pattern[wd] != null) return this.pattern[wd];
+    return isWeekend(wd) ? 'none' : 'office';
   }
 
   // --- history (undo / redo) ---

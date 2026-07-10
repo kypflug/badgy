@@ -1,4 +1,11 @@
-import { mondaysOfYear, STATUS_LABEL, type Status, WEEKDAYS, type Weekday } from '@rto/shared';
+import {
+  isWeekend,
+  STATUS_LABEL,
+  type Status,
+  WEEK_DAYS,
+  type Weekday,
+  weekStartsOfYear,
+} from '@rto/shared';
 import { html, nothing } from 'lit';
 import { getSession } from '../auth/session.js';
 import { formatPct, formatWeekLabel } from '../lib/format.js';
@@ -17,6 +24,19 @@ export class SettingsDialog extends RtoElement {
   static override properties = { mode: { state: true }, importMsg: { state: true } };
   mode: ThemeMode = getMode();
   importMsg = '';
+
+  private readonly onKeydown = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') this.close();
+  };
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    document.addEventListener('keydown', this.onKeydown);
+  }
+  override disconnectedCallback(): void {
+    document.removeEventListener('keydown', this.onKeydown);
+    super.disconnectedCallback();
+  }
 
   private close(): void {
     this.dispatchEvent(new CustomEvent('close', { bubbles: true }));
@@ -46,22 +66,23 @@ export class SettingsDialog extends RtoElement {
     const session = getSession();
     const pattern = store.pattern;
     const year = new Date().getFullYear();
-    const meetups = mondaysOfYear(year).filter((m) => store.isMeetupWeek(m));
-    const nonMeetups = mondaysOfYear(year).filter((m) => !store.isMeetupWeek(m));
+    const weekStarts = weekStartsOfYear(year);
+    const meetups = weekStarts.filter((weekStart) => store.isMeetupWeek(weekStart));
+    const nonMeetups = weekStarts.filter((weekStart) => !store.isMeetupWeek(weekStart));
 
     return html`
       <div class="dialog-backdrop" @click=${() => this.close()}></div>
-      <div class="dialog mai-card" role="dialog" aria-label="Settings">
+      <div class="dialog mai-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header class="dialog-head">
-          <h2 class="dialog-title">Settings</h2>
+          <h2 class="dialog-title" id="settings-title">Settings</h2>
           <button class="mai-button mai-button--icon" @click=${() => this.close()} aria-label="Close">✕</button>
         </header>
 
         <section class="setting">
           <h3 class="setting-title">Your usual week</h3>
-          <p class="setting-help">Default for any weekday you haven't set. Specific days override this.</p>
+          <p class="setting-help">Default for any day you haven't set. Specific dates override this.</p>
           <div class="pattern-grid">
-            ${WEEKDAYS.map(
+            ${WEEK_DAYS.map(
               (w) => html`<label class="pattern-day">
                 <span class="pattern-dow">${w.short}</span>
                 <select
@@ -72,8 +93,11 @@ export class SettingsDialog extends RtoElement {
                       (e.target as HTMLSelectElement).value as Status,
                     )}
                 >
-                  ${STATUS_ORDER.map(
-                    (s) => html`<option value=${s} ?selected=${(pattern[w.idx] ?? 'office') === s}>
+                  ${(isWeekend(w.idx) ? [...STATUS_ORDER, 'none' as const] : STATUS_ORDER).map(
+                    (s) => html`<option
+                      value=${s}
+                      ?selected=${(pattern[w.idx] ?? (isWeekend(w.idx) ? 'none' : 'office')) === s}
+                    >
                       ${STATUS_LABEL[s]}
                     </option>`,
                   )}

@@ -4,6 +4,8 @@ import {
   dateKey,
   emptyDoc,
   getPattern,
+  isMeetupOverride,
+  meetupKey,
   merge,
   migrate,
   patternKey,
@@ -53,12 +55,15 @@ describe('resolveDay — defaults, pattern, overrides, forecast flags', () => {
     expect(resolveDay(d, '2026-02-07', undefined, '2026-02-01').status).toBe('none'); // Sat
     expect(resolveDay(d, '2026-01-19', undefined, '2026-01-01').status).toBe('holiday');
   });
-  it('the usual-week pattern fills unmarked weekdays', () => {
+
+  it('the usual-week pattern fills unmarked days, including weekends', () => {
     const d = emptyDoc();
     setCell(d, patternKey(2), 'remote', [1, 0]); // Tuesdays remote
+    setCell(d, patternKey(6), 'office', [1, 1]); // Saturdays office
     expect(getPattern(d)[2]).toBe('remote');
     expect(resolveDay(d, '2026-02-03', undefined, '2026-02-01').status).toBe('remote');
     expect(resolveDay(d, '2026-02-04', undefined, '2026-02-01').status).toBe('office'); // Wed unaffected
+    expect(resolveDay(d, '2026-02-07', undefined, '2026-02-01').status).toBe('office');
   });
   it('an explicit day override beats the pattern', () => {
     const d = emptyDoc();
@@ -76,6 +81,20 @@ describe('resolveDay — defaults, pattern, overrides, forecast flags', () => {
   });
 });
 
+describe('meetup defaults and overrides', () => {
+  it('updates defaults while preserving explicit user choices', () => {
+    const d = emptyDoc();
+    expect(isMeetupOverride(d, '2026-10-11')).toBe(true);
+    expect(isMeetupOverride(d, '2026-09-20')).toBe(false);
+
+    setCell(d, meetupKey('2026-10-11'), false, [1, 0]);
+    setCell(d, meetupKey('2026-09-20'), true, [1, 1]);
+
+    expect(isMeetupOverride(d, '2026-10-11')).toBe(false);
+    expect(isMeetupOverride(d, '2026-09-20')).toBe(true);
+  });
+});
+
 describe('migrate — v1 weekly-grid → v2 per-date', () => {
   it('rewrites legacy keys + maps the taxonomy, drops removed keys', () => {
     const legacy: Doc = {
@@ -87,6 +106,8 @@ describe('migrate — v1 weekly-grid → v2 per-date', () => {
         'y|2026': { v: true, t: [1, 0] },
         'cfg|activeYear': { v: 2026, t: [1, 0] },
         'cfg|targetBelt': { v: 0.9, t: [1, 0] },
+        'm|2026-03-08': { v: true, t: [1, 0] },
+        'm|2026-03-09': { v: false, t: [2, 0] },
       },
     };
     const m = migrate(legacy);
@@ -96,5 +117,8 @@ describe('migrate — v1 weekly-grid → v2 per-date', () => {
     expect(m.cells['y|2026']).toBeUndefined();
     expect(m.cells['cfg|activeYear']).toBeUndefined();
     expect(m.cells['cfg|targetBelt'].v).toBe(0.9); // preserved
+    expect(m.cells[meetupKey('2026-03-08')].v).toBe(false); // newer Monday key wins
+    expect(m.cells[meetupKey('2026-03-09')]).toBeUndefined();
+    expect(migrate(m)).toBe(m); // Sunday-key migration is idempotent
   });
 });

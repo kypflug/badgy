@@ -25,11 +25,12 @@ Microsoft Graph, synced across devices with a **CRDT**. No backend, no operator-
 
 ## Data model (don't break)
 - Sparse CRDT doc of **overrides**, keyed per ISO date (`d|YYYY-MM-DD`) + weekly pattern (`pat|<0-6>`)
-  + meetup (`m|<Mon>`) + `cfg|targetBelt`. Unset days resolve from defaults: weekend→none,
-  holiday→holiday, else `pattern[weekday] ?? office`. `merge` must stay commutative + idempotent;
+  + meetup (`m|<Sun>`) + `cfg|targetBelt`. Unset days resolve from defaults: holiday→holiday,
+  configured pattern, unconfigured weekend→none, else office. `merge` must stay commutative + idempotent;
   every write gets a fresh `hlc.tick()`. `migrate()` upgrades v1 weekly-grid docs.
 - **Taxonomy:** office/remote/vacation/sick/holiday/travel/oof (+ `none`). Only `office` counts toward BELT.
-- **BELT:** rolling best-8-of-12 ÷5; bands 80/90. Past=actual, future=forecast (today boundary).
+- **BELT:** Sunday-start weeks; count all office days but cap each week at 5; rolling best-8-of-12 ÷5;
+  bands 80/90. Past=actual, future=forecast (today boundary).
 
 ## Conventions (mirror `theseus`)
 TypeScript, ESM, `verbatimModuleSyntax` (`import type`). Lit for UI; Biome + stylelint; Playwright +

@@ -1,6 +1,6 @@
 /** What-if planner: fewest office days/week over the next N weeks to reach/hold a target BELT. */
 import { BELT_DIVISOR, BELT_WINDOW, beltOf } from './belt.js';
-import { trailingMondays, weekStartOf } from './calendar.js';
+import { trailingWeekStarts, weekStartOf } from './calendar.js';
 import { officeDaysByWeek } from './compliance.js';
 import type { Doc } from './sync/doc.js';
 
@@ -37,8 +37,8 @@ export function requiredOfficeDays(
   target: number,
   hold = true,
 ): ProjectionResult {
-  const thisMonday = weekStartOf(today);
-  const baseOffice = officeDaysByWeek(doc, trailingMondays(thisMonday, BELT_WINDOW), today);
+  const thisWeekStart = weekStartOf(today);
+  const baseOffice = officeDaysByWeek(doc, trailingWeekStarts(thisWeekStart, BELT_WINDOW), today);
   for (let d = 0; d <= BELT_DIVISOR; d++) {
     const projected = project(baseOffice, horizon, d);
     if (meetsGoal(projected, target, hold)) {

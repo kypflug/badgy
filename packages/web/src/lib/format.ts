@@ -15,16 +15,16 @@ export function formatWeekLabel(weekStart: string): string {
   return dayMonth.format(parseWeek(weekStart));
 }
 
-/** "5–9 Jan" Mon–Fri span for a week starting on `weekStart`. */
+/** "4–10 Jan" Sunday–Saturday span for a week starting on `weekStart`. */
 export function formatWeekRange(weekStart: string): string {
-  const mon = parseWeek(weekStart);
-  const fri = new Date(mon.getTime() + 4 * 86_400_000);
-  const sameMonth = mon.getUTCMonth() === fri.getUTCMonth();
+  const start = parseWeek(weekStart);
+  const end = new Date(start.getTime() + 6 * 86_400_000);
+  const sameMonth = start.getUTCMonth() === end.getUTCMonth();
   const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
   if (sameMonth) {
-    return `${mon.getUTCDate()}–${fri.getUTCDate()} ${monthShort.format(fri)}`;
+    return `${start.getUTCDate()}–${end.getUTCDate()} ${monthShort.format(end)}`;
   }
-  return `${formatWeekLabel(weekStart)} – ${dayMonth.format(fri)}`;
+  return `${formatWeekLabel(weekStart)} – ${dayMonth.format(end)}`;
 }
 
 /** Integer percent like the template's `0%` format; em-dash when null. */

@@ -12,7 +12,7 @@ export const STATUSES = [
 ] as const;
 export type PickableStatus = (typeof STATUSES)[number];
 
-/** Resolved status of a day: a pickable status, or `none` (untracked — e.g. weekends). */
+/** Resolved status of a day: a pickable status, or `none` (untracked). */
 export type Status = PickableStatus | 'none';
 
 export const STATUS_LABEL: Record<Status, string> = {
@@ -55,13 +55,15 @@ export function isStatus(value: unknown): value is Status {
 /** Weekday index per JS `Date.getUTCDay()`: 0=Sun … 6=Sat. */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-/** Mon–Fri, for the "usual week" pattern editor + BELT (which counts weekdays only). */
-export const WEEKDAYS: { idx: Weekday; label: string; short: string }[] = [
+/** Sunday–Saturday, for the "usual week" pattern editor. */
+export const WEEK_DAYS: { idx: Weekday; label: string; short: string }[] = [
+  { idx: 0, label: 'Sunday', short: 'Sun' },
   { idx: 1, label: 'Monday', short: 'Mon' },
   { idx: 2, label: 'Tuesday', short: 'Tue' },
   { idx: 3, label: 'Wednesday', short: 'Wed' },
   { idx: 4, label: 'Thursday', short: 'Thu' },
   { idx: 5, label: 'Friday', short: 'Fri' },
+  { idx: 6, label: 'Saturday', short: 'Sat' },
 ];
 
 export function isWeekend(weekday: Weekday): boolean {

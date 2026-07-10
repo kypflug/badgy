@@ -21,24 +21,23 @@ export function todayISO(): string {
   return toISO(new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())));
 }
 
-/** Monday of the ISO week containing `iso`. */
+/** Sunday of the week containing `iso`. */
 export function weekStartOf(iso: string): string {
-  const back = (weekdayOf(iso) + 6) % 7; // days since Monday
-  return addDays(iso, -back);
+  return addDays(iso, -weekdayOf(iso));
 }
 
-/** Mondays for `count` contiguous weeks ending at (and including) `endMonday`. */
-export function trailingMondays(endMonday: string, count: number): string[] {
+/** Sunday starts for `count` contiguous weeks ending at (and including) `endWeekStart`. */
+export function trailingWeekStarts(endWeekStart: string, count: number): string[] {
   const out: string[] = [];
-  for (let i = count - 1; i >= 0; i--) out.push(addDays(endMonday, -7 * i));
+  for (let i = count - 1; i >= 0; i--) out.push(addDays(endWeekStart, -7 * i));
   return out;
 }
 
-/** Every Monday that falls within `year`. */
-export function mondaysOfYear(year: number): string[] {
+/** Every Sunday week start that falls within `year`. */
+export function weekStartsOfYear(year: number): string[] {
   const jan1 = Date.UTC(year, 0, 1);
   const dow = new Date(jan1).getUTCDay();
-  const offset = (8 - dow) % 7; // 0 when Jan 1 is a Monday
+  const offset = (7 - dow) % 7; // 0 when Jan 1 is a Sunday
   let t = jan1 + offset * MS_PER_DAY;
   const out: string[] = [];
   while (new Date(t).getUTCFullYear() === year) {
@@ -48,15 +47,16 @@ export function mondaysOfYear(year: number): string[] {
   return out;
 }
 
-/** The Mon-anchored week grid covering a month (full leading/trailing weeks). */
-export function monthGrid(year: number, month0: number): { first: string; mondays: string[] } {
+/** The Sunday-anchored week grid covering a month (full leading/trailing weeks). */
+export function monthGrid(year: number, month0: number): { first: string; weekStarts: string[] } {
   const first = toISO(new Date(Date.UTC(year, month0, 1)));
   const lastDay = toISO(new Date(Date.UTC(year, month0 + 1, 0)));
   const start = weekStartOf(first);
   const end = weekStartOf(lastDay);
-  const mondays: string[] = [];
-  for (let m = start; m <= end; m = addDays(m, 7)) mondays.push(m);
-  return { first, mondays };
+  const weekStarts: string[] = [];
+  for (let weekStart = start; weekStart <= end; weekStart = addDays(weekStart, 7))
+    weekStarts.push(weekStart);
+  return { first, weekStarts };
 }
 
 // --- holidays ---
@@ -65,9 +65,10 @@ export function isHolidayDate(iso: string): boolean {
   return HOLIDAY_SET.has(iso);
 }
 
-// --- meetup weeks (Monday ISO dates; 2026 from chatgpm/cycles.yaml) ---
+// --- meetup weeks (Sunday ISO dates; published Edge Cycle planning cadence) ---
 export const MEETUP_WEEKS: Record<number, readonly string[]> = {
-  2026: ['2026-01-12', '2026-03-09', '2026-05-11', '2026-07-13', '2026-09-21', '2026-11-16'],
+  2026: ['2026-01-11', '2026-03-08', '2026-05-10', '2026-07-12', '2026-10-11'],
+  2027: ['2027-01-10', '2027-04-11'],
 };
 const MEETUP_SET = new Set<string>(Object.values(MEETUP_WEEKS).flat());
 export function isMeetupWeek(weekStartISO: string): boolean {

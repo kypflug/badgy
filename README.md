@@ -22,7 +22,8 @@ glance whether you're on track. Styled with the **MAI design system**.
 
 ## Statuses
 In office · Remote · Time off (DTO) · Sick · Holiday · Travel · OOF/Other. Only **In office** counts
-toward BELT. Holidays + meetup weeks (Edge Cycle calendar) are shown automatically.
+toward BELT. Holidays + meetup weeks from the published Edge Cycle planning cadence are shown
+automatically.
 
 ## Stack
 
@@ -37,9 +38,10 @@ Tooling: Biome, stylelint, Playwright, Node 24. Hosting: **Azure Static Web Apps
 
 ## BELT (matches the source spreadsheet)
 
-Office Days/week = Mon–Fri resolved `In office`. **BELT** = average of the 8 largest weekly Office-Day
-counts over the trailing 12 weeks, ÷5. Bands: `<80%` red · `80–90%` amber · `≥90%` green. Parity is
-pinned by tests against the spreadsheet's own values (`packages/shared/src/`).
+Office Days/week = Sunday–Saturday resolved `In office`, capped at 5. **BELT** = average of the 8
+largest weekly Office-Day counts over the trailing 12 weeks, ÷5. Bands: `<80%` red · `80–90%`
+amber · `≥90%` green. The numeric BELT core remains pinned to the spreadsheet's values
+(`packages/shared/src/`).
 
 ## Develop
 

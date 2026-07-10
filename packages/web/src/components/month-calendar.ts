@@ -12,7 +12,7 @@ import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
 
-const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export class MonthCalendar extends RtoElement {
   static override properties = {
@@ -207,11 +207,11 @@ export class MonthCalendar extends RtoElement {
 
   override render() {
     const days = store.monthDays(this.year, this.month0);
-    const mondays = store.monthMondays(this.year, this.month0);
+    const weekStarts = store.monthWeekStarts(this.year, this.month0);
     const selected = this.selectedSet();
     const weeks: ResolvedDay[][] = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
-    const hasMeetup = mondays.some((m) => store.isMeetupWeek(m));
+    const hasMeetup = weekStarts.some((weekStart) => store.isMeetupWeek(weekStart));
 
     return html`
       <div class="cal ${hasMeetup ? 'cal--has-meetup' : ''}">
@@ -221,10 +221,10 @@ export class MonthCalendar extends RtoElement {
           <div class="cal-dow cal-dow--belt">BELT</div>
         </div>
         ${weeks.map((week, wi) => {
-          const mon = mondays[wi];
-          const belt = store.weekBelt(mon);
+          const weekStart = weekStarts[wi];
+          const belt = store.weekBelt(weekStart);
           const beltCls = belt == null ? '' : `belt-${beltBand(belt)}`;
-          const meetup = store.isMeetupWeek(mon);
+          const meetup = store.isMeetupWeek(weekStart);
           return html`<div class="cal-grid cal-row">
             <div class="cal-gutter">
               ${meetup ? html`<div class="meetup-mark" title="MAI Meetup week"><span>Meetup</span></div>` : nothing}

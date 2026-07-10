@@ -8,6 +8,7 @@ import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
 import './compliance-bar.js';
+import './help-dialog.js';
 import './month-calendar.js';
 import './settings-dialog.js';
 
@@ -31,12 +32,12 @@ export class RtoApp extends RtoElement {
   static override properties = {
     year: { state: true },
     month0: { state: true },
-    settingsOpen: { state: true },
+    activeDialog: { state: true },
     zoom: { state: true },
   };
   year: number;
   month0: number;
-  settingsOpen = false;
+  activeDialog: 'help' | 'settings' | null = null;
   zoom = 1;
 
   constructor() {
@@ -149,9 +150,20 @@ export class RtoApp extends RtoElement {
             <button
               class="mai-button mai-button--icon"
               @click=${() => {
-                this.settingsOpen = true;
+                this.activeDialog = 'help';
+              }}
+              aria-label="Help"
+              title="Help"
+            >
+              ?
+            </button>
+            <button
+              class="mai-button mai-button--icon"
+              @click=${() => {
+                this.activeDialog = 'settings';
               }}
               aria-label="Settings"
+              title="Settings"
             >
               ⚙
             </button>
@@ -178,10 +190,17 @@ export class RtoApp extends RtoElement {
         </div>
 
         ${
-          this.settingsOpen
+          this.activeDialog === 'settings'
             ? html`<settings-dialog @close=${() => {
-                this.settingsOpen = false;
+                this.activeDialog = null;
               }}></settings-dialog>`
+            : nothing
+        }
+        ${
+          this.activeDialog === 'help'
+            ? html`<help-dialog @close=${() => {
+                this.activeDialog = null;
+              }}></help-dialog>`
             : nothing
         }
       </div>
