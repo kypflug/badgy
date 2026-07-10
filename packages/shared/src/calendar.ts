@@ -21,6 +21,18 @@ export function todayISO(): string {
   return toISO(new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())));
 }
 
+export interface MonthRef {
+  year: number;
+  month0: number;
+}
+
+/** Shift a zero-based calendar month by `delta`, normalizing across year boundaries. */
+export function shiftMonth(year: number, month0: number, delta: number): MonthRef {
+  const absoluteMonth = year * 12 + month0 + delta;
+  const nextYear = Math.floor(absoluteMonth / 12);
+  return { year: nextYear, month0: absoluteMonth - nextYear * 12 };
+}
+
 /** Sunday of the week containing `iso`. */
 export function weekStartOf(iso: string): string {
   return addDays(iso, -weekdayOf(iso));

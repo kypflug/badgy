@@ -36,6 +36,24 @@ export class MonthCalendar extends RtoElement {
   private dragging = false;
   private moved = false;
 
+  override disconnectedCallback(): void {
+    this.cancelInteraction();
+    super.disconnectedCallback();
+  }
+
+  get hasActiveInteraction(): boolean {
+    return this.dragging || this.menuDate !== null || this.toolbar;
+  }
+
+  cancelInteraction(): void {
+    this.dragging = false;
+    this.moved = false;
+    document.removeEventListener('pointermove', this.onMove);
+    document.removeEventListener('pointerup', this.onUp);
+    this.menuDate = null;
+    this.clearSel();
+  }
+
   private selectedSet(): Set<string> {
     const set = new Set<string>();
     if (this.selStart && this.selEnd) {
@@ -77,6 +95,7 @@ export class MonthCalendar extends RtoElement {
   private readonly onUp = (e: PointerEvent): void => {
     this.dragging = false;
     document.removeEventListener('pointermove', this.onMove);
+    document.removeEventListener('pointerup', this.onUp);
     if (this.moved) {
       this.tbX = Math.min(Math.max(e.clientX - 130, 12), window.innerWidth - 272);
       this.tbY = Math.min(e.clientY + 12, window.innerHeight - 96);

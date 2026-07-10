@@ -1,4 +1,4 @@
-import { beltBand, STATUS_LABEL, type Status } from '@rto/shared';
+import { beltBand, STATUS_LABEL, type Status, shiftMonth } from '@rto/shared';
 import { html, nothing } from 'lit';
 import { reconnect } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
@@ -9,7 +9,8 @@ import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
 import './compliance-bar.js';
 import './help-dialog.js';
-import './month-calendar.js';
+import type { MonthChangeDetail, MonthScroller } from './month-scroller.js';
+import './month-scroller.js';
 import './settings-dialog.js';
 
 const MONTHS = [
@@ -78,23 +79,29 @@ export class RtoApp extends RtoElement {
   }
 
   private nav(delta: number): void {
-    let m = this.month0 + delta;
-    let y = this.year;
-    if (m < 0) {
-      m = 11;
-      y -= 1;
-    } else if (m > 11) {
-      m = 0;
-      y += 1;
+    const scroller = this.querySelector<MonthScroller>('month-scroller');
+    if (scroller) void scroller.navigate(delta);
+    else {
+      const next = shiftMonth(this.year, this.month0, delta);
+      this.year = next.year;
+      this.month0 = next.month0;
     }
-    this.month0 = m;
-    this.year = y;
   }
   private goToday(): void {
     const now = new Date();
-    this.year = now.getFullYear();
-    this.month0 = now.getMonth();
+    const year = now.getFullYear();
+    const month0 = now.getMonth();
+    const scroller = this.querySelector<MonthScroller>('month-scroller');
+    if (scroller) void scroller.jumpTo(year, month0);
+    else {
+      this.year = year;
+      this.month0 = month0;
+    }
   }
+  private readonly onMonthChange = (event: CustomEvent<MonthChangeDetail>): void => {
+    this.year = event.detail.year;
+    this.month0 = event.detail.month0;
+  };
   private statusPill() {
     const c = store.compliance();
     if (c.current == null) return nothing;
@@ -178,7 +185,11 @@ export class RtoApp extends RtoElement {
         <compliance-bar></compliance-bar>
 
         <main class="cal-main">
-          <month-calendar .year=${this.year} .month0=${this.month0}></month-calendar>
+          <month-scroller
+            .year=${this.year}
+            .month0=${this.month0}
+            @month-change=${this.onMonthChange}
+          ></month-scroller>
         </main>
 
         <div class="legend">
@@ -186,7 +197,9 @@ export class RtoApp extends RtoElement {
             (s) =>
               html`<span class="legend-item"><span class="legend-swatch s-${s}">${STATUS_ICON[s]}</span>${STATUS_LABEL[s]}</span>`,
           )}
-          <span class="legend-item legend-item--hint">Click or drag to set days · past filled, future dashed</span>
+          <span class="legend-item legend-item--hint">
+            Click or drag to set days · wheel or flick to change month
+          </span>
         </div>
 
         ${

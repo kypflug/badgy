@@ -4,6 +4,7 @@ import {
   isHolidayDate,
   isMeetupWeek,
   monthGrid,
+  shiftMonth,
   weekdayOf,
   weekStartOf,
   weekStartsOfYear,
@@ -19,6 +20,12 @@ describe('date utils', () => {
     expect(addDays('2026-01-05', 4)).toBe('2026-01-09');
     expect(weekdayOf('2026-01-05')).toBe(1); // Monday
     expect(weekdayOf('2026-01-10')).toBe(6); // Saturday
+  });
+  it('shiftMonth normalizes across years', () => {
+    expect(shiftMonth(2026, 11, 1)).toEqual({ year: 2027, month0: 0 });
+    expect(shiftMonth(2026, 0, -1)).toEqual({ year: 2025, month0: 11 });
+    expect(shiftMonth(2026, 5, 20)).toEqual({ year: 2028, month0: 1 });
+    expect(shiftMonth(2026, 5, -20)).toEqual({ year: 2024, month0: 9 });
   });
   it('weekStartsOfYear(2026) = 52 Sundays, Jan 4 … Dec 27', () => {
     const starts = weekStartsOfYear(2026);

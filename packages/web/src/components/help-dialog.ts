@@ -57,6 +57,10 @@ export class HelpDialog extends RtoElement {
           <h3 class="setting-title">Using the calendar</h3>
           <ul class="help-list">
             <li>Click a date to set its status, or drag across dates to update a range.</li>
+            <li>
+              Use the mouse wheel or trackpad over the calendar to move one month at a time. On
+              touch, use a fast vertical flick; slower dragging continues to select dates.
+            </li>
             <li>Your usual week supplies defaults; a specific date always overrides its default.</li>
             <li>Past and current days use solid fills. Future plans use dashed outlines.</li>
             <li>The target controls on-track status. The planner estimates office days per week.</li>
