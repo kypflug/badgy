@@ -1,6 +1,6 @@
 import { beltBand, STATUS_LABEL, shiftMonth } from '@rto/shared';
 import { html, nothing } from 'lit';
-import { reconnect } from '../auth/msal.js';
+import { type InteractiveAuthFlow, reconnect } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
 import { formatPct } from '../lib/format.js';
 import { STATUS_ICON, STATUS_ORDER } from '../lib/status.js';
@@ -37,12 +37,15 @@ export class RtoApp extends RtoElement {
     activeDialog: { state: true },
     zoom: { state: true },
     view: { state: true },
+    reconnectStage: { state: true },
   };
   year: number;
   month0: number;
   activeDialog: 'help' | 'settings' | null = null;
   zoom = 1;
   view: CalendarView = 'month';
+  reconnectStage = 'idle';
+  private reconnectFlow: InteractiveAuthFlow | null = null;
 
   constructor() {
     super();
@@ -137,6 +140,32 @@ export class RtoApp extends RtoElement {
   private setView(view: CalendarView): void {
     this.view = view;
   }
+  private beginReconnect(): void {
+    if (this.reconnectFlow?.snapshot.stage === 'blocked') {
+      this.reconnectFlow.openMicrosoft();
+      this.reconnectStage = this.reconnectFlow.snapshot.stage;
+      return;
+    }
+    const flow = reconnect();
+    this.reconnectFlow = flow;
+    const update = (): void => {
+      this.reconnectStage = flow.snapshot.stage;
+    };
+    flow.addEventListener('change', update);
+    update();
+    void flow.completion
+      .then(() => window.location.reload())
+      .catch(() => {
+        this.reconnectStage = 'failed';
+      });
+  }
+  private reconnectLabel(): string {
+    if (this.reconnectStage === 'starting') return 'Preparing…';
+    if (this.reconnectStage === 'waiting') return 'Finish sign-in…';
+    if (this.reconnectStage === 'blocked') return 'Open sign-in';
+    if (this.reconnectStage === 'failed') return 'Try reconnect';
+    return '⟳ Reconnect';
+  }
 
   override render() {
     const session = getSession();
@@ -189,8 +218,23 @@ export class RtoApp extends RtoElement {
           <div class="app-bar-actions">
             ${
               store.needsReconnect
-                ? html`<button class="reconnect-pill" @click=${() => reconnect()} title="Your changes aren't syncing to OneDrive. Tap to reconnect.">⟳ Reconnect</button>`
-                : nothing
+                ? html`<button
+                    class="reconnect-pill"
+                    @click=${() => this.beginReconnect()}
+                    ?disabled=${
+                      this.reconnectStage === 'starting' || this.reconnectStage === 'waiting'
+                    }
+                    title="Your changes aren't syncing to OneDrive. Tap to reconnect."
+                  >
+                    ${this.reconnectLabel()}
+                  </button>`
+                : store.isSyncUnavailable
+                  ? html`<span
+                      class="offline-pill"
+                      title="Badgy is using your local cache and will retry OneDrive automatically."
+                      >Offline</span
+                    >`
+                  : nothing
             }
             <div class="zoom-group" role="group" aria-label="Edit history">
               <button class="nav-btn" @click=${() => this.doUndo()} ?disabled=${!store.canUndo} aria-label="Undo" title="Undo (Ctrl/⌘ Z)">↶</button>

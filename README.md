@@ -10,8 +10,9 @@ glance whether you're on track. Styled with the **MAI design system**.
 ## How it works
 
 - **Sign in with your Microsoft account.** Your data is saved **privately to your own OneDrive**
-  (a hidden per-app folder), synced across devices with conflict-free **CRDT** merge. The app is
-  **100% client-side** — no server, no operator-held data.
+  (a hidden per-app folder), synced across devices with conflict-free **CRDT** merge. A small
+  token-mediating backend keeps the refresh token encrypted server-side; attendance data still
+  flows directly between your browser and Microsoft Graph.
 - **Calendar-first.** Use the detailed month view for day-to-day tracking or the compact yearly
   planner for annual office/time-off planning and status totals. Click a day to set its status;
   **drag-select** a range to bulk-assign (e.g. a vacation week). Past = actual (solid), future =
@@ -34,9 +35,11 @@ TypeScript monorepo (npm workspaces):
 | Package | What | Tech |
 |---|---|---|
 | `packages/shared` | Types, BELT, calendar, compliance/planner, and the **CRDT sync core** | TypeScript, vitest |
-| `packages/web` | The calendar SPA (UI + auth + sync + PWA) | Lit + esbuild, MSAL, Microsoft Graph |
+| `packages/web` | Calendar SPA, offline cache, direct Graph sync, and PWA | Lit + esbuild |
+| `packages/api` | Auth transaction/session BFF; never handles attendance data | Azure Functions, MSAL Node, Azure Tables |
 
-Tooling: Biome, stylelint, Playwright, Node 24. Hosting: **Azure Static Web Apps** (free, no cold start).
+Tooling: Biome, stylelint, Playwright, Node 24. Hosting: **Azure Static Web Apps** with managed
+Functions.
 
 ## BELT (matches the source spreadsheet)
 
@@ -53,7 +56,7 @@ npm install
 npm run dev        # http://localhost:5173 — dev mode uses a mock "remote" (no sign-in needed)
 npm run gates      # lint + lint:css + typecheck + build + test
 
-MSAL_CLIENT_ID=<app-client-id> npm run dev   # exercise real OneDrive sign-in locally
+MSAL_CLIENT_ID=<app-client-id> npm run dev   # web-only production-mode build
 ```
 
 ## Deploy

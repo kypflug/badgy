@@ -31,3 +31,18 @@ export function allowedOrigin(origin: string | null): boolean {
     return false;
   }
 }
+
+/** Require browser API posts to originate from the exact public application origin. */
+export function isSameOrigin(req: HttpRequest): boolean {
+  const origin = req.headers.get('origin');
+  if (!origin) return false;
+  try {
+    return new URL(origin).origin === new URL(baseUrl(req)).origin;
+  } catch {
+    return false;
+  }
+}
+
+export function isBadgyRequest(req: HttpRequest): boolean {
+  return req.headers.get('x-requested-with') === 'badgy' && isSameOrigin(req);
+}

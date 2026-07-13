@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.mjs",
-    "dev": "node esbuild.mjs --serve"
+    "dev": "node esbuild.mjs --serve",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.15.0",

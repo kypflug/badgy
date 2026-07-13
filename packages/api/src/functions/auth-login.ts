@@ -15,7 +15,6 @@ async function login(req: HttpRequest): Promise<HttpResponseInit> {
     state,
     codeChallenge: challenge,
     codeChallengeMethod: 'S256',
-    prompt: 'select_account',
   });
   return {
     status: 302,

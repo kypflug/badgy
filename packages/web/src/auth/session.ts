@@ -3,7 +3,7 @@ export interface Session {
   name: string;
   email: string;
   id: string;
-  signOut: () => void;
+  signOut: () => Promise<boolean>;
 }
 
 let current: Session | null = null;

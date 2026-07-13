@@ -1,5 +1,16 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
+export function isValidEncryptionKey(value: string | undefined): value is string {
+  if (!value) return false;
+  const normalized = value.replaceAll('-', '+').replaceAll('_', '/');
+  const unpadded = normalized.replace(/=+$/, '');
+  return (
+    /^[A-Za-z0-9+/]+={0,2}$/.test(normalized) &&
+    Buffer.from(normalized, 'base64').length === 32 &&
+    Buffer.from(normalized, 'base64').toString('base64').replace(/=+$/, '') === unpadded
+  );
+}
+
 /** AES-256-GCM helpers for the session cookie and the at-rest token cache. Key is base64 (32 bytes). */
 function keyBuf(keyB64: string): Buffer {
   const buf = Buffer.from(keyB64, 'base64');

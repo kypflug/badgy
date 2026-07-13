@@ -1,66 +1,87 @@
-# Deployment runbook — badgy
+# Deployment runbook — Badgy
 
-**Client‑only** SPA: sign‑in is **MSAL** (Microsoft accounts), data is each user's **own OneDrive
-app folder** via Microsoft Graph, hosting is **Azure Static Web Apps** (free, global CDN, no cold
-start). There is **no backend and no server‑side data store**.
+Badgy is an Azure Static Web App with a managed Azure Functions authentication BFF. The BFF stores
+encrypted Microsoft refresh-token caches and short-lived auth transactions in Azure Table Storage.
+Calendar data never passes through the BFF; the browser calls Microsoft Graph directly.
 
 ## Prerequisites
-- Azure CLI (`az login` — use your **personal** subscription/tenant)
-- Node 24, repo built (`npm ci`)
 
-## 1. Register the MSAL public client (one time)
+- Azure CLI authenticated to the target subscription
+- Node 24
+- Azure Static Web Apps CLI for manual deployments, or the configured GitHub Actions workflow
 
-```bash
-# Personal tenant; MSA + work/school accounts; PKCE public client (no secret).
-APP_ID=$(az ad app create --display-name "badgy" \
-  --sign-in-audience AzureADandPersonalMicrosoftAccount \
-  --query appId -o tsv)
-OBJ_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
+## Microsoft app registration
 
-# Register SPA redirect URIs (the SWA host + local dev). Update the host after step 2.
-az rest --method PATCH --uri "https://graph.microsoft.com/v1.0/applications/$OBJ_ID" \
-  --headers "Content-Type=application/json" \
-  --body '{"spa":{"redirectUris":["https://<swa-host>","http://localhost:5173"]}}'
+Create a confidential web application that supports personal Microsoft accounts and register:
+
+```text
+https://badgy.tech/api/auth/callback
 ```
 
-The only delegated scopes the app requests are `User.Read` + `Files.ReadWrite.AppFolder` — it can
-read/write **only its own folder** in the user's OneDrive. Each user consents for themselves; no
-admin consent and no secret. (Work accounts are subject to *their* tenant's consent policy; personal
-Microsoft accounts always work.)
+Create a client secret and grant delegated Microsoft Graph scopes:
 
-## 2. Create the Static Web App + deploy
-
-```bash
-RG="rg-badgy"
-az group create -n "$RG" -l westus2 -o none
-SWA_HOST=$(az staticwebapp create -n badgy -g "$RG" -l westus2 --sku Free \
-  --query defaultHostname -o tsv)
-# → re-run the SPA redirect PATCH from step 1 with https://$SWA_HOST
-
-# Build with the client id baked in, then deploy the static output:
-MSAL_CLIENT_ID="$APP_ID" MSAL_AUTHORITY="https://login.microsoftonline.com/common" npm run build
-TOKEN=$(az staticwebapp secrets list -n badgy -g "$RG" --query "properties.apiKey" -o tsv)
-npx -y @azure/static-web-apps-cli deploy ./packages/web/dist --deployment-token "$TOKEN" --env production
+```text
+User.Read
+Files.ReadWrite.AppFolder
+offline_access
+openid
+profile
 ```
 
-`packages/web/staticwebapp.config.json` provides the SPA navigation fallback.
+Badgy uses the `consumers` authority. Normal sign-in allows Microsoft SSO; the account picker is
+requested only by the explicit **Use another account** action.
 
-## 3. Custom domain (optional, nicer URL)
+## Storage and encryption
 
-```bash
-az staticwebapp hostname set -n badgy -g rg-badgy --hostname app.example.com
-# then add the new origin to the app's spa.redirectUris (step 1 PATCH)
-```
+Create an Azure Storage account and a `tokencache` table. Generate independent 32-byte base64 keys
+for session-cookie encryption and token/transaction encryption.
 
-## Build‑time config
+Configure these Static Web App settings:
 
-| Var | Purpose |
+| Setting | Purpose |
 |---|---|
-| `MSAL_CLIENT_ID` | App (client) ID. Empty → dev mode (mock "remote", no sign‑in). |
-| `MSAL_AUTHORITY` | Default `https://login.microsoftonline.com/common` (MSA + work/school). |
+| `MSAL_CLIENT_ID` | Microsoft app client ID |
+| `MSAL_CLIENT_SECRET` | Confidential-client secret |
+| `MSAL_AUTHORITY` | `https://login.microsoftonline.com/consumers` |
+| `APP_BASE_URL` | `https://badgy.tech` |
+| `SESSION_KEY` | 32-byte base64 session-cookie key |
+| `TOKEN_ENC_KEY` | 32-byte base64 token/transaction encryption key |
+| `STORAGE_CONNECTION` | Storage connection string containing `tokencache` |
 
-## Notes
-- **CI:** a GitHub Actions deploy can be added, but the initial push token lacked the `workflow`
-  scope. To wire it: `az staticwebapp secrets list … apiKey` → repo secret `AZURE_STATIC_WEB_APPS_API_TOKEN`,
-  then a standard `Azure/static-web-apps-deploy` workflow under `.github/workflows/`.
-- **Cost:** SWA Free + per‑user OneDrive storage = $0 to operate.
+Do not expose these values to the web build or commit them.
+
+## Authentication flow
+
+1. The dock app calls `POST /api/auth/start`.
+2. The API stores PKCE state server-side and returns a Microsoft authorization URL plus a separate
+   one-time polling secret.
+3. Microsoft auth can run in regular Safari or another context.
+4. `/api/auth/callback` redeems the code and marks the server transaction complete.
+5. The original dock app polls `POST /api/auth/complete`; that same-origin response sets its
+   HttpOnly session cookie in the correct Safari cookie jar.
+6. `/api/token` uses the encrypted server-held MSAL cache to mint short-lived Graph access tokens.
+
+The legacy cookie-bound callback remains temporarily for clients running an older cached service
+worker and should be removed after the transaction flow is fully rolled out.
+
+## Build and deploy
+
+The production workflow is `.github/workflows/deploy.yml`. A push to `main`:
+
+1. Installs and builds shared + web with the public client ID embedded.
+2. Installs and builds `packages/api` with its own lockfile.
+3. Deploys `packages/web/dist` and `packages/api` using
+   `AZURE_STATIC_WEB_APPS_API_TOKEN`.
+
+Local validation:
+
+```bash
+npm ci
+npm run gates
+
+npm --prefix packages/api ci
+npm --prefix packages/api run build
+npm --prefix packages/api test
+```
+
+For auth testing, run the web and Functions together through SWA CLI with equivalent local settings.

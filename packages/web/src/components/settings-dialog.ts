@@ -7,6 +7,7 @@ import {
   weekStartsOfYear,
 } from '@rto/shared';
 import { html, nothing } from 'lit';
+import { type InteractiveAuthFlow, switchAccount } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
 import { formatPct, formatWeekLabel } from '../lib/format.js';
 import { STATUS_ORDER } from '../lib/status.js';
@@ -21,9 +22,17 @@ const THEME_MODES: { id: ThemeMode; label: string }[] = [
 ];
 
 export class SettingsDialog extends RtoElement {
-  static override properties = { mode: { state: true }, importMsg: { state: true } };
+  static override properties = {
+    mode: { state: true },
+    importMsg: { state: true },
+    accountStage: { state: true },
+    accountMessage: { state: true },
+  };
   mode: ThemeMode = getMode();
   importMsg = '';
+  accountStage = 'idle';
+  accountMessage = '';
+  private accountFlow: InteractiveAuthFlow | null = null;
 
   private readonly onKeydown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') this.close();
@@ -60,6 +69,41 @@ export class SettingsDialog extends RtoElement {
       this.importMsg = "Couldn't read that file. Use the Hybrid Attendance Modeler .xlsx.";
     }
     input.value = '';
+  }
+  private beginAccountSwitch(): void {
+    this.accountMessage = '';
+    if (this.accountFlow?.snapshot.stage === 'blocked') {
+      this.accountFlow.openMicrosoft();
+      this.accountStage = this.accountFlow.snapshot.stage;
+      return;
+    }
+    const flow = switchAccount();
+    this.accountFlow = flow;
+    const update = (): void => {
+      this.accountStage = flow.snapshot.stage;
+    };
+    flow.addEventListener('change', update);
+    update();
+    void flow.completion
+      .then(() => window.location.reload())
+      .catch(() => {
+        this.accountStage = 'failed';
+      });
+  }
+  private async endSession(): Promise<void> {
+    const session = getSession();
+    if (!session) return;
+    this.accountMessage = 'Signing out…';
+    const complete = await session.signOut();
+    if (!complete)
+      this.accountMessage = 'Sign-out could not reach the server. Try again when connected.';
+  }
+  private accountSwitchLabel(): string {
+    if (this.accountStage === 'starting') return 'Preparing…';
+    if (this.accountStage === 'waiting') return 'Finish in Microsoft…';
+    if (this.accountStage === 'blocked') return 'Open Microsoft sign-in';
+    if (this.accountStage === 'failed') return 'Try switching again';
+    return 'Use another account';
   }
 
   override render() {
@@ -192,7 +236,21 @@ export class SettingsDialog extends RtoElement {
               <p class="setting-help">
                 Signed in as <strong>${session.name}</strong>. Your data lives in your OneDrive.
               </p>
-              <button class="mai-button" @click=${() => session.signOut()}>Sign out</button>
+              <div class="chip-row">
+                <button
+                  class="mai-button"
+                  @click=${() => this.beginAccountSwitch()}
+                  ?disabled=${this.accountStage === 'starting' || this.accountStage === 'waiting'}
+                >
+                  ${this.accountSwitchLabel()}
+                </button>
+                <button class="mai-button" @click=${() => void this.endSession()}>Sign out</button>
+              </div>
+              ${
+                this.accountMessage
+                  ? html`<p class="setting-help" role="status">${this.accountMessage}</p>`
+                  : nothing
+              }
             </section>`
             : nothing
         }

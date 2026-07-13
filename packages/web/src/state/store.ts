@@ -74,6 +74,7 @@ export class Store extends EventTarget {
   private undoStack: HistoryEntry[] = [];
   private redoStack: HistoryEntry[] = [];
   private authPaused = false;
+  private syncUnavailable = false;
 
   async start(transport: SyncTransport, cacheKey: string): Promise<void> {
     this.transport = transport;
@@ -275,12 +276,19 @@ export class Store extends EventTarget {
   private sync(): Promise<void> {
     this.syncChain = this.syncChain
       .then(() => this.syncOnce())
-      .then(() => this.setAuthPaused(false))
+      .then(() => {
+        this.setAuthPaused(false);
+        this.setSyncUnavailable(false);
+      })
       .catch((err) => {
         // Auth lapsed (e.g. iOS/Safari ITP) → pause and prompt reconnect, keep cached data.
         // Transient network errors leave the state unchanged and retry on the next tick.
-        if (err instanceof Error && err.message === AUTH_INTERACTION_REQUIRED)
+        if (err instanceof Error && err.message === AUTH_INTERACTION_REQUIRED) {
           this.setAuthPaused(true);
+          this.setSyncUnavailable(false);
+        } else {
+          this.setSyncUnavailable(true);
+        }
       });
     return this.syncChain;
   }
@@ -288,9 +296,18 @@ export class Store extends EventTarget {
   get needsReconnect(): boolean {
     return this.authPaused;
   }
+  get isSyncUnavailable(): boolean {
+    return this.syncUnavailable;
+  }
   private setAuthPaused(v: boolean): void {
     if (this.authPaused !== v) {
       this.authPaused = v;
+      this.emitChange();
+    }
+  }
+  private setSyncUnavailable(value: boolean): void {
+    if (this.syncUnavailable !== value) {
+      this.syncUnavailable = value;
       this.emitChange();
     }
   }
