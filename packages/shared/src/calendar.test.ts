@@ -8,6 +8,7 @@ import {
   weekdayOf,
   weekStartOf,
   weekStartsOfYear,
+  yearBounds,
 } from './calendar.js';
 
 describe('date utils', () => {
@@ -26,6 +27,9 @@ describe('date utils', () => {
     expect(shiftMonth(2026, 0, -1)).toEqual({ year: 2025, month0: 11 });
     expect(shiftMonth(2026, 5, 20)).toEqual({ year: 2028, month0: 1 });
     expect(shiftMonth(2026, 5, -20)).toEqual({ year: 2024, month0: 9 });
+  });
+  it('yearBounds returns the inclusive calendar-year range', () => {
+    expect(yearBounds(2026)).toEqual({ start: '2026-01-01', end: '2026-12-31' });
   });
   it('weekStartsOfYear(2026) = 52 Sundays, Jan 4 … Dec 27', () => {
     const starts = weekStartsOfYear(2026);

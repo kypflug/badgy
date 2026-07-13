@@ -31,6 +31,7 @@ import {
   todayISO,
   type Weekday,
   weekdayOf,
+  yearBounds,
 } from '@rto/shared';
 import { AUTH_INTERACTION_REQUIRED } from '../auth/msal.js';
 import type { SyncTransport } from '../sync/types.js';
@@ -109,6 +110,10 @@ export class Store extends EventTarget {
   }
   monthWeekStarts(year: number, month0: number): string[] {
     return monthGrid(year, month0).weekStarts;
+  }
+  yearDays(year: number): ResolvedDay[] {
+    const { start, end } = yearBounds(year);
+    return resolveRange(this.doc, start, end);
   }
   weekDays(weekStart: string): ResolvedDay[] {
     return resolveRange(this.doc, weekStart, addDays(weekStart, 6));

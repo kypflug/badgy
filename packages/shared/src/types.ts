@@ -4,10 +4,10 @@
 export const STATUSES = [
   'office',
   'remote',
+  'travel',
   'vacation',
   'sick',
   'holiday',
-  'travel',
   'oof',
 ] as const;
 export type PickableStatus = (typeof STATUSES)[number];
@@ -18,11 +18,11 @@ export type Status = PickableStatus | 'none';
 export const STATUS_LABEL: Record<Status, string> = {
   office: 'In office',
   remote: 'Remote',
+  travel: 'Business Travel',
   vacation: 'Time off',
   sick: 'Sick',
   holiday: 'Holiday',
-  travel: 'Travel',
-  oof: 'OOF / Other',
+  oof: 'Other',
   none: 'Untracked',
 };
 
@@ -30,13 +30,32 @@ export const STATUS_LABEL: Record<Status, string> = {
 export const STATUS_SHORT: Record<Status, string> = {
   office: 'Office',
   remote: 'Remote',
+  travel: 'Travel',
   vacation: 'Off',
   sick: 'Sick',
   holiday: 'Holiday',
-  travel: 'Travel',
-  oof: 'OOF',
+  oof: 'Other',
   none: '',
 };
+
+export type StatusCounts = Record<PickableStatus, number>;
+
+/** Count resolved editable statuses, omitting `none`. */
+export function countStatuses(days: readonly { status: Status }[]): StatusCounts {
+  const counts: StatusCounts = {
+    office: 0,
+    remote: 0,
+    travel: 0,
+    vacation: 0,
+    sick: 0,
+    holiday: 0,
+    oof: 0,
+  };
+  for (const day of days) {
+    if (day.status !== 'none') counts[day.status]++;
+  }
+  return counts;
+}
 
 /** The only status that counts toward office attendance (BELT). */
 export const OFFICE_STATUS: Status = 'office';

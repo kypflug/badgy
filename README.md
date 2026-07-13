@@ -12,8 +12,10 @@ glance whether you're on track. Styled with the **MAI design system**.
 - **Sign in with your Microsoft account.** Your data is saved **privately to your own OneDrive**
   (a hidden per-app folder), synced across devices with conflict-free **CRDT** merge. The app is
   **100% client-side** — no server, no operator-held data.
-- **Calendar-first.** Month view; click a day to set its status; **drag-select** a range to bulk-assign
-  (e.g. a vacation week). Past = actual (solid), future = forecast (outlined), with a clear *today* line.
+- **Calendar-first.** Use the detailed month view for day-to-day tracking or the compact yearly
+  planner for annual office/time-off planning and status totals. Click a day to set its status;
+  **drag-select** a range to bulk-assign (e.g. a vacation week). Past = actual (solid), future =
+  forecast (outlined), with a clear *today* line.
 - **"Usual week" pattern** auto-fills future weekdays (e.g. Tue/Thu remote); specific days override it.
 - **Headline compliance** ring ("are you on track?") with actual-to-date + projected BELT, plus an
   integrated what-if planner ("aim for ~N office days/week to hold 80%").
@@ -21,9 +23,9 @@ glance whether you're on track. Styled with the **MAI design system**.
 - **Import** your existing Hybrid Attendance Modeler `.xlsx`.
 
 ## Statuses
-In office · Remote · Time off (DTO) · Sick · Holiday · Travel · OOF/Other. Only **In office** counts
-toward BELT. Holidays + meetup weeks from the published Edge Cycle planning cadence are shown
-automatically.
+In office · Remote · Business Travel · Time off (DTO) · Sick · Holiday · Other. Only **In office**
+counts toward BELT. Holidays + meetup weeks from the published Edge Cycle planning cadence are
+shown automatically.
 
 ## Stack
 

@@ -47,9 +47,9 @@ export class HelpDialog extends RtoElement {
             <li>Average those 8 counts and divide by 5 to produce the percentage.</li>
           </ol>
           <p class="help-callout">
-            Only <strong>In office</strong> counts. Remote, Time off, Sick, Holiday, Travel,
-            OOF/Other, and Untracked do not. Weekend office days count toward the same five-day
-            weekly cap.
+            Only <strong>In office</strong> counts. Remote, Business Travel, Time off, Sick,
+            Holiday, Other, and Untracked do not. Weekend office days count toward the same
+            five-day weekly cap.
           </p>
         </section>
 
@@ -57,6 +57,10 @@ export class HelpDialog extends RtoElement {
           <h3 class="setting-title">Using the calendar</h3>
           <ul class="help-list">
             <li>Click a date to set its status, or drag across dates to update a range.</li>
+            <li>
+              Switch between Month for detailed tracking and Year for compact annual planning and
+              status totals.
+            </li>
             <li>
               Use the mouse wheel or trackpad over the calendar to move one month at a time. On
               touch, use a fast vertical flick; slower dragging continues to select dates.

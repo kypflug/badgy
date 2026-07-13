@@ -170,8 +170,8 @@ export class SettingsDialog extends RtoElement {
         <section class="setting">
           <h3 class="setting-title">Import from Excel</h3>
           <p class="setting-help">
-            Bring in your existing Hybrid Attendance Modeler (.xlsx). Office/Planned days are skipped;
-            your remote, time-off, and travel days are imported.
+            Bring in your existing Hybrid Attendance Modeler (.xlsx). Office/Planned days are
+            skipped; your Remote, Time off, and Business Travel days are imported.
           </p>
           <label class="mai-button import-button">
             Choose .xlsx…

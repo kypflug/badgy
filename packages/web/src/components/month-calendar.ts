@@ -1,16 +1,16 @@
 import {
-  addDays,
   beltBand,
+  type PickableStatus,
   type ResolvedDay,
   STATUS_LABEL,
   STATUS_SHORT,
-  type Status,
 } from '@rto/shared';
 import { html, nothing } from 'lit';
 import { formatPct } from '../lib/format.js';
-import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
+import { STATUS_ICON, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
+import { dayMenu, rangeDates, rangeToolbar } from './calendar-overlays.js';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -55,13 +55,7 @@ export class MonthCalendar extends RtoElement {
   }
 
   private selectedSet(): Set<string> {
-    const set = new Set<string>();
-    if (this.selStart && this.selEnd) {
-      const [a, b] =
-        this.selStart <= this.selEnd ? [this.selStart, this.selEnd] : [this.selEnd, this.selStart];
-      for (let d = a; d <= b; d = addDays(d, 1)) set.add(d);
-    }
-    return set;
+    return new Set(rangeDates(this.selStart, this.selEnd));
   }
   private clearSel(): void {
     this.selStart = null;
@@ -97,7 +91,7 @@ export class MonthCalendar extends RtoElement {
     document.removeEventListener('pointermove', this.onMove);
     document.removeEventListener('pointerup', this.onUp);
     if (this.moved) {
-      this.tbX = Math.min(Math.max(e.clientX - 130, 12), window.innerWidth - 272);
+      this.tbX = Math.min(Math.max(e.clientX - 180, 12), Math.max(12, window.innerWidth - 372));
       this.tbY = Math.min(e.clientY + 12, window.innerHeight - 96);
       this.toolbar = true;
     } else if (this.selStart) {
@@ -111,11 +105,11 @@ export class MonthCalendar extends RtoElement {
     const cell = this.querySelector<HTMLElement>(`.day[data-date="${date}"]`);
     if (!cell) return;
     const r = cell.getBoundingClientRect();
-    this.menuX = Math.min(r.left, window.innerWidth - 224);
+    this.menuX = Math.min(Math.max(r.left, 12), Math.max(12, window.innerWidth - 224));
     this.menuY = Math.min(r.bottom + 4, window.innerHeight - 344);
     this.menuDate = date;
   }
-  private pick(status: Status): void {
+  private pick(status: PickableStatus): void {
     if (this.menuDate) store.setStatus(this.menuDate, status);
     this.menuDate = null;
   }
@@ -123,7 +117,7 @@ export class MonthCalendar extends RtoElement {
     if (this.menuDate) store.clearDate(this.menuDate);
     this.menuDate = null;
   }
-  private applyRange(status: Status): void {
+  private applyRange(status: PickableStatus): void {
     const dates = [...this.selectedSet()];
     if (dates.length) store.setRange(dates, status);
     this.clearSel();
@@ -179,49 +173,26 @@ export class MonthCalendar extends RtoElement {
   }
 
   private renderMenu() {
-    return html`<div class="menu-backdrop" @pointerdown=${() => (this.menuDate = null)}></div>
-      <div class="day-menu mai-card" style="left:${this.menuX}px;top:${this.menuY}px">
-        ${STATUS_ORDER.map(
-          (s) => html`<button class="day-menu-item" @click=${() => this.pick(s)}>
-            <span class="dmi-dot ${statusClass(s)}">${STATUS_ICON[s]}</span>${STATUS_LABEL[s]}
-          </button>`,
-        )}
-        <button class="day-menu-item day-menu-reset" @click=${() => this.resetDay()}>
-          ↺ Reset to default
-        </button>
-      </div>`;
+    return dayMenu({
+      x: this.menuX,
+      y: this.menuY,
+      onPick: (status) => this.pick(status),
+      onReset: () => this.resetDay(),
+      onDismiss: () => {
+        this.menuDate = null;
+      },
+    });
   }
 
   private renderToolbar() {
-    const n = this.selectedSet().size;
-    return html`<div class="menu-backdrop" @pointerdown=${() => this.clearSel()}></div>
-      <div class="range-toolbar mai-card" style="left:${this.tbX}px;top:${this.tbY}px">
-        <span class="rt-count">${n} day${n === 1 ? '' : 's'}</span>
-        <div class="rt-statuses">
-          ${STATUS_ORDER.map(
-            (s) => html`<button
-              class="rt-chip ${statusClass(s)}"
-              title=${STATUS_LABEL[s]}
-              @pointerdown=${(e: Event) => {
-                e.preventDefault();
-                this.applyRange(s);
-              }}
-            >
-              ${STATUS_ICON[s]}
-            </button>`,
-          )}
-        </div>
-        <button
-          class="rt-reset"
-          title="Reset to default"
-          @pointerdown=${(e: Event) => {
-            e.preventDefault();
-            this.resetRange();
-          }}
-        >
-          ↺
-        </button>
-      </div>`;
+    return rangeToolbar({
+      x: this.tbX,
+      y: this.tbY,
+      count: this.selectedSet().size,
+      onPick: (status) => this.applyRange(status),
+      onReset: () => this.resetRange(),
+      onDismiss: () => this.clearSel(),
+    });
   }
 
   override render() {

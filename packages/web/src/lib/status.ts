@@ -1,7 +1,7 @@
-import { STATUSES, type Status } from '@rto/shared';
+import { type PickableStatus, STATUSES, type Status } from '@rto/shared';
 
 /** Pickable statuses in display order. */
-export const STATUS_ORDER: readonly Status[] = STATUSES;
+export const STATUS_ORDER: readonly PickableStatus[] = STATUSES;
 
 /** CSS modifier class for a status (paired with `.s-<status>` rules in app.css). */
 export function statusClass(status: Status): string {

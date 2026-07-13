@@ -1,9 +1,9 @@
-import { beltBand, STATUS_LABEL, type Status, shiftMonth } from '@rto/shared';
+import { beltBand, STATUS_LABEL, shiftMonth } from '@rto/shared';
 import { html, nothing } from 'lit';
 import { reconnect } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
 import { formatPct } from '../lib/format.js';
-import { STATUS_ICON } from '../lib/status.js';
+import { STATUS_ICON, STATUS_ORDER } from '../lib/status.js';
 import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
@@ -12,6 +12,7 @@ import './help-dialog.js';
 import type { MonthChangeDetail, MonthScroller } from './month-scroller.js';
 import './month-scroller.js';
 import './settings-dialog.js';
+import './year-planner.js';
 
 const MONTHS = [
   'January',
@@ -27,7 +28,7 @@ const MONTHS = [
   'November',
   'December',
 ];
-const LEGEND: Status[] = ['office', 'remote', 'vacation', 'sick', 'holiday', 'travel', 'oof'];
+type CalendarView = 'month' | 'year';
 
 export class RtoApp extends RtoElement {
   static override properties = {
@@ -35,11 +36,13 @@ export class RtoApp extends RtoElement {
     month0: { state: true },
     activeDialog: { state: true },
     zoom: { state: true },
+    view: { state: true },
   };
   year: number;
   month0: number;
   activeDialog: 'help' | 'settings' | null = null;
   zoom = 1;
+  view: CalendarView = 'month';
 
   constructor() {
     super();
@@ -79,6 +82,10 @@ export class RtoApp extends RtoElement {
   }
 
   private nav(delta: number): void {
+    if (this.view === 'year') {
+      this.year += delta;
+      return;
+    }
     const scroller = this.querySelector<MonthScroller>('month-scroller');
     if (scroller) void scroller.navigate(delta);
     else {
@@ -91,6 +98,11 @@ export class RtoApp extends RtoElement {
     const now = new Date();
     const year = now.getFullYear();
     const month0 = now.getMonth();
+    if (this.view === 'year') {
+      this.year = year;
+      this.month0 = month0;
+      return;
+    }
     const scroller = this.querySelector<MonthScroller>('month-scroller');
     if (scroller) void scroller.jumpTo(year, month0);
     else {
@@ -122,21 +134,56 @@ export class RtoApp extends RtoElement {
       localStorage.setItem('badgy.zoom', String(z));
     }
   }
+  private setView(view: CalendarView): void {
+    this.view = view;
+  }
 
   override render() {
     const session = getSession();
+    const isYear = this.view === 'year';
+    const periodTitle = isYear ? String(this.year) : `${MONTHS[this.month0]} ${this.year}`;
     return html`
-      <div class="app" data-zoom=${['s', 'm', 'l'][this.zoom]}>
+      <div class="app" data-zoom=${['s', 'm', 'l'][this.zoom]} data-view=${this.view}>
         <div class="titlebar" aria-hidden="true"></div>
         <header class="app-bar">
           <div class="brand">
             <div class="brand-mark" aria-hidden="true"></div>
             <span class="brand-name">Badgy</span>
           </div>
+          <div class="segmented view-switch" role="group" aria-label="Calendar view">
+            <button
+              type="button"
+              class="segmented-option ${isYear ? '' : 'is-active'}"
+              aria-pressed=${isYear ? 'false' : 'true'}
+              @click=${() => this.setView('month')}
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              class="segmented-option ${isYear ? 'is-active' : ''}"
+              aria-pressed=${isYear ? 'true' : 'false'}
+              @click=${() => this.setView('year')}
+            >
+              Year
+            </button>
+          </div>
           <div class="month-nav">
-            <button class="nav-btn" @click=${() => this.nav(-1)} aria-label="Previous month">‹</button>
-            <span class="month-title">${MONTHS[this.month0]} ${this.year}</span>
-            <button class="nav-btn" @click=${() => this.nav(1)} aria-label="Next month">›</button>
+            <button
+              class="nav-btn"
+              @click=${() => this.nav(-1)}
+              aria-label=${isYear ? 'Previous year' : 'Previous month'}
+            >
+              ‹
+            </button>
+            <span class="month-title">${periodTitle}</span>
+            <button
+              class="nav-btn"
+              @click=${() => this.nav(1)}
+              aria-label=${isYear ? 'Next year' : 'Next month'}
+            >
+              ›
+            </button>
             <button class="mai-button today-btn" @click=${() => this.goToday()}>Today</button>
           </div>
           <div class="app-bar-actions">
@@ -149,10 +196,14 @@ export class RtoApp extends RtoElement {
               <button class="nav-btn" @click=${() => this.doUndo()} ?disabled=${!store.canUndo} aria-label="Undo" title="Undo (Ctrl/⌘ Z)">↶</button>
               <button class="nav-btn" @click=${() => this.doRedo()} ?disabled=${!store.canRedo} aria-label="Redo" title="Redo (Ctrl/⌘ ⇧ Z)">↷</button>
             </div>
-            <div class="zoom-group" role="group" aria-label="Calendar zoom">
-              <button class="nav-btn" @click=${() => this.setZoom(-1)} ?disabled=${this.zoom === 0} aria-label="Zoom out" title="Smaller cells">−</button>
-              <button class="nav-btn" @click=${() => this.setZoom(1)} ?disabled=${this.zoom === 2} aria-label="Zoom in" title="Larger cells">+</button>
-            </div>
+            ${
+              isYear
+                ? nothing
+                : html`<div class="zoom-group" role="group" aria-label="Calendar zoom">
+                    <button class="nav-btn" @click=${() => this.setZoom(-1)} ?disabled=${this.zoom === 0} aria-label="Zoom out" title="Smaller cells">−</button>
+                    <button class="nav-btn" @click=${() => this.setZoom(1)} ?disabled=${this.zoom === 2} aria-label="Zoom in" title="Larger cells">+</button>
+                  </div>`
+            }
             ${this.statusPill()}
             <button
               class="mai-button mai-button--icon"
@@ -182,23 +233,31 @@ export class RtoApp extends RtoElement {
           </div>
         </header>
 
-        <compliance-bar></compliance-bar>
+        ${isYear ? nothing : html`<compliance-bar></compliance-bar>`}
 
         <main class="cal-main">
-          <month-scroller
-            .year=${this.year}
-            .month0=${this.month0}
-            @month-change=${this.onMonthChange}
-          ></month-scroller>
+          ${
+            isYear
+              ? html`<year-planner .year=${this.year}></year-planner>`
+              : html`<month-scroller
+                  .year=${this.year}
+                  .month0=${this.month0}
+                  @month-change=${this.onMonthChange}
+                ></month-scroller>`
+          }
         </main>
 
         <div class="legend">
-          ${LEGEND.map(
+          ${STATUS_ORDER.map(
             (s) =>
               html`<span class="legend-item"><span class="legend-swatch s-${s}">${STATUS_ICON[s]}</span>${STATUS_LABEL[s]}</span>`,
           )}
           <span class="legend-item legend-item--hint">
-            Click or drag to set days · wheel or flick to change month
+            ${
+              isYear
+                ? 'Click or drag to set days · arrows change year'
+                : 'Click or drag to set days · wheel or flick to change month'
+            }
           </span>
         </div>
 

@@ -26,6 +26,12 @@ export interface MonthRef {
   month0: number;
 }
 
+/** Inclusive ISO bounds for a calendar year. */
+export function yearBounds(year: number): { start: string; end: string } {
+  const y = String(year).padStart(4, '0');
+  return { start: `${y}-01-01`, end: `${y}-12-31` };
+}
+
 /** Shift a zero-based calendar month by `delta`, normalizing across year boundaries. */
 export function shiftMonth(year: number, month0: number, delta: number): MonthRef {
   const absoluteMonth = year * 12 + month0 + delta;
