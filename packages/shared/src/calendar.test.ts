@@ -3,6 +3,7 @@ import {
   addDays,
   isHolidayDate,
   isMeetupWeek,
+  meetupCycleLabel,
   monthGrid,
   shiftMonth,
   weekdayOf,
@@ -52,5 +53,11 @@ describe('date utils', () => {
     expect(isMeetupWeek('2026-11-15')).toBe(false);
     expect(isMeetupWeek('2027-01-10')).toBe(true);
     expect(isMeetupWeek('2027-04-11')).toBe(true);
+  });
+  it('labels published meetup cycles without naming custom weeks', () => {
+    expect(meetupCycleLabel('2026-01-11')).toBe('26-C1');
+    expect(meetupCycleLabel('2026-07-12')).toBe('26-C4');
+    expect(meetupCycleLabel('2027-04-11')).toBe('27-C2');
+    expect(meetupCycleLabel('2026-08-09')).toBeNull();
   });
 });

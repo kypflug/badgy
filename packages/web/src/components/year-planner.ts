@@ -1,5 +1,7 @@
 import {
+  addDays,
   countStatuses,
+  meetupCycleLabel,
   type PickableStatus,
   type ResolvedDay,
   STATUS_LABEL,
@@ -182,11 +184,6 @@ export class YearPlanner extends RtoElement {
         }}
       >
         <span class="year-day-num">${Number(day.date.slice(8, 10))}</span>
-        ${
-          day.status === 'none'
-            ? nothing
-            : html`<span class="year-day-dot" aria-hidden="true"></span>`
-        }
       </button>
     `;
   }
@@ -198,11 +195,16 @@ export class YearPlanner extends RtoElement {
   ) {
     const leading = new Date(Date.UTC(this.year, month0, 1)).getUTCDay();
     const dayCount = new Date(Date.UTC(this.year, month0 + 1, 0)).getUTCDate();
+    const firstDate = toISO(new Date(Date.UTC(this.year, month0, 1)));
+    const firstWeekStart = addDays(firstDate, -leading);
     const cells: (ResolvedDay | null)[] = Array.from({ length: leading }, () => null);
     for (let day = 1; day <= dayCount; day++) {
       const date = toISO(new Date(Date.UTC(this.year, month0, day)));
       cells.push(daysByDate.get(date) ?? null);
     }
+    while (cells.length % 7 !== 0) cells.push(null);
+    const weeks: (ResolvedDay | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
     return html`
       <section class="year-month mai-card" aria-label=${`${MONTHS[month0]} ${this.year}`}>
@@ -210,12 +212,30 @@ export class YearPlanner extends RtoElement {
         <div class="year-month-grid year-month-head" aria-hidden="true">
           ${DOW.map((label) => html`<span class="year-dow">${label}</span>`)}
         </div>
-        <div class="year-month-grid">
-          ${cells.map((day) =>
-            day
-              ? this.dayCell(day, selected)
-              : html`<span class="year-day-spacer" aria-hidden="true"></span>`,
-          )}
+        <div class="year-month-weeks">
+          ${weeks.map((week, weekIndex) => {
+            const weekStart = addDays(firstWeekStart, weekIndex * 7);
+            const isMeetup = store.isMeetupWeek(weekStart);
+            const meetupLabel = isMeetup ? (meetupCycleLabel(weekStart) ?? 'Meetup') : null;
+            return html`
+              <div
+                class="year-week ${isMeetup ? 'year-week--meetup' : ''}"
+                role=${isMeetup ? 'group' : nothing}
+                aria-label=${isMeetup ? `${meetupLabel} meetup week` : nothing}
+              >
+                ${
+                  meetupLabel
+                    ? html`<span class="year-meetup-label" aria-hidden="true">${meetupLabel}</span>`
+                    : nothing
+                }
+                ${week.map((day) =>
+                  day
+                    ? this.dayCell(day, selected)
+                    : html`<span class="year-day-spacer" aria-hidden="true"></span>`,
+                )}
+              </div>
+            `;
+          })}
         </div>
       </section>
     `;

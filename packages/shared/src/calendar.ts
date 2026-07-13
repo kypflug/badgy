@@ -92,3 +92,10 @@ const MEETUP_SET = new Set<string>(Object.values(MEETUP_WEEKS).flat());
 export function isMeetupWeek(weekStartISO: string): boolean {
   return MEETUP_SET.has(weekStartISO);
 }
+
+/** Stable cycle label for a published meetup week; custom weeks have no cycle number. */
+export function meetupCycleLabel(weekStartISO: string): string | null {
+  const year = Number(weekStartISO.slice(0, 4));
+  const cycle = MEETUP_WEEKS[year]?.indexOf(weekStartISO) ?? -1;
+  return cycle >= 0 ? `${String(year).slice(-2)}-C${cycle + 1}` : null;
+}

@@ -1,6 +1,7 @@
 /* Microsoft AI (MAI) Design System tokens
    Source: https://mai.microsoft.design/  (extracted 2026-06-11)
    610 light tokens, 604 dark tokens, 217 theme-aware overrides.
+   Badgy-specific semantic status tokens are included alongside the extracted values.
    Drop-in: light values on :root, dark overrides under [data-theme="dark"]. */
 :root {
   --border-radius: 24px;
@@ -526,6 +527,9 @@
   --smtc-status-informative-tint-foreground: #272320;
   --smtc-status-informative-tint-stroke: #e2ddd9;
   --smtc-status-oof-foreground: #ffffff00;
+  --smtc-status-purple-background: #6f42c1;
+  --smtc-status-purple-tint-background: #8b5cf633;
+  --smtc-status-purple-tint-foreground: #5b2aa7;
   --smtc-status-success-background: #01712b;
   --smtc-status-success-foreground: #ffffff;
   --smtc-status-success-tint-background: #97dfa133;
@@ -815,6 +819,9 @@
   --smtc-status-informative-tint-background: #1f2431;
   --smtc-status-informative-tint-foreground: #e5ebfa;
   --smtc-status-informative-tint-stroke: #333a4e;
+  --smtc-status-purple-background: #c4a7ff;
+  --smtc-status-purple-tint-background: #7c3aed33;
+  --smtc-status-purple-tint-foreground: #d8c4ff;
   --smtc-status-success-background: #6cc57b;
   --smtc-status-success-foreground: #000000;
   --smtc-status-success-tint-background: #01682633;

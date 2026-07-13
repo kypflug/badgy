@@ -83,7 +83,6 @@ button { font-family: inherit; }
 .s-sick,
 .s-oof      { --d-bg: var(--smtc-status-danger-tint-background); --d-fg: var(--smtc-status-danger-tint-foreground); --d-line: var(--smtc-status-danger-background); }
 .s-none     { --d-bg: transparent; --d-fg: var(--smtc-foreground-ctrl-neutral-secondary-rest); --d-line: var(--smtc-stroke-ctrl-divider-on-outline); }
-.legend-swatch, .dmi-dot { --d-bg: var(--smtc-background-ctrl-subtle-hover); }
 
 /* ------------------------------------------------------------------ app shell */
 .app {
@@ -248,6 +247,18 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
 }
 .year-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .year-month-head { margin-bottom: 2px; }
+.year-month-weeks { display: flex; flex-direction: column; gap: 2px; }
+.year-week {
+  position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;
+  border-radius: 8px; corner-shape: squircle;
+}
+.year-week--meetup { outline: 1.5px solid var(--smtc-ai-brand-stop1); outline-offset: 0; }
+.year-meetup-label {
+  position: absolute; z-index: 2; top: -6px; right: 3px; padding: 0 3px;
+  border-radius: 4px; background: var(--smtc-background-layer-primary-solid);
+  color: var(--smtc-ai-brand-stop1); font-size: 7px; font-weight: 750; line-height: 10px;
+  letter-spacing: .03em; white-space: nowrap;
+}
 .year-dow {
   text-align: center; font-size: 9px; font-weight: 700; line-height: 1.4;
   color: var(--smtc-foreground-ctrl-neutral-secondary-rest);
@@ -255,39 +266,33 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
 .year-day,
 .year-day-spacer { min-width: 0; min-height: 30px; aspect-ratio: 1; }
 .year-day {
-  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; padding: 1px; border: 1px solid transparent; border-radius: 7px; corner-shape: squircle;
+  position: relative; display: grid; place-items: center; padding: 1px;
+  border: 1px solid transparent; border-radius: 7px; corner-shape: squircle;
   background: transparent; color: var(--smtc-foreground-ctrl-neutral-primary-rest); cursor: pointer;
-  touch-action: none; transition: background .1s linear, border-color .1s linear;
+  touch-action: none; transition: background .1s linear, border-color .1s linear, transform .08s;
 }
-.year-day:hover { background: var(--smtc-background-ctrl-subtle-hover, #00000008); }
+.year-day:hover { border-color: color-mix(in srgb, var(--d-line) 75%, transparent); transform: translateY(-1px); }
 .year-day:focus-visible { outline: 2px solid var(--smtc-ai-brand-stop1); outline-offset: 1px; }
 .year-day-num { font-size: 10.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
-.year-day-dot {
-  position: relative; width: 5px; height: 5px; flex: none; border-radius: 50%;
-  background: var(--d-line);
+.year-day--past {
+  background-color: var(--smtc-background-layer-primary-solid);
+  background-image: linear-gradient(var(--d-bg), var(--d-bg)), linear-gradient(var(--d-bg), var(--d-bg));
+  border-color: color-mix(in srgb, var(--d-line) 55%, transparent);
 }
-.year-day--future .year-day-dot { background: transparent; border: 1.5px solid var(--d-line); }
-.year-day.s-travel .year-day-dot { transform: translateX(-3px); }
-.year-day.s-travel .year-day-dot::after {
-  content: ""; position: absolute; top: -1px; left: 6px; width: 5px; height: 5px;
-  border-radius: 50%; background: var(--d-line);
+.year-day--future {
+  background-color: var(--smtc-background-layer-primary-solid);
+  background-image: linear-gradient(var(--d-bg), var(--d-bg));
+  border-style: dashed; border-color: color-mix(in srgb, var(--d-line) 58%, transparent);
 }
-.year-day--future.s-travel .year-day-dot::after {
-  top: -1.5px; background: transparent; border: 1.5px solid var(--d-line);
-}
-.year-day.s-oof .year-day-dot::after {
-  content: ""; position: absolute; top: -2px; left: 2px; width: 1px; height: 9px;
-  border-radius: 1px; background: var(--d-line); transform: rotate(45deg);
-}
-.year-day--weekend { background: color-mix(in srgb, var(--smtc-foreground-ctrl-neutral-secondary-rest) 4%, transparent); }
+.year-day.s-none { background: transparent; border-color: transparent; border-style: solid; }
+.year-day--weekend.s-none { background: color-mix(in srgb, var(--smtc-foreground-ctrl-neutral-secondary-rest) 4%, transparent); }
 .year-day--weekend .year-day-num { opacity: .72; font-weight: 500; }
-.year-day--today { border-color: var(--smtc-ai-brand-stop1); }
+.year-day--today { border-color: var(--smtc-ai-brand-stop1); border-style: solid; box-shadow: 0 0 0 1px var(--smtc-ai-brand-stop1); }
 .year-day--today .year-day-num { color: var(--smtc-ai-brand-stop1); }
-.year-day--active { box-shadow: inset 0 0 0 1px var(--smtc-foreground-ctrl-neutral-primary-rest); }
+.year-day--active { border-style: solid; box-shadow: inset 0 0 0 1px var(--smtc-foreground-ctrl-neutral-primary-rest); }
 .year-day--selected {
-  border-color: color-mix(in srgb, var(--smtc-ai-brand-stop1) 54%, transparent);
-  background: color-mix(in srgb, var(--smtc-ai-brand-stop1) 14%, transparent);
+  border-color: var(--smtc-ai-brand-stop1); border-style: solid;
+  box-shadow: inset 0 0 0 1px var(--smtc-ai-brand-stop1);
 }
 .year-summary {
   position: sticky; top: 12px; min-width: 0; padding: 14px; box-shadow: none;
@@ -439,7 +444,6 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
   .year-month { padding: 12px; }
   .year-day, .year-day-spacer { min-height: 38px; }
   .year-day-num { font-size: 12px; }
-  .year-day-dot { width: 6px; height: 6px; }
   .year-summary-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dialog { width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 18px; gap: 18px; }
   .pattern-grid { grid-template-columns: 1fr; gap: 6px; }
