@@ -188,8 +188,13 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
 .cal-dow--belt { color: var(--smtc-foreground-ctrl-neutral-secondary-rest); }
 .cal-row { position: relative; align-items: stretch; border-radius: 12px; corner-shape: squircle; }
 .meetup-week--outlined { outline: 1.5px solid var(--smtc-ai-brand-stop1); outline-offset: 0; }
+.cal-row.meetup-week--outlined { outline: none; }
+.cal-row.meetup-week--outlined::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  border: 1.5px solid var(--smtc-ai-brand-stop1); border-radius: inherit; corner-shape: squircle;
+}
 .meetup-week-label {
-  position: absolute; z-index: 2; top: -6px; right: 3px; padding: 0 3px;
+  position: absolute; z-index: 3; top: -6px; right: 3px; padding: 0 3px;
   border-radius: 4px; background: var(--smtc-background-layer-primary-solid);
   color: var(--smtc-ai-brand-stop1); font-size: 7px; font-weight: 750; line-height: 10px;
   letter-spacing: .03em; white-space: nowrap;
