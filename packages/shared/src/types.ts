@@ -5,9 +5,9 @@ export const STATUSES = [
   'office',
   'remote',
   'travel',
+  'holiday',
   'vacation',
   'sick',
-  'holiday',
   'oof',
 ] as const;
 export type PickableStatus = (typeof STATUSES)[number];

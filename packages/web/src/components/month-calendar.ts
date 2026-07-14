@@ -1,5 +1,6 @@
 import {
   beltBand,
+  meetupCycleLabel,
   type PickableStatus,
   type ResolvedDay,
   STATUS_LABEL,
@@ -10,7 +11,14 @@ import { formatPct } from '../lib/format.js';
 import { STATUS_ICON, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
-import { dayMenu, rangeDates, rangeToolbar } from './calendar-overlays.js';
+import {
+  type DayMenuPosition,
+  dayMenu,
+  positionDayMenu,
+  rangeDates,
+  rangeToolbar,
+  ViewportOverlayHost,
+} from './calendar-overlays.js';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -29,12 +37,17 @@ export class MonthCalendar extends RtoElement {
   selStart: string | null = null;
   selEnd: string | null = null;
   toolbar = false;
-  private menuX = 0;
-  private menuY = 0;
+  private menuPosition: DayMenuPosition = {
+    left: 12,
+    edge: 'top',
+    offset: 12,
+    maxHeight: 1,
+  };
   private tbX = 0;
   private tbY = 0;
   private dragging = false;
   private moved = false;
+  private readonly overlay = new ViewportOverlayHost();
 
   override disconnectedCallback(): void {
     this.cancelInteraction();
@@ -52,6 +65,7 @@ export class MonthCalendar extends RtoElement {
     document.removeEventListener('pointerup', this.onUp);
     this.menuDate = null;
     this.clearSel();
+    this.overlay.clear();
   }
 
   private selectedSet(): Set<string> {
@@ -92,7 +106,7 @@ export class MonthCalendar extends RtoElement {
     document.removeEventListener('pointerup', this.onUp);
     if (this.moved) {
       this.tbX = Math.min(Math.max(e.clientX - 180, 12), Math.max(12, window.innerWidth - 372));
-      this.tbY = Math.min(e.clientY + 12, window.innerHeight - 96);
+      this.tbY = Math.min(e.clientY + 12, Math.max(12, window.innerHeight - 96));
       this.toolbar = true;
     } else if (this.selStart) {
       this.openMenu(this.selStart);
@@ -104,9 +118,7 @@ export class MonthCalendar extends RtoElement {
   private openMenu(date: string): void {
     const cell = this.querySelector<HTMLElement>(`.day[data-date="${date}"]`);
     if (!cell) return;
-    const r = cell.getBoundingClientRect();
-    this.menuX = Math.min(Math.max(r.left, 12), Math.max(12, window.innerWidth - 224));
-    this.menuY = Math.min(r.bottom + 4, window.innerHeight - 344);
+    this.menuPosition = positionDayMenu(cell.getBoundingClientRect());
     this.menuDate = date;
   }
   private pick(status: PickableStatus): void {
@@ -174,8 +186,7 @@ export class MonthCalendar extends RtoElement {
 
   private renderMenu() {
     return dayMenu({
-      x: this.menuX,
-      y: this.menuY,
+      position: this.menuPosition,
       onPick: (status) => this.pick(status),
       onReset: () => this.resetDay(),
       onDismiss: () => {
@@ -195,18 +206,22 @@ export class MonthCalendar extends RtoElement {
     });
   }
 
+  protected override updated(): void {
+    if (this.menuDate) this.overlay.show(this.renderMenu());
+    else if (this.toolbar) this.overlay.show(this.renderToolbar());
+    else this.overlay.clear();
+  }
+
   override render() {
     const days = store.monthDays(this.year, this.month0);
     const weekStarts = store.monthWeekStarts(this.year, this.month0);
     const selected = this.selectedSet();
     const weeks: ResolvedDay[][] = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
-    const hasMeetup = weekStarts.some((weekStart) => store.isMeetupWeek(weekStart));
 
     return html`
-      <div class="cal ${hasMeetup ? 'cal--has-meetup' : ''}">
+      <div class="cal">
         <div class="cal-grid cal-head">
-          <div class="cal-gutter cal-gutter--head" aria-hidden="true"></div>
           ${DOW.map((l) => html`<div class="cal-dow">${l}</div>`)}
           <div class="cal-dow cal-dow--belt">BELT</div>
         </div>
@@ -215,16 +230,22 @@ export class MonthCalendar extends RtoElement {
           const belt = store.weekBelt(weekStart);
           const beltCls = belt == null ? '' : `belt-${beltBand(belt)}`;
           const meetup = store.isMeetupWeek(weekStart);
-          return html`<div class="cal-grid cal-row">
-            <div class="cal-gutter">
-              ${meetup ? html`<div class="meetup-mark" title="MAI Meetup week"><span>Meetup</span></div>` : nothing}
-            </div>
+          const meetupLabel = meetup ? (meetupCycleLabel(weekStart) ?? 'Meetup') : null;
+          return html`<div
+            class="cal-grid cal-row ${meetup ? 'meetup-week--outlined' : ''}"
+            role=${meetup ? 'group' : nothing}
+            aria-label=${meetup ? `${meetupLabel} meetup week` : nothing}
+          >
+            ${
+              meetupLabel
+                ? html`<span class="meetup-week-label" aria-hidden="true">${meetupLabel}</span>`
+                : nothing
+            }
             ${week.map((d) => this.dayCell(d, selected))}
             <div class="cal-belt ${beltCls}" title="Best-8-of-12 BELT for this week">${formatPct(belt)}</div>
           </div>`;
         })}
       </div>
-      ${this.menuDate ? this.renderMenu() : nothing} ${this.toolbar ? this.renderToolbar() : nothing}
     `;
   }
 }

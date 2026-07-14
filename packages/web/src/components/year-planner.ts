@@ -11,7 +11,14 @@ import { html, nothing } from 'lit';
 import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
 import { RtoElement } from './base.js';
-import { dayMenu, rangeDates, rangeToolbar } from './calendar-overlays.js';
+import {
+  type DayMenuPosition,
+  dayMenu,
+  positionDayMenu,
+  rangeDates,
+  rangeToolbar,
+  ViewportOverlayHost,
+} from './calendar-overlays.js';
 
 const MONTHS = [
   'January',
@@ -44,12 +51,17 @@ export class YearPlanner extends RtoElement {
   selEnd: string | null = null;
   toolbar = false;
 
-  private menuX = 0;
-  private menuY = 0;
+  private menuPosition: DayMenuPosition = {
+    left: 12,
+    edge: 'top',
+    offset: 12,
+    maxHeight: 1,
+  };
   private toolbarX = 0;
   private toolbarY = 0;
   private dragging = false;
   private moved = false;
+  private readonly overlay = new ViewportOverlayHost();
 
   override disconnectedCallback(): void {
     this.cancelInteraction();
@@ -63,6 +75,7 @@ export class YearPlanner extends RtoElement {
     document.removeEventListener('pointerup', this.onUp);
     this.menuDate = null;
     this.clearSelection();
+    this.overlay.clear();
   }
 
   private selectedSet(): Set<string> {
@@ -121,9 +134,7 @@ export class YearPlanner extends RtoElement {
   private openMenu(date: string): void {
     const cell = this.querySelector<HTMLElement>(`.year-day[data-date="${date}"]`);
     if (!cell) return;
-    const rect = cell.getBoundingClientRect();
-    this.menuX = Math.min(Math.max(rect.left, 12), Math.max(12, window.innerWidth - 224));
-    this.menuY = Math.min(rect.bottom + 4, Math.max(12, window.innerHeight - 344));
+    this.menuPosition = positionDayMenu(cell.getBoundingClientRect());
     this.menuDate = date;
   }
 
@@ -147,6 +158,34 @@ export class YearPlanner extends RtoElement {
     const dates = rangeDates(this.selStart, this.selEnd);
     if (dates.length > 0) store.clearRange(dates);
     this.clearSelection();
+  }
+
+  private renderMenu() {
+    return dayMenu({
+      position: this.menuPosition,
+      onPick: (status) => this.pick(status),
+      onReset: () => this.resetDay(),
+      onDismiss: () => {
+        this.menuDate = null;
+      },
+    });
+  }
+
+  private renderToolbar() {
+    return rangeToolbar({
+      x: this.toolbarX,
+      y: this.toolbarY,
+      count: this.selectedSet().size,
+      onPick: (status) => this.applyRange(status),
+      onReset: () => this.resetRange(),
+      onDismiss: () => this.clearSelection(),
+    });
+  }
+
+  protected override updated(): void {
+    if (this.menuDate) this.overlay.show(this.renderMenu());
+    else if (this.toolbar) this.overlay.show(this.renderToolbar());
+    else this.overlay.clear();
   }
 
   private dayCell(day: ResolvedDay, selected: Set<string>) {
@@ -219,13 +258,13 @@ export class YearPlanner extends RtoElement {
             const meetupLabel = isMeetup ? (meetupCycleLabel(weekStart) ?? 'Meetup') : null;
             return html`
               <div
-                class="year-week ${isMeetup ? 'year-week--meetup' : ''}"
+                class="year-week ${isMeetup ? 'meetup-week--outlined' : ''}"
                 role=${isMeetup ? 'group' : nothing}
                 aria-label=${isMeetup ? `${meetupLabel} meetup week` : nothing}
               >
                 ${
                   meetupLabel
-                    ? html`<span class="year-meetup-label" aria-hidden="true">${meetupLabel}</span>`
+                    ? html`<span class="meetup-week-label" aria-hidden="true">${meetupLabel}</span>`
                     : nothing
                 }
                 ${week.map((day) =>
@@ -274,31 +313,6 @@ export class YearPlanner extends RtoElement {
           </div>
         </aside>
       </section>
-      ${
-        this.menuDate
-          ? dayMenu({
-              x: this.menuX,
-              y: this.menuY,
-              onPick: (status) => this.pick(status),
-              onReset: () => this.resetDay(),
-              onDismiss: () => {
-                this.menuDate = null;
-              },
-            })
-          : nothing
-      }
-      ${
-        this.toolbar
-          ? rangeToolbar({
-              x: this.toolbarX,
-              y: this.toolbarY,
-              count: selected.size,
-              onPick: (status) => this.applyRange(status),
-              onReset: () => this.resetRange(),
-              onDismiss: () => this.clearSelection(),
-            })
-          : nothing
-      }
     `;
   }
 }

@@ -3,7 +3,7 @@ import { countStatuses, STATUS_LABEL, STATUS_SHORT, STATUSES } from './types.js'
 
 describe('status display taxonomy', () => {
   it('keeps the canonical display order and labels', () => {
-    expect(STATUSES).toEqual(['office', 'remote', 'travel', 'vacation', 'sick', 'holiday', 'oof']);
+    expect(STATUSES).toEqual(['office', 'remote', 'travel', 'holiday', 'vacation', 'sick', 'oof']);
     expect(STATUS_LABEL.travel).toBe('Business Travel');
     expect(STATUS_LABEL.oof).toBe('Other');
     expect(STATUS_SHORT.travel).toBe('Travel');

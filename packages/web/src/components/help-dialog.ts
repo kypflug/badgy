@@ -47,8 +47,8 @@ export class HelpDialog extends RtoElement {
             <li>Average those 8 counts and divide by 5 to produce the percentage.</li>
           </ol>
           <p class="help-callout">
-            Only <strong>In office</strong> counts. Remote, Business Travel, Time off, Sick,
-            Holiday, Other, and Untracked do not. Weekend office days count toward the same
+            Only <strong>In office</strong> counts. Remote, Business Travel, Holiday, Time off,
+            Sick, Other, and Untracked do not. Weekend office days count toward the same
             five-day weekly cap.
           </p>
         </section>
