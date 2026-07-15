@@ -54,6 +54,7 @@ describe('resolveDay — defaults, pattern, overrides, forecast flags', () => {
     expect(resolveDay(d, '2026-02-03', undefined, '2026-02-01').status).toBe('office'); // Tue
     expect(resolveDay(d, '2026-02-07', undefined, '2026-02-01').status).toBe('none'); // Sat
     expect(resolveDay(d, '2026-01-19', undefined, '2026-01-01').status).toBe('holiday');
+    expect(resolveDay(d, '2027-07-05', undefined, '2027-07-01').status).toBe('holiday');
   });
 
   it('the usual-week pattern fills unmarked days, including weekends', () => {
@@ -84,14 +85,17 @@ describe('resolveDay — defaults, pattern, overrides, forecast flags', () => {
 describe('meetup defaults and overrides', () => {
   it('updates defaults while preserving explicit user choices', () => {
     const d = emptyDoc();
-    expect(isMeetupOverride(d, '2026-10-11')).toBe(true);
-    expect(isMeetupOverride(d, '2026-09-20')).toBe(false);
-
-    setCell(d, meetupKey('2026-10-11'), false, [1, 0]);
-    setCell(d, meetupKey('2026-09-20'), true, [1, 1]);
-
-    expect(isMeetupOverride(d, '2026-10-11')).toBe(false);
     expect(isMeetupOverride(d, '2026-09-20')).toBe(true);
+    expect(isMeetupOverride(d, '2026-10-11')).toBe(false);
+    expect(isMeetupOverride(d, '2027-04-11')).toBe(false);
+
+    setCell(d, meetupKey('2026-09-20'), false, [1, 0]);
+    setCell(d, meetupKey('2026-10-11'), true, [1, 1]);
+    setCell(d, meetupKey('2027-04-11'), true, [1, 2]);
+
+    expect(isMeetupOverride(d, '2026-09-20')).toBe(false);
+    expect(isMeetupOverride(d, '2026-10-11')).toBe(true);
+    expect(isMeetupOverride(d, '2027-04-11')).toBe(true);
   });
 });
 

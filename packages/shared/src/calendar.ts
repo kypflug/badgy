@@ -85,8 +85,8 @@ export function isHolidayDate(iso: string): boolean {
 
 // --- meetup weeks (Sunday ISO dates; published Edge Cycle planning cadence) ---
 export const MEETUP_WEEKS: Record<number, readonly string[]> = {
-  2026: ['2026-01-11', '2026-03-08', '2026-05-10', '2026-07-12', '2026-10-11'],
-  2027: ['2027-01-10', '2027-04-11'],
+  2026: ['2026-01-11', '2026-03-08', '2026-05-10', '2026-07-12', '2026-09-20'],
+  2027: ['2027-01-10'],
 };
 const MEETUP_SET = new Set<string>(Object.values(MEETUP_WEEKS).flat());
 export function isMeetupWeek(weekStartISO: string): boolean {

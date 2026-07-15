@@ -1,4 +1,4 @@
-// AUTO-GENERATED from the source template — company holidays by year.
+// Company-observed US holidays by attendance-modeler year, including the next New Year rollover.
 export const HOLIDAY_DATES: Record<number, readonly string[]> = {
   2026: [
     '2026-01-19',
@@ -11,5 +11,17 @@ export const HOLIDAY_DATES: Record<number, readonly string[]> = {
     '2026-12-24',
     '2026-12-25',
     '2027-01-01',
+  ],
+  2027: [
+    '2027-01-18',
+    '2027-02-15',
+    '2027-05-31',
+    '2027-07-05',
+    '2027-09-06',
+    '2027-11-25',
+    '2027-11-26',
+    '2027-12-23',
+    '2027-12-24',
+    '2027-12-31',
   ],
 };
