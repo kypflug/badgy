@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { positionDayMenu } from './calendar-overlays.js';
+import { DEFAULT_NOTE_COLOR, NOTE_COLOR_PALETTE, positionDayMenu } from './calendar-overlays.js';
+
+describe('note colors', () => {
+  it('defaults to a color in the preset palette', () => {
+    expect(NOTE_COLOR_PALETTE).toHaveLength(7);
+    expect(NOTE_COLOR_PALETTE.map(({ value }) => value)).toContain(DEFAULT_NOTE_COLOR);
+  });
+});
 
 describe('positionDayMenu', () => {
   it('opens below an anchor when the lower viewport has more room', () => {

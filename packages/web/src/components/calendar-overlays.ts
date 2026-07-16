@@ -6,6 +6,18 @@ const VIEWPORT_MARGIN = 12;
 const POPUP_GAP = 4;
 const DAY_MENU_WIDTH = 210;
 
+export const NOTE_COLOR_PALETTE = [
+  { label: 'Purple', value: '#7c3aed' },
+  { label: 'Blue', value: '#2563eb' },
+  { label: 'Teal', value: '#0891b2' },
+  { label: 'Green', value: '#059669' },
+  { label: 'Orange', value: '#d97706' },
+  { label: 'Red', value: '#dc2626' },
+  { label: 'Pink', value: '#db2777' },
+] as const;
+
+export const DEFAULT_NOTE_COLOR: string = NOTE_COLOR_PALETTE[0].value;
+
 interface AnchorRect {
   left: number;
   top: number;
@@ -242,17 +254,36 @@ export function noteEditor(options: NoteEditorOptions): TemplateResult {
           }}
         />
       </label>
-      <label class="note-editor-field note-editor-color">
-        <span>Accent color</span>
-        <input
-          name="note-color"
-          type="color"
-          .value=${options.color}
-          required
-          @input=${(event: Event) =>
-            options.onColor((event.currentTarget as HTMLInputElement).value)}
-        />
-      </label>
+      <fieldset class="note-editor-field note-editor-color">
+        <legend>Accent color</legend>
+        <div class="note-color-options">
+          ${NOTE_COLOR_PALETTE.map(
+            ({ label, value }) => html`
+              <button
+                type="button"
+                class="note-color-swatch"
+                style=${`--note-color:${value}`}
+                aria-label=${label}
+                aria-pressed=${options.color.toLowerCase() === value}
+                title=${label}
+                @click=${() => options.onColor(value)}
+              ></button>
+            `,
+          )}
+          <label class="note-color-custom">
+            <span>Custom</span>
+            <input
+              name="note-color"
+              type="color"
+              .value=${options.color}
+              aria-label="Choose a custom accent color"
+              required
+              @input=${(event: Event) =>
+                options.onColor((event.currentTarget as HTMLInputElement).value)}
+            />
+          </label>
+        </div>
+      </fieldset>
       <footer class="note-editor-actions">
         ${
           options.editing

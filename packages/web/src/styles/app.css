@@ -214,11 +214,12 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
   color: var(--annotation-color); font: inherit; font-size: 7px; font-weight: 750; line-height: 10px;
   letter-spacing: .03em; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto;
 }
-button.annotation-label { cursor: pointer; }
+button.annotation-label { cursor: pointer; font-size: 8px; line-height: 11px; }
 button.annotation-label:hover, button.annotation-label:focus-visible {
   outline: 1px solid var(--annotation-color); outline-offset: 1px;
 }
 .year-week .annotation-label { font-size: 6px; line-height: 8px; }
+.year-week button.annotation-label { font-size: 7px; line-height: 9px; }
 
 .day {
   position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
@@ -500,8 +501,27 @@ button.annotation-label:hover, button.annotation-label:focus-visible {
   border: 1px solid var(--smtc-stroke-ctrl-divider-on-outline);
   border-radius: var(--rto-radius-ctrl); corner-shape: squircle;
 }
-.note-editor-color { flex-direction: row; align-items: center; justify-content: space-between; }
-.note-editor-color input { width: 48px; height: 36px; padding: 2px; border: 1px solid var(--smtc-stroke-ctrl-divider-on-outline); border-radius: 9px; background: transparent; cursor: pointer; }
+.note-editor-color { min-width: 0; margin: 0; padding: 0; border: 0; }
+.note-editor-color legend { margin-bottom: 6px; padding: 0; }
+.note-color-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.note-color-swatch {
+  width: 32px; height: 32px; padding: 0; border: 2px solid transparent; border-radius: 10px;
+  corner-shape: squircle; background: var(--note-color); cursor: pointer;
+}
+.note-color-swatch:hover { border-color: var(--smtc-foreground-ctrl-neutral-secondary-rest); }
+.note-color-swatch[aria-pressed="true"] {
+  border-color: var(--smtc-background-layer-primary-solid);
+  box-shadow: 0 0 0 2px var(--smtc-foreground-ctrl-neutral-primary-rest);
+}
+.note-color-custom {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 2px;
+  color: var(--smtc-foreground-ctrl-neutral-secondary-rest);
+  font-size: var(--smtc-text-global-caption1-font-size, 12px); cursor: pointer;
+}
+.note-color-custom input {
+  width: 36px; height: 32px; padding: 2px; border: 1px solid var(--smtc-stroke-ctrl-divider-on-outline);
+  border-radius: 9px; corner-shape: squircle; background: transparent; cursor: pointer;
+}
 .note-editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .note-editor-action-spacer { flex: 1; }
 .note-editor-delete { color: var(--smtc-status-danger-foreground-rest, #b10e1c); }

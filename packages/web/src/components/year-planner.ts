@@ -20,6 +20,7 @@ import {
 import { RtoElement } from './base.js';
 import {
   type DayMenuPosition,
+  DEFAULT_NOTE_COLOR,
   dayMenu,
   noteEditor,
   positionDayMenu,
@@ -63,7 +64,7 @@ export class YearPlanner extends RtoElement {
   private noteStart = '';
   private noteEnd = '';
   private noteLabel = '';
-  private noteColor = '#7c3aed';
+  private noteColor = DEFAULT_NOTE_COLOR;
 
   private menuPosition: DayMenuPosition = {
     left: 12,
@@ -181,7 +182,7 @@ export class YearPlanner extends RtoElement {
     this.selStart = this.noteStart;
     this.selEnd = this.noteEnd;
     this.noteLabel = '';
-    this.noteColor = '#7c3aed';
+    this.noteColor = DEFAULT_NOTE_COLOR;
     this.editingNote = null;
     this.menuDate = null;
     this.toolbar = false;
@@ -263,6 +264,7 @@ export class YearPlanner extends RtoElement {
       },
       onColor: (color) => {
         this.noteColor = color;
+        this.requestUpdate();
       },
       onSave: () => this.saveNote(),
       onDelete: () => this.deleteNote(),
