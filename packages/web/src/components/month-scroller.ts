@@ -10,6 +10,7 @@ const WHEEL_IDLE_MS = 180;
 const TOUCH_DISTANCE = 48;
 const TOUCH_TIME_MS = 220;
 const TOUCH_VERTICAL_RATIO = 1.25;
+const VIEWPORT_BOTTOM_BLEED = 3;
 
 interface TouchGesture {
   pointerId: number;
@@ -128,8 +129,8 @@ export class MonthScroller extends RtoElement {
 
     const fromY = -current.offsetTop;
     const toY = -target.offsetTop;
-    const fromHeight = current.offsetHeight;
-    const toHeight = target.offsetHeight;
+    const fromHeight = current.offsetHeight + VIEWPORT_BOTTOM_BLEED;
+    const toHeight = target.offsetHeight + VIEWPORT_BOTTOM_BLEED;
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     this.resizeObserver?.disconnect();
@@ -203,7 +204,7 @@ export class MonthScroller extends RtoElement {
     const current = this.panel(0);
     if (!viewport || !track || !current) return;
     track.style.transform = `translateY(${-current.offsetTop}px)`;
-    viewport.style.height = `${current.offsetHeight}px`;
+    viewport.style.height = `${current.offsetHeight + VIEWPORT_BOTTOM_BLEED}px`;
     viewport.classList.add('month-viewport--ready');
     if (this.restoreViewportFocus) {
       viewport.focus({ preventScroll: true });
