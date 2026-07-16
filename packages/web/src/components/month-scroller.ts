@@ -6,7 +6,7 @@ import './month-calendar.js';
 
 const MOTION_MS = 280;
 const WHEEL_THRESHOLD = 36;
-const WHEEL_IDLE_MS = 180;
+const WHEEL_IDLE_MS = 50;
 const TOUCH_DISTANCE = 48;
 const TOUCH_TIME_MS = 220;
 const TOUCH_VERTICAL_RATIO = 1.25;
