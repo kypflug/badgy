@@ -70,6 +70,14 @@ export class HelpDialog extends RtoElement {
             <li>The target controls on-track status. The planner estimates office days per week.</li>
             <li>Use undo/redo for edits, zoom for calendar density, and Settings to import Excel data.</li>
             <li>Meetup weeks are highlighted for planning context and do not affect BELT.</li>
+            <li>
+              Add a note from a date menu or selected range. Notes outline their inclusive dates
+              without changing statuses or BELT; click a note label to edit or delete it.
+            </li>
+            <li>
+              Notes can span weeks, months, or years. Overlapping notes and Meetup weeks use a
+              multicolor dashed outline and keep every label available.
+            </li>
           </ul>
         </section>
 

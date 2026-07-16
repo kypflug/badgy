@@ -1,5 +1,6 @@
 import {
   addDays,
+  type CalendarNote,
   countStatuses,
   meetupCycleLabel,
   type PickableStatus,
@@ -7,13 +8,20 @@ import {
   STATUS_LABEL,
   toISO,
 } from '@rto/shared';
-import { html, nothing } from 'lit';
+import { html } from 'lit';
 import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
+import {
+  annotationOverlay,
+  layoutWeekAnnotations,
+  meetupAnnotation,
+  noteAnnotation,
+} from './annotation-layout.js';
 import { RtoElement } from './base.js';
 import {
   type DayMenuPosition,
   dayMenu,
+  noteEditor,
   positionDayMenu,
   rangeDates,
   rangeToolbar,
@@ -43,6 +51,7 @@ export class YearPlanner extends RtoElement {
     selStart: { state: true },
     selEnd: { state: true },
     toolbar: { state: true },
+    editingNote: { state: true },
   };
 
   year = 0;
@@ -50,6 +59,11 @@ export class YearPlanner extends RtoElement {
   selStart: string | null = null;
   selEnd: string | null = null;
   toolbar = false;
+  editingNote: CalendarNote | null = null;
+  private noteStart = '';
+  private noteEnd = '';
+  private noteLabel = '';
+  private noteColor = '#7c3aed';
 
   private menuPosition: DayMenuPosition = {
     left: 12,
@@ -74,6 +88,9 @@ export class YearPlanner extends RtoElement {
     document.removeEventListener('pointermove', this.onMove);
     document.removeEventListener('pointerup', this.onUp);
     this.menuDate = null;
+    this.editingNote = null;
+    this.noteStart = '';
+    this.noteEnd = '';
     this.clearSelection();
     this.overlay.clear();
   }
@@ -159,12 +176,61 @@ export class YearPlanner extends RtoElement {
     if (dates.length > 0) store.clearRange(dates);
     this.clearSelection();
   }
+  private openNoteEditor(start: string, end: string): void {
+    [this.noteStart, this.noteEnd] = start <= end ? [start, end] : [end, start];
+    this.selStart = this.noteStart;
+    this.selEnd = this.noteEnd;
+    this.noteLabel = '';
+    this.noteColor = '#7c3aed';
+    this.editingNote = null;
+    this.menuDate = null;
+    this.toolbar = false;
+    this.requestUpdate();
+  }
+
+  private editNote(note: CalendarNote): void {
+    this.clearSelection();
+    this.menuDate = null;
+    this.editingNote = note;
+    this.noteStart = note.start;
+    this.noteEnd = note.end;
+    this.noteLabel = note.label;
+    this.noteColor = note.color;
+    this.requestUpdate();
+  }
+
+  private closeNoteEditor(): void {
+    this.editingNote = null;
+    this.noteStart = '';
+    this.noteEnd = '';
+    this.clearSelection();
+    this.requestUpdate();
+  }
+
+  private saveNote(): void {
+    if (this.editingNote)
+      store.updateNote({
+        ...this.editingNote,
+        label: this.noteLabel,
+        color: this.noteColor,
+      });
+    else store.createNote(this.noteStart, this.noteEnd, this.noteLabel, this.noteColor);
+    this.closeNoteEditor();
+  }
+
+  private deleteNote(): void {
+    if (this.editingNote) store.deleteNote(this.editingNote.id);
+    this.closeNoteEditor();
+  }
 
   private renderMenu() {
     return dayMenu({
       position: this.menuPosition,
       onPick: (status) => this.pick(status),
       onReset: () => this.resetDay(),
+      onNote: () => {
+        if (this.menuDate) this.openNoteEditor(this.menuDate, this.menuDate);
+      },
       onDismiss: () => {
         this.menuDate = null;
       },
@@ -178,12 +244,35 @@ export class YearPlanner extends RtoElement {
       count: this.selectedSet().size,
       onPick: (status) => this.applyRange(status),
       onReset: () => this.resetRange(),
+      onNote: () => {
+        if (this.selStart && this.selEnd) this.openNoteEditor(this.selStart, this.selEnd);
+      },
       onDismiss: () => this.clearSelection(),
     });
   }
 
+  private renderNoteEditor() {
+    return noteEditor({
+      start: this.noteStart,
+      end: this.noteEnd,
+      label: this.noteLabel,
+      color: this.noteColor,
+      editing: this.editingNote !== null,
+      onLabel: (label) => {
+        this.noteLabel = label;
+      },
+      onColor: (color) => {
+        this.noteColor = color;
+      },
+      onSave: () => this.saveNote(),
+      onDelete: () => this.deleteNote(),
+      onDismiss: () => this.closeNoteEditor(),
+    });
+  }
+
   protected override updated(): void {
-    if (this.menuDate) this.overlay.show(this.renderMenu());
+    if (this.noteStart) this.overlay.show(this.renderNoteEditor());
+    else if (this.menuDate) this.overlay.show(this.renderMenu());
     else if (this.toolbar) this.overlay.show(this.renderToolbar());
     else this.overlay.clear();
   }
@@ -231,6 +320,7 @@ export class YearPlanner extends RtoElement {
     month0: number,
     daysByDate: ReadonlyMap<string, ResolvedDay>,
     selected: Set<string>,
+    notes: readonly CalendarNote[],
   ) {
     const leading = new Date(Date.UTC(this.year, month0, 1)).getUTCDay();
     const dayCount = new Date(Date.UTC(this.year, month0 + 1, 0)).getUTCDate();
@@ -254,19 +344,17 @@ export class YearPlanner extends RtoElement {
         <div class="year-month-weeks">
           ${weeks.map((week, weekIndex) => {
             const weekStart = addDays(firstWeekStart, weekIndex * 7);
-            const isMeetup = store.isMeetupWeek(weekStart);
-            const meetupLabel = isMeetup ? (meetupCycleLabel(weekStart) ?? 'Meetup') : null;
+            const meetupLabel = store.isMeetupWeek(weekStart)
+              ? (meetupCycleLabel(weekStart) ?? 'Meetup')
+              : null;
+            const annotations = notes.map(noteAnnotation);
+            if (meetupLabel) annotations.push(meetupAnnotation(weekStart, meetupLabel));
+            const monthStart = `${this.year}-${String(month0 + 1).padStart(2, '0')}-01`;
+            const monthEnd = toISO(new Date(Date.UTC(this.year, month0 + 1, 0)));
+            const segments = layoutWeekAnnotations(weekStart, annotations, monthStart, monthEnd);
             return html`
-              <div
-                class="year-week ${isMeetup ? 'meetup-week--outlined' : ''}"
-                role=${isMeetup ? 'group' : nothing}
-                aria-label=${isMeetup ? `${meetupLabel} meetup week` : nothing}
-              >
-                ${
-                  meetupLabel
-                    ? html`<span class="meetup-week-label" aria-hidden="true">${meetupLabel}</span>`
-                    : nothing
-                }
+              <div class="year-week">
+                ${annotationOverlay(segments, (note) => this.editNote(note))}
                 ${week.map((day) =>
                   day
                     ? this.dayCell(day, selected)
@@ -285,11 +373,12 @@ export class YearPlanner extends RtoElement {
     const daysByDate = new Map(days.map((day) => [day.date, day]));
     const selected = this.selectedSet();
     const counts = countStatuses(days);
+    const notes = store.notesInRange(`${this.year}-01-01`, `${this.year}-12-31`);
 
     return html`
       <section class="year-planner" aria-label=${`${this.year} yearly planner`}>
         <div class="year-months">
-          ${MONTHS.map((_, month0) => this.monthCard(month0, daysByDate, selected))}
+          ${MONTHS.map((_, month0) => this.monthCard(month0, daysByDate, selected, notes))}
         </div>
         <aside class="year-summary mai-card" aria-label=${`${this.year} status totals`}>
           <div class="year-summary-head">

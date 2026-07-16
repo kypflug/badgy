@@ -1,16 +1,20 @@
 import {
   addDays,
   beltForWeek,
+  type CalendarNote,
   type CellValue,
   CFG_TARGET,
   type Compliance,
+  cellValueEqual,
   compliance as computeCompliance,
   type Doc,
   dateKey,
   emptyDoc,
+  getNotes,
   getPattern,
   getTarget,
   Hlc,
+  isCalendarNote,
   isHolidayDate,
   isMeetupWeek as isMeetupBuiltin,
   isMeetupOverride,
@@ -19,6 +23,7 @@ import {
   merge,
   migrate,
   monthGrid,
+  noteKey,
   officeDaysByWeek,
   type ProjectionResult,
   patternKey,
@@ -53,7 +58,8 @@ function docEqual(a: Doc, b: Doc): boolean {
   for (const k of ak) {
     const ca = a.cells[k];
     const cb = b.cells[k];
-    if (!cb || ca.v !== cb.v || ca.t[0] !== cb.t[0] || ca.t[1] !== cb.t[1]) return false;
+    if (!cb || !cellValueEqual(ca.v, cb.v) || ca.t[0] !== cb.t[0] || ca.t[1] !== cb.t[1])
+      return false;
   }
   return true;
 }
@@ -134,6 +140,9 @@ export class Store extends EventTarget {
   isMeetupWeek(weekStart: string): boolean {
     return isMeetupOverride(this.doc, weekStart);
   }
+  notesInRange(start: string, end: string): CalendarNote[] {
+    return getNotes(this.doc, start, end);
+  }
 
   // --- writes ---
   setStatus(date: string, status: Status): void {
@@ -166,6 +175,24 @@ export class Store extends EventTarget {
     const cur = this.isMeetupWeek(weekStart);
     this.apply((d) => setCell(d, meetupKey(weekStart), !cur, this.hlc.tick()));
   }
+  createNote(start: string, end: string, label: string, color: string): CalendarNote {
+    const note = this.normalizeNote({
+      id: globalThis.crypto.randomUUID(),
+      start,
+      end,
+      label,
+      color,
+    });
+    this.apply((d) => setCell(d, noteKey(note.id), note, this.hlc.tick()));
+    return note;
+  }
+  updateNote(note: CalendarNote): void {
+    const normalized = this.normalizeNote(note);
+    this.apply((d) => setCell(d, noteKey(normalized.id), normalized, this.hlc.tick()));
+  }
+  deleteNote(id: string): void {
+    this.apply((d) => setCell(d, noteKey(id), null, this.hlc.tick()));
+  }
   importDays(entries: readonly { date: string; status: Status }[]): void {
     this.apply((d) => {
       for (const e of entries) setCell(d, dateKey(e.date), e.status, this.hlc.tick());
@@ -177,6 +204,16 @@ export class Store extends EventTarget {
     if (isHolidayDate(date)) return 'holiday';
     if (this.pattern[wd] != null) return this.pattern[wd];
     return isWeekend(wd) ? 'none' : 'office';
+  }
+  private normalizeNote(note: CalendarNote): CalendarNote {
+    const label = note.label.trim();
+    if (!label) throw new Error('A note label is required.');
+    if (!note.id || note.id.includes('|')) throw new Error('Invalid note ID.');
+    const [start, end] = note.start <= note.end ? [note.start, note.end] : [note.end, note.start];
+    const color = note.color.toLowerCase();
+    const normalized = { id: note.id, start, end, label, color };
+    if (!isCalendarNote(normalized)) throw new Error('Invalid note range or color.');
+    return normalized;
   }
 
   // --- history (undo / redo) ---
@@ -204,8 +241,8 @@ export class Store extends EventTarget {
   private applyPatch(patch: Patch): void {
     this.commit((d) => {
       for (const k of Object.keys(patch)) {
-        const want = patch[k] ?? this.cellDefault(k);
-        if (d.cells[k]?.v !== want) setCell(d, k, want, this.hlc.tick());
+        const want = patch[k] === undefined ? this.cellDefault(k) : patch[k];
+        if (!cellValueEqual(d.cells[k]?.v, want)) setCell(d, k, want, this.hlc.tick());
       }
     });
   }
@@ -219,6 +256,7 @@ export class Store extends EventTarget {
     if (key.startsWith('d|')) return this.defaultStatusFor(key.slice(2));
     if (key.startsWith('pat|')) return 'office';
     if (key.startsWith('m|')) return isMeetupBuiltin(key.slice(2));
+    if (key.startsWith('n|')) return null;
     if (key === CFG_TARGET) return 0.8;
     return 'none';
   }
@@ -233,7 +271,7 @@ export class Store extends EventTarget {
     const redo: Patch = {};
     let changed = false;
     for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
-      if (before[k] !== after[k]) {
+      if (!cellValueEqual(before[k], after[k])) {
         undo[k] = before[k];
         redo[k] = after[k];
         changed = true;

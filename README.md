@@ -17,6 +17,10 @@ glance whether you're on track. Styled with the **MAI design system**.
   planner for annual office/time-off planning and status totals. Click a day to set its status;
   **drag-select** a range to bulk-assign (e.g. a vacation week). Past = actual (solid), future =
   forecast (outlined), with a clear *today* line.
+- **Date and range notes.** Add a required label and accent color from a date menu or drag-range
+  toolbar. Notes can span weeks, months, and years; click a label to edit or delete it. They sync
+  with the calendar but never change statuses or BELT. Overlaps with other notes or Meetup weeks
+  use multicolor dashed outlines while retaining every label.
 - **"Usual week" pattern** auto-fills future weekdays (e.g. Tue/Thu remote); specific days override it.
 - **Headline compliance** ring ("are you on track?") with actual-to-date + projected BELT, plus an
   integrated what-if planner ("aim for ~N office days/week to hold 80%").

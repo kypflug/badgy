@@ -15,6 +15,15 @@ export type PickableStatus = (typeof STATUSES)[number];
 /** Resolved status of a day: a pickable status, or `none` (untracked). */
 export type Status = PickableStatus | 'none';
 
+/** A user-authored calendar annotation. Dates are inclusive and the accent is `#RRGGBB`. */
+export interface CalendarNote {
+  id: string;
+  start: string;
+  end: string;
+  label: string;
+  color: string;
+}
+
 export const STATUS_LABEL: Record<Status, string> = {
   office: 'In office',
   remote: 'Remote',

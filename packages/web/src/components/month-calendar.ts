@@ -1,5 +1,6 @@
 import {
   beltBand,
+  type CalendarNote,
   meetupCycleLabel,
   type PickableStatus,
   type ResolvedDay,
@@ -10,10 +11,17 @@ import { html, nothing } from 'lit';
 import { formatPct } from '../lib/format.js';
 import { STATUS_ICON, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
+import {
+  annotationOverlay,
+  layoutWeekAnnotations,
+  meetupAnnotation,
+  noteAnnotation,
+} from './annotation-layout.js';
 import { RtoElement } from './base.js';
 import {
   type DayMenuPosition,
   dayMenu,
+  noteEditor,
   positionDayMenu,
   rangeDates,
   rangeToolbar,
@@ -30,6 +38,7 @@ export class MonthCalendar extends RtoElement {
     selStart: { state: true },
     selEnd: { state: true },
     toolbar: { state: true },
+    editingNote: { state: true },
   };
   year = 0;
   month0 = 0;
@@ -37,6 +46,11 @@ export class MonthCalendar extends RtoElement {
   selStart: string | null = null;
   selEnd: string | null = null;
   toolbar = false;
+  editingNote: CalendarNote | null = null;
+  private noteStart = '';
+  private noteEnd = '';
+  private noteLabel = '';
+  private noteColor = '#7c3aed';
   private menuPosition: DayMenuPosition = {
     left: 12,
     edge: 'top',
@@ -55,7 +69,7 @@ export class MonthCalendar extends RtoElement {
   }
 
   get hasActiveInteraction(): boolean {
-    return this.dragging || this.menuDate !== null || this.toolbar;
+    return this.dragging || this.menuDate !== null || this.toolbar || this.noteStart !== '';
   }
 
   cancelInteraction(): void {
@@ -64,6 +78,9 @@ export class MonthCalendar extends RtoElement {
     document.removeEventListener('pointermove', this.onMove);
     document.removeEventListener('pointerup', this.onUp);
     this.menuDate = null;
+    this.editingNote = null;
+    this.noteStart = '';
+    this.noteEnd = '';
     this.clearSel();
     this.overlay.clear();
   }
@@ -139,6 +156,48 @@ export class MonthCalendar extends RtoElement {
     if (dates.length) store.clearRange(dates);
     this.clearSel();
   }
+  private openNoteEditor(start: string, end: string): void {
+    [this.noteStart, this.noteEnd] = start <= end ? [start, end] : [end, start];
+    this.selStart = this.noteStart;
+    this.selEnd = this.noteEnd;
+    this.noteLabel = '';
+    this.noteColor = '#7c3aed';
+    this.editingNote = null;
+    this.menuDate = null;
+    this.toolbar = false;
+    this.requestUpdate();
+  }
+  private editNote(note: CalendarNote): void {
+    this.clearSel();
+    this.menuDate = null;
+    this.editingNote = note;
+    this.noteStart = note.start;
+    this.noteEnd = note.end;
+    this.noteLabel = note.label;
+    this.noteColor = note.color;
+    this.requestUpdate();
+  }
+  private closeNoteEditor(): void {
+    this.editingNote = null;
+    this.noteStart = '';
+    this.noteEnd = '';
+    this.clearSel();
+    this.requestUpdate();
+  }
+  private saveNote(): void {
+    if (this.editingNote)
+      store.updateNote({
+        ...this.editingNote,
+        label: this.noteLabel,
+        color: this.noteColor,
+      });
+    else store.createNote(this.noteStart, this.noteEnd, this.noteLabel, this.noteColor);
+    this.closeNoteEditor();
+  }
+  private deleteNote(): void {
+    if (this.editingNote) store.deleteNote(this.editingNote.id);
+    this.closeNoteEditor();
+  }
 
   private dayCell(d: ResolvedDay, selected: Set<string>) {
     const inMonth = Number(d.date.slice(5, 7)) - 1 === this.month0;
@@ -189,6 +248,9 @@ export class MonthCalendar extends RtoElement {
       position: this.menuPosition,
       onPick: (status) => this.pick(status),
       onReset: () => this.resetDay(),
+      onNote: () => {
+        if (this.menuDate) this.openNoteEditor(this.menuDate, this.menuDate);
+      },
       onDismiss: () => {
         this.menuDate = null;
       },
@@ -202,12 +264,35 @@ export class MonthCalendar extends RtoElement {
       count: this.selectedSet().size,
       onPick: (status) => this.applyRange(status),
       onReset: () => this.resetRange(),
+      onNote: () => {
+        if (this.selStart && this.selEnd) this.openNoteEditor(this.selStart, this.selEnd);
+      },
       onDismiss: () => this.clearSel(),
     });
   }
 
+  private renderNoteEditor() {
+    return noteEditor({
+      start: this.noteStart,
+      end: this.noteEnd,
+      label: this.noteLabel,
+      color: this.noteColor,
+      editing: this.editingNote !== null,
+      onLabel: (label) => {
+        this.noteLabel = label;
+      },
+      onColor: (color) => {
+        this.noteColor = color;
+      },
+      onSave: () => this.saveNote(),
+      onDelete: () => this.deleteNote(),
+      onDismiss: () => this.closeNoteEditor(),
+    });
+  }
+
   protected override updated(): void {
-    if (this.menuDate) this.overlay.show(this.renderMenu());
+    if (this.noteStart) this.overlay.show(this.renderNoteEditor());
+    else if (this.menuDate) this.overlay.show(this.renderMenu());
     else if (this.toolbar) this.overlay.show(this.renderToolbar());
     else this.overlay.clear();
   }
@@ -216,6 +301,8 @@ export class MonthCalendar extends RtoElement {
     const days = store.monthDays(this.year, this.month0);
     const weekStarts = store.monthWeekStarts(this.year, this.month0);
     const selected = this.selectedSet();
+    const notes =
+      days.length > 0 ? store.notesInRange(days[0].date, days[days.length - 1].date) : [];
     const weeks: ResolvedDay[][] = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
 
@@ -229,18 +316,14 @@ export class MonthCalendar extends RtoElement {
           const weekStart = weekStarts[wi];
           const belt = store.weekBelt(weekStart);
           const beltCls = belt == null ? '' : `belt-${beltBand(belt)}`;
-          const meetup = store.isMeetupWeek(weekStart);
-          const meetupLabel = meetup ? (meetupCycleLabel(weekStart) ?? 'Meetup') : null;
-          return html`<div
-            class="cal-grid cal-row ${meetup ? 'meetup-week--outlined' : ''}"
-            role=${meetup ? 'group' : nothing}
-            aria-label=${meetup ? `${meetupLabel} meetup week` : nothing}
-          >
-            ${
-              meetupLabel
-                ? html`<span class="meetup-week-label" aria-hidden="true">${meetupLabel}</span>`
-                : nothing
-            }
+          const meetupLabel = store.isMeetupWeek(weekStart)
+            ? (meetupCycleLabel(weekStart) ?? 'Meetup')
+            : null;
+          const annotations = notes.map(noteAnnotation);
+          if (meetupLabel) annotations.push(meetupAnnotation(weekStart, meetupLabel));
+          const segments = layoutWeekAnnotations(weekStart, annotations);
+          return html`<div class="cal-grid cal-row">
+            ${annotationOverlay(segments, (note) => this.editNote(note))}
             ${week.map((d) => this.dayCell(d, selected))}
             <div class="cal-belt ${beltCls}" title="Best-8-of-12 BELT for this week">${formatPct(belt)}</div>
           </div>`;

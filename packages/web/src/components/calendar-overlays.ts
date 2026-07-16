@@ -78,6 +78,7 @@ interface DayMenuOptions {
   position: DayMenuPosition;
   onPick: (status: PickableStatus) => void;
   onReset: () => void;
+  onNote: () => void;
   onDismiss: () => void;
 }
 
@@ -100,6 +101,10 @@ export function dayMenu(options: DayMenuOptions): TemplateResult {
           </button>
         `,
       )}
+      <button class="day-menu-item day-menu-note" @click=${options.onNote}>
+        <span class="dmi-dot dmi-note" aria-hidden="true">✎</span>
+        Add note
+      </button>
       <button class="day-menu-item day-menu-reset" @click=${options.onReset}>
         ↺ Reset to default
       </button>
@@ -113,6 +118,7 @@ interface RangeToolbarOptions {
   count: number;
   onPick: (status: PickableStatus) => void;
   onReset: () => void;
+  onNote: () => void;
   onDismiss: () => void;
 }
 
@@ -138,6 +144,17 @@ export function rangeToolbar(options: RangeToolbarOptions): TemplateResult {
         )}
       </div>
       <button
+        class="rt-note"
+        title="Add note"
+        aria-label="Add note to selected range"
+        @pointerdown=${(event: Event) => {
+          event.preventDefault();
+          options.onNote();
+        }}
+      >
+        ✎
+      </button>
+      <button
         class="rt-reset"
         title="Reset to default"
         @pointerdown=${(event: Event) => {
@@ -148,5 +165,110 @@ export function rangeToolbar(options: RangeToolbarOptions): TemplateResult {
         ↺
       </button>
     </div>
+  `;
+}
+
+interface NoteEditorOptions {
+  start: string;
+  end: string;
+  label: string;
+  color: string;
+  editing: boolean;
+  onLabel: (label: string) => void;
+  onColor: (color: string) => void;
+  onSave: () => void;
+  onDelete: () => void;
+  onDismiss: () => void;
+}
+
+export function noteEditor(options: NoteEditorOptions): TemplateResult {
+  const range = options.start === options.end ? options.start : `${options.start} – ${options.end}`;
+  return html`
+    <div class="dialog-backdrop note-editor-backdrop" @pointerdown=${options.onDismiss}></div>
+    <form
+      class="dialog note-editor mai-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="note-editor-title"
+      @keydown=${(event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          options.onDismiss();
+        }
+      }}
+      @submit=${(event: SubmitEvent) => {
+        event.preventDefault();
+        const input = (event.currentTarget as HTMLFormElement).elements.namedItem(
+          'note-label',
+        ) as HTMLInputElement;
+        if (!input.value.trim()) {
+          input.setCustomValidity('Enter a note label.');
+          input.reportValidity();
+          return;
+        }
+        input.setCustomValidity('');
+        options.onSave();
+      }}
+    >
+      <header class="dialog-head">
+        <div>
+          <h2 class="dialog-title" id="note-editor-title">
+            ${options.editing ? 'Edit note' : 'Add note'}
+          </h2>
+          <p class="note-editor-range">${range}</p>
+        </div>
+        <button
+          type="button"
+          class="mai-button mai-button--icon"
+          @click=${options.onDismiss}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </header>
+      <label class="note-editor-field">
+        <span>Label</span>
+        <input
+          class="input"
+          name="note-label"
+          type="text"
+          .value=${options.label}
+          required
+          autofocus
+          @input=${(event: Event) => {
+            const input = event.currentTarget as HTMLInputElement;
+            input.setCustomValidity('');
+            options.onLabel(input.value);
+          }}
+        />
+      </label>
+      <label class="note-editor-field note-editor-color">
+        <span>Accent color</span>
+        <input
+          name="note-color"
+          type="color"
+          .value=${options.color}
+          required
+          @input=${(event: Event) =>
+            options.onColor((event.currentTarget as HTMLInputElement).value)}
+        />
+      </label>
+      <footer class="note-editor-actions">
+        ${
+          options.editing
+            ? html`<button
+                type="button"
+                class="mai-button note-editor-delete"
+                @click=${options.onDelete}
+              >
+                Delete
+              </button>`
+            : nothing
+        }
+        <span class="note-editor-action-spacer"></span>
+        <button type="button" class="mai-button" @click=${options.onDismiss}>Cancel</button>
+        <button type="submit" class="mai-button mai-button--primary">Save</button>
+      </footer>
+    </form>
   `;
 }

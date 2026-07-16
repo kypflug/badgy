@@ -12,10 +12,17 @@ import {
   weekdayOf,
   weekStartOf,
 } from '../calendar.js';
-import { EXCEL_STATUS_MAP, isWeekend, type Status, type Weekday } from '../types.js';
+import {
+  type CalendarNote,
+  EXCEL_STATUS_MAP,
+  isWeekend,
+  type Status,
+  type Weekday,
+} from '../types.js';
 import { compareStamp, type Stamp } from './hlc.js';
 
-export type CellValue = Status | number | boolean;
+/** `null` is the persistent tombstone used by deleted note cells. */
+export type CellValue = Status | number | boolean | CalendarNote | null;
 export interface Cell {
   v: CellValue;
   t: Stamp;
@@ -33,7 +40,43 @@ export function emptyDoc(): Doc {
 export const dateKey = (iso: string): string => `d|${iso}`;
 export const patternKey = (weekday: Weekday): string => `pat|${weekday}`;
 export const meetupKey = (weekStartISO: string): string => `m|${weekStartISO}`;
+export const noteKey = (id: string): string => `n|${id}`;
 export const CFG_TARGET = 'cfg|targetBelt';
+
+function isISODate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+export function isCalendarNote(value: unknown): value is CalendarNote {
+  if (typeof value !== 'object' || value === null) return false;
+  const note = value as Partial<CalendarNote>;
+  return (
+    typeof note.id === 'string' &&
+    note.id.length > 0 &&
+    !note.id.includes('|') &&
+    isISODate(note.start) &&
+    isISODate(note.end) &&
+    note.start <= note.end &&
+    typeof note.label === 'string' &&
+    note.label.trim().length > 0 &&
+    typeof note.color === 'string' &&
+    /^#[0-9a-fA-F]{6}$/.test(note.color)
+  );
+}
+
+export function cellValueEqual(a: CellValue | undefined, b: CellValue | undefined): boolean {
+  if (a === b) return true;
+  if (!isCalendarNote(a) || !isCalendarNote(b)) return false;
+  return (
+    a.id === b.id &&
+    a.start === b.start &&
+    a.end === b.end &&
+    a.label === b.label &&
+    a.color === b.color
+  );
+}
 
 // --- mutation ---
 function tieBreak(v: CellValue): string {
@@ -73,6 +116,27 @@ export function getTarget(doc: Doc): number {
 export function isMeetupOverride(doc: Doc, weekStartISO: string): boolean {
   const cell = doc.cells[meetupKey(weekStartISO)];
   return cell ? Boolean(cell.v) : isMeetupWeek(weekStartISO);
+}
+export function getNotes(doc: Doc, start?: string, end?: string): CalendarNote[] {
+  const notes: CalendarNote[] = [];
+  for (const key of Object.keys(doc.cells)) {
+    if (!key.startsWith('n|')) continue;
+    const value = doc.cells[key].v;
+    if (
+      isCalendarNote(value) &&
+      value.id === key.slice(2) &&
+      (start === undefined || value.end >= start) &&
+      (end === undefined || value.start <= end)
+    )
+      notes.push(value);
+  }
+  return notes.sort(
+    (a, b) =>
+      a.start.localeCompare(b.start) ||
+      a.end.localeCompare(b.end) ||
+      a.label.localeCompare(b.label) ||
+      a.id.localeCompare(b.id),
+  );
 }
 
 // --- resolution ---

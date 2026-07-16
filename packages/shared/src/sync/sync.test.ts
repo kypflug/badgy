@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { beltForWeek } from '../compliance.js';
 import {
+  cellValueEqual,
   type Doc,
   dateKey,
   emptyDoc,
+  getNotes,
   getPattern,
+  isCalendarNote,
   isMeetupOverride,
   meetupKey,
   merge,
   migrate,
+  noteKey,
   patternKey,
   resolveDay,
   setCell,
@@ -97,6 +102,49 @@ describe('meetup defaults and overrides', () => {
     expect(isMeetupOverride(d, '2026-10-11')).toBe(true);
     expect(isMeetupOverride(d, '2027-04-11')).toBe(true);
   });
+
+  describe('calendar notes', () => {
+    const note = {
+      id: 'planning',
+      start: '2026-07-10',
+      end: '2026-07-20',
+      label: 'Launch planning',
+      color: '#7c3aed',
+    };
+
+    it('validates note records and reads intersecting ranges in deterministic order', () => {
+      const d = emptyDoc();
+      setCell(d, noteKey(note.id), note, [1, 0]);
+      setCell(
+        d,
+        noteKey('earlier'),
+        { ...note, id: 'earlier', start: '2026-07-01', end: '2026-07-02' },
+        [1, 1],
+      );
+      setCell(d, noteKey('bad'), { ...note, id: 'wrong', color: 'purple' } as never, [1, 2]);
+
+      expect(isCalendarNote(note)).toBe(true);
+      expect(isCalendarNote({ ...note, start: '2026-02-30' })).toBe(false);
+      expect(cellValueEqual(note, JSON.parse(JSON.stringify(note)))).toBe(true);
+      expect(getNotes(d).map((item) => item.id)).toEqual(['earlier', 'planning']);
+      expect(getNotes(d, '2026-07-15', '2026-07-31')).toEqual([note]);
+    });
+
+    it('merges edits and tombstone deletions by LWW without affecting BELT', () => {
+      const original = emptyDoc();
+      setCell(original, noteKey(note.id), note, [10, 0]);
+      const edited = emptyDoc();
+      setCell(edited, noteKey(note.id), { ...note, label: 'Updated' }, [20, 0]);
+      const deleted = emptyDoc();
+      setCell(deleted, noteKey(note.id), null, [30, 0]);
+      const beforeBelt = beltForWeek(original, '2026-07-19', '2026-07-16');
+
+      expect(getNotes(merge(original, edited))[0].label).toBe('Updated');
+      expect(getNotes(merge(edited, deleted))).toEqual([]);
+      expect(merge(deleted, edited)).toEqual(merge(edited, deleted));
+      expect(beltForWeek(merge(original, edited), '2026-07-19', '2026-07-16')).toBe(beforeBelt);
+    });
+  });
 });
 
 describe('migrate — v1 weekly-grid → v2 per-date', () => {
@@ -112,6 +160,16 @@ describe('migrate — v1 weekly-grid → v2 per-date', () => {
         'cfg|targetBelt': { v: 0.9, t: [1, 0] },
         'm|2026-03-08': { v: true, t: [1, 0] },
         'm|2026-03-09': { v: false, t: [2, 0] },
+        [noteKey('preserved')]: {
+          v: {
+            id: 'preserved',
+            start: '2026-03-01',
+            end: '2027-03-01',
+            label: 'Long range',
+            color: '#123abc',
+          },
+          t: [3, 0],
+        },
       },
     };
     const m = migrate(legacy);
@@ -123,6 +181,7 @@ describe('migrate — v1 weekly-grid → v2 per-date', () => {
     expect(m.cells['cfg|targetBelt'].v).toBe(0.9); // preserved
     expect(m.cells[meetupKey('2026-03-08')].v).toBe(false); // newer Monday key wins
     expect(m.cells[meetupKey('2026-03-09')]).toBeUndefined();
+    expect(getNotes(m)[0].id).toBe('preserved');
     expect(migrate(m)).toBe(m); // Sunday-key migration is idempotent
   });
 });
