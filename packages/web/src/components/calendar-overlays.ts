@@ -1,4 +1,4 @@
-import { addDays, type PickableStatus, STATUS_LABEL } from '@rto/shared';
+import { addDays, type PickableStatus, STATUS_LABEL } from '@badgy/shared';
 import { html, nothing, render, type TemplateResult } from 'lit';
 import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
 
@@ -102,7 +102,7 @@ export function dayMenu(options: DayMenuOptions): TemplateResult {
   return html`
     <div class="menu-backdrop" @pointerdown=${options.onDismiss}></div>
     <div
-      class="day-menu mai-card"
+      class="day-menu badgy-card"
       style=${`left:${options.position.left}px;${verticalPosition}max-height:${options.position.maxHeight}px`}
     >
       ${STATUS_ORDER.map(
@@ -137,7 +137,7 @@ interface RangeToolbarOptions {
 export function rangeToolbar(options: RangeToolbarOptions): TemplateResult {
   return html`
     <div class="menu-backdrop" @pointerdown=${options.onDismiss}></div>
-    <div class="range-toolbar mai-card" style="left:${options.x}px;top:${options.y}px">
+    <div class="range-toolbar badgy-card" style="left:${options.x}px;top:${options.y}px">
       <span class="rt-count">${options.count} day${options.count === 1 ? '' : 's'}</span>
       <div class="rt-statuses">
         ${STATUS_ORDER.map(
@@ -198,7 +198,7 @@ export function noteEditor(options: NoteEditorOptions): TemplateResult {
   return html`
     <div class="dialog-backdrop note-editor-backdrop" @pointerdown=${options.onDismiss}></div>
     <form
-      class="dialog note-editor mai-card"
+      class="dialog note-editor badgy-card"
       role="dialog"
       aria-modal="true"
       aria-labelledby="note-editor-title"
@@ -231,7 +231,7 @@ export function noteEditor(options: NoteEditorOptions): TemplateResult {
         </div>
         <button
           type="button"
-          class="mai-button mai-button--icon"
+          class="badgy-button badgy-button--icon"
           @click=${options.onDismiss}
           aria-label="Close"
         >
@@ -289,7 +289,7 @@ export function noteEditor(options: NoteEditorOptions): TemplateResult {
           options.editing
             ? html`<button
                 type="button"
-                class="mai-button note-editor-delete"
+                class="badgy-button note-editor-delete"
                 @click=${options.onDelete}
               >
                 Delete
@@ -297,8 +297,8 @@ export function noteEditor(options: NoteEditorOptions): TemplateResult {
             : nothing
         }
         <span class="note-editor-action-spacer"></span>
-        <button type="button" class="mai-button" @click=${options.onDismiss}>Cancel</button>
-        <button type="submit" class="mai-button mai-button--primary">Save</button>
+        <button type="button" class="badgy-button" @click=${options.onDismiss}>Cancel</button>
+        <button type="submit" class="badgy-button badgy-button--primary">Save</button>
       </footer>
     </form>
   `;

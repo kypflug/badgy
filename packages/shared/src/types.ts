@@ -98,8 +98,8 @@ export function isWeekend(weekday: Weekday): boolean {
   return weekday === 0 || weekday === 6;
 }
 
-/** Map the source spreadsheet's statuses onto the v2 taxonomy (import + legacy migration). */
-export const EXCEL_STATUS_MAP: Record<string, PickableStatus> = {
+/** Map the legacy v1 status labels onto the v2 taxonomy. */
+export const LEGACY_STATUS_MAP: Record<string, PickableStatus> = {
   Office: 'office',
   Planned: 'office',
   Remote: 'remote',

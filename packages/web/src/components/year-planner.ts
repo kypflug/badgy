@@ -7,7 +7,7 @@ import {
   type ResolvedDay,
   STATUS_LABEL,
   toISO,
-} from '@rto/shared';
+} from '@badgy/shared';
 import { html } from 'lit';
 import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
@@ -17,7 +17,7 @@ import {
   meetupAnnotation,
   noteAnnotation,
 } from './annotation-layout.js';
-import { RtoElement } from './base.js';
+import { BadgyElement } from './base.js';
 import {
   type DayMenuPosition,
   DEFAULT_NOTE_COLOR,
@@ -45,7 +45,7 @@ const MONTHS = [
 ];
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export class YearPlanner extends RtoElement {
+export class YearPlanner extends BadgyElement {
   static override properties = {
     year: { type: Number },
     menuDate: { state: true },
@@ -291,7 +291,8 @@ export class YearPlanner extends RtoElement {
     ]
       .filter(Boolean)
       .join(' ');
-    const label = `${day.date} · ${STATUS_LABEL[day.status]}`;
+    const holidayName = day.isHoliday ? store.holidayName(day.date) : null;
+    const label = `${day.date} · ${STATUS_LABEL[day.status]}${holidayName ? ` · ${holidayName}` : ''}`;
     return html`
       <button
         type="button"
@@ -338,7 +339,7 @@ export class YearPlanner extends RtoElement {
     for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
     return html`
-      <section class="year-month mai-card" aria-label=${`${MONTHS[month0]} ${this.year}`}>
+      <section class="year-month badgy-card" aria-label=${`${MONTHS[month0]} ${this.year}`}>
         <h2 class="year-month-title">${MONTHS[month0]}</h2>
         <div class="year-month-grid year-month-head" aria-hidden="true">
           ${DOW.map((label) => html`<span class="year-dow">${label}</span>`)}
@@ -382,7 +383,7 @@ export class YearPlanner extends RtoElement {
         <div class="year-months">
           ${MONTHS.map((_, month0) => this.monthCard(month0, daysByDate, selected, notes))}
         </div>
-        <aside class="year-summary mai-card" aria-label=${`${this.year} status totals`}>
+        <aside class="year-summary badgy-card" aria-label=${`${this.year} status totals`}>
           <div class="year-summary-head">
             <span class="year-summary-eyebrow">Year totals</span>
             <strong>${this.year}</strong>

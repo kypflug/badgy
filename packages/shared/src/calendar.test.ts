@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
-  isHolidayDate,
   isMeetupWeek,
   meetupCycleLabel,
   monthGrid,
@@ -11,7 +10,6 @@ import {
   weekStartsOfYear,
   yearBounds,
 } from './calendar.js';
-import { HOLIDAY_DATES } from './holidays.js';
 
 describe('date utils', () => {
   it('weekStartOf returns the Sunday', () => {
@@ -44,33 +42,7 @@ describe('date utils', () => {
     expect(g.weekStarts[0]).toBe('2025-12-28');
     expect(g.weekStarts.length).toBe(5);
   });
-  it('recognizes published company holidays', () => {
-    expect(HOLIDAY_DATES[2027]).toEqual([
-      '2027-01-18',
-      '2027-02-15',
-      '2027-05-31',
-      '2027-07-05',
-      '2027-09-06',
-      '2027-11-25',
-      '2027-11-26',
-      '2027-12-23',
-      '2027-12-24',
-      '2027-12-31',
-    ]);
-    expect(isHolidayDate('2026-01-19')).toBe(true);
-    expect(isHolidayDate('2026-01-20')).toBe(false);
-    expect(isHolidayDate('2027-01-01')).toBe(true);
-    expect(isHolidayDate('2027-06-18')).toBe(false);
-    expect(isHolidayDate('2027-07-04')).toBe(false);
-    expect(isHolidayDate('2027-07-05')).toBe(true);
-    expect(isHolidayDate('2027-12-23')).toBe(true);
-    expect(isHolidayDate('2027-12-24')).toBe(true);
-    expect(isHolidayDate('2027-12-25')).toBe(false);
-    expect(isHolidayDate('2027-12-27')).toBe(false);
-    expect(isHolidayDate('2027-12-31')).toBe(true);
-    expect(isHolidayDate('2028-01-01')).toBe(false);
-  });
-  it('recognizes published meetup weeks', () => {
+  it('recognizes default meetup weeks', () => {
     expect(isMeetupWeek('2026-03-08')).toBe(true);
     expect(isMeetupWeek('2026-03-15')).toBe(false);
     expect(isMeetupWeek('2026-09-20')).toBe(true);

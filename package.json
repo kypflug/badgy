@@ -1,9 +1,9 @@
 {
-  "name": "rto-dashboard",
+  "name": "badgy",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Hybrid Attendance Modeler (badgy) — RTO/BELT planner. Client-only SPA; data syncs privately to each user's OneDrive.",
+  "description": "Badgy — an installable attendance calendar for planning office time against a rolling badge-in compliance score. Client-only SPA; data syncs privately to each user's OneDrive.",
   "engines": {
     "node": ">=24"
   },
@@ -12,16 +12,15 @@
     "packages/web"
   ],
   "scripts": {
-    "build:shared": "npm run build -w @rto/shared",
-    "build:web": "npm run build -w @rto/web",
+    "build:shared": "npm run build -w @badgy/shared",
+    "build:web": "npm run build -w @badgy/web",
     "build": "npm run build:shared && npm run build:web",
-    "dev": "npm run dev -w @rto/web",
+    "dev": "npm run dev -w @badgy/web",
     "typecheck": "tsc -b && tsc -p packages/web --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:css": "stylelint \"packages/web/src/**/*.css\"",
     "test": "npm run test --workspaces --if-present",
-    "seed": "npm run seed -w @rto/shared",
     "gates": "npm run lint && npm run lint:css && npm run typecheck && npm run build && npm run test"
   },
   "devDependencies": {
@@ -30,7 +29,6 @@
     "playwright": "^1.61.1",
     "stylelint": "^17.13.0",
     "stylelint-config-standard": "^40.0.0",
-    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   }

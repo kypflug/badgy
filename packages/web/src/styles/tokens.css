@@ -1,0 +1,98 @@
+/* Badgy design tokens.
+   A small, hand-authored palette and scale: neutral surfaces, one blue brand ramp, and four
+   status families (success / warning / violet / danger) used by the calendar status fills.
+   Light values sit on :root; [data-theme="dark"] overrides only what has to change. */
+:root {
+  /* type */
+  --badgy-font-body: system-ui, -apple-system, blinkmacsystemfont, "Helvetica Neue", arial,
+    sans-serif;
+  --badgy-font-display: var(--badgy-font-body);
+  --badgy-text-xs: 12px;
+  --badgy-text-sm: 14px;
+  --badgy-text-md: 16px;
+
+  /* shape + metrics */
+  --badgy-radius-card: 20px;
+  --badgy-radius-ctrl: 12px;
+  --badgy-ctrl-size: 36px;
+  --badgy-ctrl-pad-x: 12px;
+  --badgy-page-max: 1120px;
+
+  /* motion */
+  --badgy-ease: cubic-bezier(0.33, 0, 0.67, 1);
+
+  /* surfaces */
+  --badgy-surface-page: #f4f5f8;
+  --badgy-surface-card: #fff;
+  --badgy-surface-ctrl: #fff;
+  --badgy-surface-ctrl-hover: #eceef3;
+  --badgy-surface-subtle-hover: rgb(18 21 31 / 6%);
+  --badgy-surface-track: #e5e8ef;
+  --badgy-surface-scrim: rgb(18 21 31 / 45%);
+  --badgy-surface-accent: #2f4bd4;
+  --badgy-surface-accent-hover: #253bab;
+
+  /* ink */
+  --badgy-text-primary: #151824;
+  --badgy-text-secondary: #5c6579;
+  --badgy-text-on-accent: #fff;
+  --badgy-stroke: rgb(18 21 31 / 12%);
+
+  /* brand ramp — blue → indigo → rose, used for the mark, focus rings and today */
+  --badgy-brand-1: #2563eb;
+  --badgy-brand-2: #4f46e5;
+  --badgy-brand-3: #db2777;
+
+  /* elevation */
+  --badgy-shadow-key: 0 1px 2px rgb(18 21 31 / 8%);
+  --badgy-shadow-ambient: 0 10px 28px rgb(18 21 31 / 8%);
+
+  /* status families: solid line colour, soft fill, readable ink on the soft fill */
+  --badgy-success: #17864a;
+  --badgy-success-soft: rgb(23 134 74 / 16%);
+  --badgy-success-ink: #0e5c32;
+  --badgy-warning: #a86616;
+  --badgy-warning-soft: rgb(214 138 30 / 20%);
+  --badgy-warning-ink: #7a480b;
+  --badgy-violet: #6d3fc4;
+  --badgy-violet-soft: rgb(124 76 227 / 18%);
+  --badgy-violet-ink: #4d2795;
+  --badgy-danger: #c23c2c;
+  --badgy-danger-soft: rgb(194 60 44 / 16%);
+  --badgy-danger-ink: #8d2519;
+  --badgy-danger-text: #b3311f;
+}
+
+[data-theme="dark"] {
+  --badgy-surface-page: #12141b;
+  --badgy-surface-card: #1b1e28;
+  --badgy-surface-ctrl: #232733;
+  --badgy-surface-ctrl-hover: #2d3242;
+  --badgy-surface-subtle-hover: rgb(255 255 255 / 8%);
+  --badgy-surface-track: #262b38;
+  --badgy-surface-scrim: rgb(0 0 0 / 60%);
+  --badgy-surface-accent: #5b6ef0;
+  --badgy-surface-accent-hover: #6f80f5;
+  --badgy-text-primary: #e7eaf3;
+  --badgy-text-secondary: #9aa3b8;
+  --badgy-text-on-accent: #fff;
+  --badgy-stroke: rgb(255 255 255 / 14%);
+  --badgy-brand-1: #7b95f8;
+  --badgy-brand-2: #9184f5;
+  --badgy-brand-3: #ee7ab0;
+  --badgy-shadow-key: 0 1px 2px rgb(0 0 0 / 45%);
+  --badgy-shadow-ambient: 0 12px 32px rgb(0 0 0 / 50%);
+  --badgy-success: #45c07d;
+  --badgy-success-soft: rgb(69 192 125 / 20%);
+  --badgy-success-ink: #8fe4b2;
+  --badgy-warning: #dda03a;
+  --badgy-warning-soft: rgb(221 160 58 / 22%);
+  --badgy-warning-ink: #f2cd8a;
+  --badgy-violet: #a98cf7;
+  --badgy-violet-soft: rgb(140 108 246 / 26%);
+  --badgy-violet-ink: #d3c4fd;
+  --badgy-danger: #e8695a;
+  --badgy-danger-soft: rgb(232 105 90 / 22%);
+  --badgy-danger-ink: #f6ada2;
+  --badgy-danger-text: #ef8577;
+}

@@ -5,7 +5,7 @@ import { Resvg } from '@resvg/resvg-js';
 const OUT = new URL('../public/', import.meta.url);
 
 const grad = `<defs><linearGradient id="g" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-  <stop offset="0" stop-color="#296eeb"/><stop offset=".5" stop-color="#6cebe2"/><stop offset="1" stop-color="#34cfa9"/>
+  <stop offset="0" stop-color="#2563eb"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#db2777"/>
 </linearGradient></defs>`;
 
 const svg = (rx) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${grad}

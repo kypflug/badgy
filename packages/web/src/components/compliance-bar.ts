@@ -1,8 +1,8 @@
-import { addDays, beltBand } from '@rto/shared';
+import { addDays, beltBand } from '@badgy/shared';
 import { html, svg, type TemplateResult } from 'lit';
 import { formatPct } from '../lib/format.js';
 import { store } from '../state/store.js';
-import { RtoElement } from './base.js';
+import { BadgyElement } from './base.js';
 
 const R = 24;
 const CIRC = 2 * Math.PI * R;
@@ -22,7 +22,7 @@ const MONTHS = [
   'December',
 ];
 
-export class ComplianceBar extends RtoElement {
+export class ComplianceBar extends BadgyElement {
   private ring(value: number | null, band: string) {
     const v = Math.max(0, Math.min(1, value ?? 0));
     return svg`<svg class="ring ${band}" viewBox="0 0 60 60" aria-hidden="true">

@@ -1,4 +1,4 @@
-import { addDays, type CalendarNote } from '@rto/shared';
+import { addDays, type CalendarNote } from '@badgy/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 export interface CalendarAnnotation {
@@ -33,7 +33,7 @@ export function meetupAnnotation(weekStart: string, label: string): CalendarAnno
     start: weekStart,
     end: addDays(weekStart, 6),
     label,
-    color: 'var(--smtc-ai-brand-stop1)',
+    color: 'var(--badgy-brand-1)',
   };
 }
 

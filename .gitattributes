@@ -1,0 +1,8 @@
+# Normalize to LF in the repository and in every working tree. Without this, a Windows clone
+# checks files out with CRLF and Biome's formatter check fails on every file.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary

@@ -1,14 +1,13 @@
 /**
  * BELT — "Best Eight of Last Twelve" rolling office-attendance score.
- * Transcribed from the source spreadsheet: average of the 8 largest weekly office-day
- * counts over a 12-week window, divided by 5 (a full week). Pure number-series core;
- * per-date wiring lives in compliance.ts.
+ * The average of the 8 largest weekly office-day counts over a 12-week window, divided by 5
+ * (a full week). Pure number-series core; per-date wiring lives in compliance.ts.
  */
 
 export const BELT_WINDOW = 12;
 export const BELT_BEST = 8;
 export const BELT_DIVISOR = 5;
-/** Excel parity: first score at the 13th tracked week (window starts at i=12). */
+/** First score lands on the 13th tracked week (the window starts at i=12). */
 export const BELT_FIRST_INDEX = BELT_WINDOW;
 
 export const BELT_WARNING_THRESHOLD = 0.8;
@@ -24,8 +23,8 @@ export function beltOf(window: readonly number[]): number | null {
 }
 
 /**
- * Excel-faithful rolling score over a full series (used by parity tests): defined for
- * `i >= 12`, window `[i-11 … i]` (so the very first tracked week never enters a window).
+ * Rolling score over a full series (used by parity tests): defined for `i >= 12`, window
+ * `[i-11 … i]` (so the very first tracked week never enters a window).
  */
 export function beltAt(officeSeq: readonly number[], i: number): number | null {
   if (i < BELT_FIRST_INDEX) return null;

@@ -1,11 +1,13 @@
 import {
+  HOLIDAY_REGIONS,
+  type HolidayRegionId,
   isWeekend,
   STATUS_LABEL,
   type Status,
   WEEK_DAYS,
   type Weekday,
   weekStartsOfYear,
-} from '@rto/shared';
+} from '@badgy/shared';
 import { html, nothing } from 'lit';
 import { type InteractiveAuthFlow, switchAccount } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
@@ -13,7 +15,7 @@ import { formatPct, formatWeekLabel } from '../lib/format.js';
 import { STATUS_ORDER } from '../lib/status.js';
 import { applyMode, getMode, type ThemeMode } from '../lib/theme.js';
 import { store } from '../state/store.js';
-import { RtoElement } from './base.js';
+import { BadgyElement } from './base.js';
 
 const THEME_MODES: { id: ThemeMode; label: string }[] = [
   { id: 'light', label: '☀ Light' },
@@ -21,15 +23,26 @@ const THEME_MODES: { id: ThemeMode; label: string }[] = [
   { id: 'system', label: '⌁ System' },
 ];
 
-export class SettingsDialog extends RtoElement {
+const MAX_ICS_BYTES = 2_000_000;
+
+const formatHolidayDate = (iso: string): string =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString(undefined, {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+  });
+
+export class SettingsDialog extends BadgyElement {
   static override properties = {
     mode: { state: true },
-    importMsg: { state: true },
+    holidayYear: { state: true },
+    holidayMsg: { state: true },
     accountStage: { state: true },
     accountMessage: { state: true },
   };
   mode: ThemeMode = getMode();
-  importMsg = '';
+  holidayYear = new Date().getFullYear();
+  holidayMsg = '';
   accountStage = 'idle';
   accountMessage = '';
   private accountFlow: InteractiveAuthFlow | null = null;
@@ -54,21 +67,47 @@ export class SettingsDialog extends RtoElement {
     applyMode(m);
     this.mode = m;
   }
-  private async onImport(e: Event): Promise<void> {
+  private setRegion(region: HolidayRegionId): void {
+    store.setHolidayRegion(region);
+    this.holidayMsg = '';
+  }
+  private addHoliday(value: string): void {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+    if (store.isHoliday(value)) {
+      this.holidayMsg = 'That date is already a holiday.';
+      return;
+    }
+    store.addHoliday(value);
+    this.holidayYear = Number(value.slice(0, 4));
+    this.holidayMsg = '';
+  }
+  private resetHolidays(): void {
+    store.resetHolidays();
+    this.holidayMsg = 'Restored the region defaults.';
+  }
+  private async onImportIcs(e: Event): Promise<void> {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file) return;
-    this.importMsg = 'Reading…';
-    try {
-      const buf = await file.arrayBuffer();
-      const { parseXlsx } = await import('../lib/import-xlsx.js');
-      const entries = parseXlsx(buf);
-      store.importDays(entries);
-      this.importMsg = `Imported ${entries.length} day${entries.length === 1 ? '' : 's'} from your spreadsheet.`;
-    } catch {
-      this.importMsg = "Couldn't read that file. Use the Hybrid Attendance Modeler .xlsx.";
-    }
     input.value = '';
+    if (!file) return;
+    if (file.size > MAX_ICS_BYTES) {
+      this.holidayMsg = 'That file is too large — export a single year and try again.';
+      return;
+    }
+    this.holidayMsg = 'Reading…';
+    try {
+      const { parseIcs } = await import('../lib/import-ics.js');
+      const { holidays, skipped } = parseIcs(await file.text());
+      const added = store.importHolidays(holidays);
+      const skippedNote = skipped ? `, skipped ${skipped} undated` : '';
+      this.holidayMsg = added
+        ? `Added ${added} holiday${added === 1 ? '' : 's'}${skippedNote}.`
+        : `No new dates to add${skippedNote}.`;
+      if (added && holidays[0]) this.holidayYear = Number(holidays[0].date.slice(0, 4));
+    } catch (err) {
+      this.holidayMsg =
+        err instanceof Error && err.message ? err.message : "Couldn't read that .ics file.";
+    }
   }
   private beginAccountSwitch(): void {
     this.accountMessage = '';
@@ -113,13 +152,16 @@ export class SettingsDialog extends RtoElement {
     const weekStarts = weekStartsOfYear(year);
     const meetups = weekStarts.filter((weekStart) => store.isMeetupWeek(weekStart));
     const nonMeetups = weekStarts.filter((weekStart) => !store.isMeetupWeek(weekStart));
+    const region = store.holidayRegion;
+    const regionNote = HOLIDAY_REGIONS.find((r) => r.id === region)?.note;
+    const holidays = store.holidaysInYear(this.holidayYear);
 
     return html`
       <div class="dialog-backdrop" @click=${() => this.close()}></div>
-      <div class="dialog mai-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="dialog badgy-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header class="dialog-head">
           <h2 class="dialog-title" id="settings-title">Settings</h2>
-          <button class="mai-button mai-button--icon" @click=${() => this.close()} aria-label="Close">✕</button>
+          <button class="badgy-button badgy-button--icon" @click=${() => this.close()} aria-label="Close">✕</button>
         </header>
 
         <section class="setting">
@@ -212,21 +254,93 @@ export class SettingsDialog extends RtoElement {
         </section>
 
         <section class="setting">
-          <h3 class="setting-title">Import from Excel</h3>
+          <h3 class="setting-title">Holidays</h3>
           <p class="setting-help">
-            Bring in your existing Hybrid Attendance Modeler (.xlsx). Office/Planned days are
-            skipped; your Remote, Time off, and Business Travel days are imported.
+            Holidays fill in automatically and never count toward BELT. Pick the set that matches
+            your organization, then add or remove individual days.
           </p>
-          <label class="mai-button import-button">
-            Choose .xlsx…
-            <input
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              @change=${(e: Event) => this.onImport(e)}
-              hidden
-            />
+          <label class="field field--inline">
+            <span class="field-label">Region</span>
+            <select
+              class="select"
+              @change=${(e: Event) =>
+                this.setRegion((e.target as HTMLSelectElement).value as HolidayRegionId)}
+            >
+              ${HOLIDAY_REGIONS.map(
+                (r) => html`<option value=${r.id} ?selected=${r.id === region}>${r.label}</option>`,
+              )}
+            </select>
           </label>
-          ${this.importMsg ? html`<p class="setting-help">${this.importMsg}</p>` : nothing}
+          ${regionNote ? html`<p class="setting-help">${regionNote}</p>` : nothing}
+
+          <div class="field field--inline">
+            <span class="field-label">Year</span>
+            <div class="chip-row">
+              <button
+                class="badgy-button badgy-button--icon"
+                aria-label="Previous year"
+                @click=${() => {
+                  this.holidayYear--;
+                }}
+              >
+                ‹
+              </button>
+              <span class="setting-value">${this.holidayYear}</span>
+              <button
+                class="badgy-button badgy-button--icon"
+                aria-label="Next year"
+                @click=${() => {
+                  this.holidayYear++;
+                }}
+              >
+                ›
+              </button>
+            </div>
+          </div>
+
+          <div class="chip-row">
+            ${
+              holidays.length
+                ? holidays.map(
+                    (h) => html`<button
+                      class="chip chip--holiday"
+                      title=${`${h.name} — remove`}
+                      @click=${() => store.removeHoliday(h.date)}
+                    >
+                      ${formatHolidayDate(h.date)} ${h.name} ✕
+                    </button>`,
+                  )
+                : html`<span class="setting-help">No holidays in ${this.holidayYear}.</span>`
+            }
+          </div>
+
+          <div class="chip-row">
+            <label class="field field--inline">
+              <span class="field-label">Add</span>
+              <input
+                class="select"
+                type="date"
+                @change=${(e: Event) => {
+                  const input = e.target as HTMLInputElement;
+                  this.addHoliday(input.value);
+                  input.value = '';
+                }}
+              />
+            </label>
+            <label class="badgy-button import-button">
+              Import .ics…
+              <input
+                type="file"
+                accept=".ics,text/calendar"
+                @change=${(e: Event) => void this.onImportIcs(e)}
+                hidden
+              />
+            </label>
+            <button class="badgy-button" @click=${() => this.resetHolidays()}>
+              Reset to defaults
+            </button>
+          </div>
+          ${this.holidayMsg ? html`<p class="setting-help">${this.holidayMsg}</p>` : nothing}
         </section>
 
         ${
@@ -238,13 +352,13 @@ export class SettingsDialog extends RtoElement {
               </p>
               <div class="chip-row">
                 <button
-                  class="mai-button"
+                  class="badgy-button"
                   @click=${() => this.beginAccountSwitch()}
                   ?disabled=${this.accountStage === 'starting' || this.accountStage === 'waiting'}
                 >
                   ${this.accountSwitchLabel()}
                 </button>
-                <button class="mai-button" @click=${() => void this.endSession()}>Sign out</button>
+                <button class="badgy-button" @click=${() => void this.endSession()}>Sign out</button>
               </div>
               ${
                 this.accountMessage

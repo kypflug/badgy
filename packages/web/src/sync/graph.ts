@@ -1,4 +1,4 @@
-import { type Doc, emptyDoc } from '@rto/shared';
+import { type Doc, emptyDoc } from '@badgy/shared';
 import { getGraphToken } from '../auth/msal.js';
 import type { SyncTransport } from './types.js';
 

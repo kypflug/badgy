@@ -1,6 +1,6 @@
 {
   "extends": "stylelint-config-standard",
-  "ignoreFiles": ["**/mai-tokens.css", "**/dist/**"],
+  "ignoreFiles": ["**/dist/**"],
   "rules": {
     "custom-property-empty-line-before": null,
     "declaration-empty-line-before": null,

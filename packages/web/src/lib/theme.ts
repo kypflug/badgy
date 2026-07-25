@@ -30,7 +30,7 @@ function updateThemeColor(theme: Theme): void {
     document.head.appendChild(meta);
   }
   const color = getComputedStyle(document.documentElement)
-    .getPropertyValue('--smtc-background-window-primary-solid')
+    .getPropertyValue('--badgy-surface-page')
     .trim();
   meta.content = color || (theme === 'dark' ? '#1f2431' : '#ffffff');
 }

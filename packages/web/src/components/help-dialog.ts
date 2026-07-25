@@ -1,7 +1,7 @@
 import { html } from 'lit';
-import { RtoElement } from './base.js';
+import { BadgyElement } from './base.js';
 
-export class HelpDialog extends RtoElement {
+export class HelpDialog extends BadgyElement {
   private readonly onKeydown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') this.close();
   };
@@ -23,14 +23,14 @@ export class HelpDialog extends RtoElement {
     return html`
       <div class="dialog-backdrop" @click=${() => this.close()}></div>
       <div
-        class="dialog dialog--help mai-card"
+        class="dialog dialog--help badgy-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="help-title"
       >
         <header class="dialog-head">
           <h2 class="dialog-title" id="help-title">How Badgy works</h2>
-          <button class="mai-button mai-button--icon" @click=${() => this.close()} aria-label="Close">
+          <button class="badgy-button badgy-button--icon" @click=${() => this.close()} aria-label="Close">
             ✕
           </button>
         </header>
@@ -51,6 +51,11 @@ export class HelpDialog extends RtoElement {
             Sick, Other, and Untracked do not. Weekend office days count toward the same
             five-day weekly cap.
           </p>
+          <p class="help-copy">
+            BELT is the default because it matches the formula Microsoft employees are measured on.
+            If your organization uses a different bar, change <strong>Target BELT</strong> in
+            Settings — the ring and the planner follow whatever you set.
+          </p>
         </section>
 
         <section class="help-section">
@@ -68,7 +73,8 @@ export class HelpDialog extends RtoElement {
             <li>Your usual week supplies defaults; a specific date always overrides its default.</li>
             <li>Past and current days use solid fills. Future plans use dashed outlines.</li>
             <li>The target controls on-track status. The planner estimates office days per week.</li>
-            <li>Use undo/redo for edits, zoom for calendar density, and Settings to import Excel data.</li>
+            <li>Use undo/redo for edits, zoom for calendar density, and Settings to tune your
+              target, holidays and meetup weeks.</li>
             <li>Meetup weeks are highlighted for planning context and do not affect BELT.</li>
             <li>
               Add a note from a date menu or selected range. Notes outline their inclusive dates
@@ -82,14 +88,22 @@ export class HelpDialog extends RtoElement {
         </section>
 
         <section class="help-section">
-          <h3 class="setting-title">Data sources and privacy</h3>
+          <h3 class="setting-title">Making it yours</h3>
           <ul class="help-list">
             <li>
-              The BELT algorithm is transcribed and parity-tested against the Hybrid Attendance
-              Modeler spreadsheet.
+              <strong>Holidays</strong> are filled in from the region you pick in Settings. The
+              default set matches Microsoft's observed US holidays; other national sets are built
+              in, and you can add or remove single days or import an <code>.ics</code> export from
+              Google, Outlook or Apple Calendar.
             </li>
-            <li>Company holidays come from the source attendance template.</li>
-            <li>Default Meetup weeks follow the published Edge Cycle planning cadence.</li>
+            <li>
+              <strong>Meetup weeks</strong> ship with a default set and are fully editable — add or
+              remove any week in Settings.
+            </li>
+            <li>
+              <strong>Your usual week</strong> and <strong>Target BELT</strong> drive the defaults
+              and the on-track indicator.
+            </li>
             <li>
               Badgy runs client-side. Your attendance document is stored privately in this app's
               folder in your OneDrive and synchronized across your devices.

@@ -1,4 +1,4 @@
-import type { CalendarNote } from '@rto/shared';
+import type { CalendarNote } from '@badgy/shared';
 import { describe, expect, it } from 'vitest';
 import { layoutWeekAnnotations, meetupAnnotation, noteAnnotation } from './annotation-layout.js';
 
@@ -47,6 +47,6 @@ describe('layoutWeekAnnotations', () => {
       { start: '2026-07-18', end: '2026-07-18', collision: false },
     ]);
     expect(segments[2].annotations.map((item) => item.label)).toEqual(['26-C4', 'Zebra', 'Alpha']);
-    expect(segments[2].colors).toEqual(['var(--smtc-ai-brand-stop1)', '#ff0000', '#00ff00']);
+    expect(segments[2].colors).toEqual(['var(--badgy-brand-1)', '#ff0000', '#00ff00']);
   });
 });

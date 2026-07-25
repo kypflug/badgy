@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { beltForWeek } from '../compliance.js';
 import {
+  CFG_HOLIDAY_REGION,
   cellValueEqual,
   type Doc,
   dateKey,
   emptyDoc,
+  getHolidayRegion,
   getNotes,
   getPattern,
+  holidayKey,
+  holidayLabel,
   isCalendarNote,
+  isHolidayOverride,
   isMeetupOverride,
   meetupKey,
   merge,
@@ -101,6 +106,62 @@ describe('meetup defaults and overrides', () => {
     expect(isMeetupOverride(d, '2026-09-20')).toBe(false);
     expect(isMeetupOverride(d, '2026-10-11')).toBe(true);
     expect(isMeetupOverride(d, '2027-04-11')).toBe(true);
+  });
+
+  describe('holiday region and overrides', () => {
+    it('defaults to the Microsoft US region', () => {
+      const d = emptyDoc();
+      expect(getHolidayRegion(d)).toBe('us-microsoft');
+      expect(isHolidayOverride(d, '2026-11-27')).toBe(true); // day after Thanksgiving
+      expect(isHolidayOverride(d, '2026-06-19')).toBe(false); // Juneteenth
+      expect(resolveDay(d, '2026-11-27', {}, '2026-01-01').status).toBe('holiday');
+    });
+
+    it('switches defaults when the region changes', () => {
+      const d = emptyDoc();
+      setCell(d, CFG_HOLIDAY_REGION, 'us-federal', [1, 0]);
+      expect(getHolidayRegion(d)).toBe('us-federal');
+      expect(isHolidayOverride(d, '2026-06-19')).toBe(true);
+      expect(isHolidayOverride(d, '2026-11-27')).toBe(false);
+    });
+
+    it('falls back to the default region for an unknown value', () => {
+      const d = emptyDoc();
+      setCell(d, CFG_HOLIDAY_REGION, 'atlantis', [1, 0]);
+      expect(getHolidayRegion(d)).toBe('us-microsoft');
+    });
+
+    it('honours per-date add and remove overrides', () => {
+      const d = emptyDoc();
+      setCell(d, holidayKey('2026-11-27'), false, [1, 0]);
+      setCell(d, holidayKey('2026-06-19'), true, [1, 1]);
+      setCell(d, holidayKey('2026-10-31'), 'Halloween', [1, 2]);
+
+      expect(isHolidayOverride(d, '2026-11-27')).toBe(false);
+      expect(isHolidayOverride(d, '2026-06-19')).toBe(true);
+      expect(isHolidayOverride(d, '2026-10-31')).toBe(true);
+      expect(holidayLabel(d, '2026-11-27')).toBeNull();
+      expect(holidayLabel(d, '2026-10-31')).toBe('Halloween');
+      expect(holidayLabel(d, '2026-12-25')).toBe('Christmas Day');
+      expect(holidayLabel(d, '2026-03-02')).toBeNull();
+      expect(resolveDay(d, '2026-11-27', {}, '2026-01-01').status).toBe('office');
+    });
+
+    it('merges holiday cells commutatively and idempotently', () => {
+      const a = emptyDoc();
+      setCell(a, holidayKey('2026-10-31'), 'Halloween', [2, 0]);
+      setCell(a, CFG_HOLIDAY_REGION, 'uk', [2, 0]);
+      const b = emptyDoc();
+      setCell(b, holidayKey('2026-10-31'), false, [1, 0]);
+      setCell(b, CFG_HOLIDAY_REGION, 'ca', [3, 0]);
+
+      const ab = merge(structuredClone(a), b);
+      const ba = merge(structuredClone(b), a);
+      expect(ab).toEqual(ba);
+      expect(ab).toEqual(merge(structuredClone(ab), ab));
+      expect(holidayLabel(ab, '2026-10-31')).toBe('Halloween'); // newer stamp wins
+      expect(getHolidayRegion(ab)).toBe('ca');
+    });
   });
 
   describe('calendar notes', () => {

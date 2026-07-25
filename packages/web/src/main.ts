@@ -73,22 +73,22 @@ function bindFlow(screen: HTMLElement, flow: InteractiveAuthFlow): void {
 }
 
 function renderSignIn(reason: string | null = null): void {
-  const host = document.querySelector('rto-app');
+  const host = document.querySelector('badgy-app');
   if (!host) return;
   host.innerHTML = '';
   const screen = document.createElement('div');
   screen.className = 'signin-screen';
   screen.innerHTML = `
-    <div class="signin-card mai-card">
+    <div class="signin-card badgy-card">
       <div class="brand-mark" aria-hidden="true"></div>
       <h1 class="signin-title">Badgy</h1>
       <p class="signin-sub">Plan your office time against your rolling BELT score. Your data is saved
         privately to your own OneDrive — only you can see it.</p>
-      <button class="mai-button mai-button--primary signin-button" type="button">
+      <button class="badgy-button badgy-button--primary signin-button" type="button">
         Sign in with Microsoft
       </button>
-      <button class="mai-button signin-switch-button" type="button">Use another account</button>
-      <button class="mai-button signin-open-button" type="button" hidden>
+      <button class="badgy-button signin-switch-button" type="button">Use another account</button>
+      <button class="badgy-button signin-open-button" type="button" hidden>
         Open Microsoft sign-in
       </button>
       <p class="signin-status" role="status">${reason ?? legacyAuthError() ?? ''}</p>
@@ -104,16 +104,16 @@ function renderSignIn(reason: string | null = null): void {
 }
 
 function renderUnavailable(): void {
-  const host = document.querySelector('rto-app');
+  const host = document.querySelector('badgy-app');
   if (!host) return;
   host.innerHTML = `
     <div class="signin-screen">
-      <div class="signin-card mai-card">
+      <div class="signin-card badgy-card">
         <div class="brand-mark" aria-hidden="true"></div>
         <h1 class="signin-title">Badgy is temporarily unavailable</h1>
         <p class="signin-sub">Your session could not be checked. This is usually a network or
           service issue, not a reason to sign in again.</p>
-        <button class="mai-button mai-button--primary signin-button" type="button">Retry</button>
+        <button class="badgy-button badgy-button--primary signin-button" type="button">Retry</button>
       </div>
     </div>`;
   host.querySelector('button')?.addEventListener('click', () => window.location.reload());
@@ -127,8 +127,8 @@ async function startApp(account: AuthAccount): Promise<void> {
     signOut,
   });
   await store.start(graphTransport, `badgy:doc:${account.id}`);
-  await import('./components/rto-app.js');
-  const host = document.querySelector('rto-app') as
+  await import('./components/badgy-app.js');
+  const host = document.querySelector('badgy-app') as
     | (HTMLElement & {
         updateComplete?: Promise<unknown>;
       })
@@ -165,8 +165,8 @@ async function boot(): Promise<void> {
       },
     });
     await store.start(mockTransport, 'badgy:doc:dev');
-    await import('./components/rto-app.js');
-    const host = document.querySelector('rto-app') as
+    await import('./components/badgy-app.js');
+    const host = document.querySelector('badgy-app') as
       | (HTMLElement & {
           updateComplete?: Promise<unknown>;
         })

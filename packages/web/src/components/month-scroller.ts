@@ -1,6 +1,6 @@
-import { type MonthRef, shiftMonth } from '@rto/shared';
+import { type MonthRef, shiftMonth } from '@badgy/shared';
 import { html, type PropertyValues } from 'lit';
-import { RtoElement } from './base.js';
+import { BadgyElement } from './base.js';
 import type { MonthCalendar } from './month-calendar.js';
 import './month-calendar.js';
 
@@ -25,7 +25,7 @@ export interface MonthChangeDetail extends MonthRef {
   direction: -1 | 0 | 1;
 }
 
-export class MonthScroller extends RtoElement {
+export class MonthScroller extends BadgyElement {
   static override properties = {
     year: { type: Number },
     month0: { type: Number },

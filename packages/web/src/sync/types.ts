@@ -1,4 +1,4 @@
-import type { Doc } from '@rto/shared';
+import type { Doc } from '@badgy/shared';
 
 /** Remote document transport (OneDrive app folder via Graph), with eTag concurrency. */
 export interface SyncTransport {

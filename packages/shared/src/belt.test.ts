@@ -19,7 +19,7 @@ describe('beltOf / beltAt', () => {
     expect(beltOf([3, 3, 3, 3, 3, 3, 3, 3, 5, 5, 5, 5])).toBeCloseTo(0.8, 10);
     expect(beltOf([])).toBeNull();
   });
-  it('beltAt is null before the 13th week, then defined (Excel parity)', () => {
+  it('beltAt is null before the 13th week, then defined (window parity)', () => {
     const seq = Array<number>(13).fill(5);
     for (let i = 0; i < 12; i++) expect(beltAt(seq, i)).toBeNull();
     expect(beltAt(seq, 12)).toBeCloseTo(1, 10);

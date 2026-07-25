@@ -5,7 +5,7 @@ import { store } from '../state/store.js';
  * Base for all app components. Renders into light DOM so the global, token-driven
  * `app.css` applies uniformly, and re-renders whenever the store changes.
  */
-export class RtoElement extends LitElement {
+export class BadgyElement extends LitElement {
   protected override createRenderRoot(): HTMLElement {
     return this;
   }

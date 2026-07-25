@@ -1,4 +1,4 @@
-import { type PickableStatus, STATUSES, type Status } from '@rto/shared';
+import { type PickableStatus, STATUSES, type Status } from '@badgy/shared';
 
 /** Pickable statuses in display order. */
 export const STATUS_ORDER: readonly PickableStatus[] = STATUSES;

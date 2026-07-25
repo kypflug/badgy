@@ -50,6 +50,11 @@ Configure these Static Web App settings:
 
 Do not expose these values to the web build or commit them.
 
+> `MSAL_CLIENT_ID` is a **public** identifier — it is embedded in the shipped JavaScript bundle and
+> is set directly in `.github/workflows/deploy.yml`. Only `MSAL_CLIENT_SECRET`, `SESSION_KEY`,
+> `TOKEN_ENC_KEY` and `STORAGE_CONNECTION` are secrets, and those live solely in Static Web App
+> settings.
+
 ## Authentication flow
 
 1. The dock app calls `POST /api/auth/start`.

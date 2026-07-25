@@ -57,7 +57,7 @@ describe('auth startup', () => {
       .mockResolvedValueOnce(jsonResponse({ error: 'storage_unavailable' }, 503))
       .mockResolvedValueOnce(jsonResponse({ error: 'storage_unavailable' }, 503))
       .mockResolvedValueOnce(
-        jsonResponse({ signedIn: true, id: 'u1', name: 'Kyle', email: 'k@example.com' }),
+        jsonResponse({ signedIn: true, id: 'u1', name: 'Ada', email: 'k@example.com' }),
       );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -65,7 +65,7 @@ describe('auth startup', () => {
     await vi.runAllTimersAsync();
     await expect(result).resolves.toEqual({
       status: 'signed-in',
-      account: { id: 'u1', name: 'Kyle', email: 'k@example.com' },
+      account: { id: 'u1', name: 'Ada', email: 'k@example.com' },
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -117,7 +117,7 @@ describe('interactive auth transaction', () => {
         .mockResolvedValueOnce(
           jsonResponse({
             status: 'complete',
-            account: { id: 'u1', name: 'Kyle', email: 'k@example.com' },
+            account: { id: 'u1', name: 'Ada', email: 'k@example.com' },
           }),
         ),
     );
@@ -128,7 +128,7 @@ describe('interactive auth transaction', () => {
     await vi.runAllTimersAsync();
     await expect(first.completion).resolves.toEqual({
       id: 'u1',
-      name: 'Kyle',
+      name: 'Ada',
       email: 'k@example.com',
     });
     expect(popup.location.replace).toHaveBeenCalledWith('https://login.example/authorize');

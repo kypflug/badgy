@@ -3,19 +3,28 @@ import {
   beltForWeek,
   type CalendarNote,
   type CellValue,
+  CFG_HOLIDAY_REGION,
   CFG_TARGET,
   type Compliance,
   cellValueEqual,
   compliance as computeCompliance,
+  DEFAULT_HOLIDAY_REGION,
   type Doc,
   dateKey,
   emptyDoc,
+  getHolidayRegion,
   getNotes,
   getPattern,
   getTarget,
   Hlc,
+  type Holiday,
+  type HolidayRegionId,
+  holidayKey,
+  holidayLabel,
+  holidayNameFor,
+  holidaysInYear,
   isCalendarNote,
-  isHolidayDate,
+  isHolidayOverride,
   isMeetupWeek as isMeetupBuiltin,
   isMeetupOverride,
   isWeekend,
@@ -37,13 +46,22 @@ import {
   type Weekday,
   weekdayOf,
   yearBounds,
-} from '@rto/shared';
+} from '@badgy/shared';
 import { AUTH_INTERACTION_REQUIRED } from '../auth/msal.js';
 import type { SyncTransport } from '../sync/types.js';
 
 const PUSH_DEBOUNCE = 800;
 const PULL_INTERVAL = 30_000;
 const MAX_HISTORY = 200;
+const MAX_HOLIDAY_NAME = 80;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point.
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g;
+
+/** Collapse whitespace, strip control characters, and cap the length of an imported label. */
+function normalizeHolidayName(name: string | undefined): string {
+  if (!name) return '';
+  return name.replace(CONTROL_CHARS, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_HOLIDAY_NAME);
+}
 
 /** A reversible edit: the changed keys mapped to their value (undefined = key was absent). */
 type Patch = Record<string, CellValue | undefined>;
@@ -140,6 +158,31 @@ export class Store extends EventTarget {
   isMeetupWeek(weekStart: string): boolean {
     return isMeetupOverride(this.doc, weekStart);
   }
+  get holidayRegion(): HolidayRegionId {
+    return getHolidayRegion(this.doc);
+  }
+  /** Every holiday resolved for the year: region defaults plus the user's own edits. */
+  holidaysInYear(year: number): Holiday[] {
+    const region = this.holidayRegion;
+    const dates = new Set(holidaysInYear(region, year).map((h) => h.date));
+    const prefix = `${String(year).padStart(4, '0')}-`;
+    for (const key of Object.keys(this.doc.cells)) {
+      if (!key.startsWith('h|')) continue;
+      const date = key.slice(2);
+      if (!date.startsWith(prefix)) continue;
+      if (this.doc.cells[key].v) dates.add(date);
+      else dates.delete(date);
+    }
+    return [...dates]
+      .sort()
+      .map((date) => ({ date, name: holidayLabel(this.doc, date) ?? 'Holiday' }));
+  }
+  isHoliday(date: string): boolean {
+    return isHolidayOverride(this.doc, date);
+  }
+  holidayName(date: string): string | null {
+    return holidayLabel(this.doc, date);
+  }
   notesInRange(start: string, end: string): CalendarNote[] {
     return getNotes(this.doc, start, end);
   }
@@ -175,6 +218,41 @@ export class Store extends EventTarget {
     const cur = this.isMeetupWeek(weekStart);
     this.apply((d) => setCell(d, meetupKey(weekStart), !cur, this.hlc.tick()));
   }
+  setHolidayRegion(region: HolidayRegionId): void {
+    this.apply((d) => setCell(d, CFG_HOLIDAY_REGION, region, this.hlc.tick()));
+  }
+  /** Add a holiday, optionally under a custom name; `true` keeps the region's own label. */
+  addHoliday(date: string, name?: string): void {
+    const label = normalizeHolidayName(name);
+    const value = label && label !== holidayNameFor(this.holidayRegion, date) ? label : true;
+    this.apply((d) => setCell(d, holidayKey(date), value, this.hlc.tick()));
+  }
+  removeHoliday(date: string): void {
+    this.apply((d) => setCell(d, holidayKey(date), false, this.hlc.tick()));
+  }
+  /** Merge imported days in one undoable step, skipping ones already resolved as holidays. */
+  importHolidays(entries: readonly Holiday[]): number {
+    const added = entries.filter((e) => !this.isHoliday(e.date));
+    if (!added.length) return 0;
+    this.apply((d) => {
+      for (const entry of added) {
+        const label = normalizeHolidayName(entry.name);
+        const value =
+          label && label !== holidayNameFor(this.holidayRegion, entry.date) ? label : true;
+        setCell(d, holidayKey(entry.date), value, this.hlc.tick());
+      }
+    });
+    return added.length;
+  }
+  /** Drop every per-date holiday edit so the region's defaults apply again. */
+  resetHolidays(): void {
+    const keys = Object.keys(this.doc.cells).filter((k) => k.startsWith('h|'));
+    if (!keys.length) return;
+    this.apply((d) => {
+      for (const key of keys)
+        setCell(d, key, holidayNameFor(this.holidayRegion, key.slice(2)) !== null, this.hlc.tick());
+    });
+  }
   createNote(start: string, end: string, label: string, color: string): CalendarNote {
     const note = this.normalizeNote({
       id: globalThis.crypto.randomUUID(),
@@ -193,15 +271,10 @@ export class Store extends EventTarget {
   deleteNote(id: string): void {
     this.apply((d) => setCell(d, noteKey(id), null, this.hlc.tick()));
   }
-  importDays(entries: readonly { date: string; status: Status }[]): void {
-    this.apply((d) => {
-      for (const e of entries) setCell(d, dateKey(e.date), e.status, this.hlc.tick());
-    });
-  }
 
   private defaultStatusFor(date: string): Status {
     const wd = weekdayOf(date);
-    if (isHolidayDate(date)) return 'holiday';
+    if (isHolidayOverride(this.doc, date)) return 'holiday';
     if (this.pattern[wd] != null) return this.pattern[wd];
     return isWeekend(wd) ? 'none' : 'office';
   }
@@ -256,8 +329,10 @@ export class Store extends EventTarget {
     if (key.startsWith('d|')) return this.defaultStatusFor(key.slice(2));
     if (key.startsWith('pat|')) return 'office';
     if (key.startsWith('m|')) return isMeetupBuiltin(key.slice(2));
+    if (key.startsWith('h|')) return holidayNameFor(this.holidayRegion, key.slice(2)) !== null;
     if (key.startsWith('n|')) return null;
     if (key === CFG_TARGET) return 0.8;
+    if (key === CFG_HOLIDAY_REGION) return DEFAULT_HOLIDAY_REGION;
     return 'none';
   }
 

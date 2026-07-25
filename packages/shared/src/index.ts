@@ -1,4 +1,4 @@
-/** @rto/shared — types, BELT, calendar, compliance/planner, and the CRDT sync core. */
+/** @badgy/shared — types, BELT, calendar, compliance/planner, and the CRDT sync core. */
 export * from './belt.js';
 export * from './calendar.js';
 export * from './compliance.js';

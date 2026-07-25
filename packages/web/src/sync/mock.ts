@@ -1,4 +1,4 @@
-import type { Doc } from '@rto/shared';
+import type { Doc } from '@badgy/shared';
 import type { SyncTransport } from './types.js';
 
 /**

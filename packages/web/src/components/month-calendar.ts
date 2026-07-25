@@ -6,7 +6,7 @@ import {
   type ResolvedDay,
   STATUS_LABEL,
   STATUS_SHORT,
-} from '@rto/shared';
+} from '@badgy/shared';
 import { html, nothing } from 'lit';
 import { formatPct } from '../lib/format.js';
 import { STATUS_ICON, statusClass } from '../lib/status.js';
@@ -17,7 +17,7 @@ import {
   meetupAnnotation,
   noteAnnotation,
 } from './annotation-layout.js';
-import { RtoElement } from './base.js';
+import { BadgyElement } from './base.js';
 import {
   type DayMenuPosition,
   DEFAULT_NOTE_COLOR,
@@ -31,7 +31,7 @@ import {
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export class MonthCalendar extends RtoElement {
+export class MonthCalendar extends BadgyElement {
   static override properties = {
     year: { type: Number },
     month0: { type: Number },
@@ -217,7 +217,7 @@ export class MonthCalendar extends RtoElement {
     return html`<button
       class=${cls}
       data-date=${d.date}
-      title=${`${d.date} · ${STATUS_LABEL[d.status]}`}
+      title=${`${d.date} · ${STATUS_LABEL[d.status]}${d.isHoliday ? ` · ${store.holidayName(d.date) ?? 'Holiday'}` : ''}`}
       @pointerdown=${(e: PointerEvent) => this.onDown(e, d.date)}
       @pointerenter=${() => {
         if (this.dragging) {

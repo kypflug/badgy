@@ -4,25 +4,29 @@
  * configured "usual week" pattern, unconfigured weekends → untracked, else `office`.
  * `merge` is a commutative + idempotent CRDT.
  */
+import { addDays, isMeetupWeek, todayISO, weekdayOf, weekStartOf } from '../calendar.js';
 import {
-  addDays,
-  isHolidayDate,
-  isMeetupWeek,
-  todayISO,
-  weekdayOf,
-  weekStartOf,
-} from '../calendar.js';
+  DEFAULT_HOLIDAY_REGION,
+  type HolidayRegionId,
+  holidayNameFor,
+  isHolidayRegionId,
+} from '../holidays.js';
 import {
   type CalendarNote,
-  EXCEL_STATUS_MAP,
   isWeekend,
+  LEGACY_STATUS_MAP,
   type Status,
   type Weekday,
 } from '../types.js';
 import { compareStamp, type Stamp } from './hlc.js';
 
-/** `null` is the persistent tombstone used by deleted note cells. */
-export type CellValue = Status | number | boolean | CalendarNote | null;
+/**
+ * Cell payloads by key namespace: `d|` and `pat|` → `Status`, `m|` → boolean,
+ * `h|` → boolean or a holiday display name, `n|` → `CalendarNote` (`null` = tombstone),
+ * `cfg|targetBelt` → number, `cfg|holidayRegion` → `HolidayRegionId`.
+ * The union widens to `string` because holiday names are free-form.
+ */
+export type CellValue = string | number | boolean | CalendarNote | null;
 export interface Cell {
   v: CellValue;
   t: Stamp;
@@ -40,8 +44,10 @@ export function emptyDoc(): Doc {
 export const dateKey = (iso: string): string => `d|${iso}`;
 export const patternKey = (weekday: Weekday): string => `pat|${weekday}`;
 export const meetupKey = (weekStartISO: string): string => `m|${weekStartISO}`;
+export const holidayKey = (iso: string): string => `h|${iso}`;
 export const noteKey = (id: string): string => `n|${id}`;
 export const CFG_TARGET = 'cfg|targetBelt';
+export const CFG_HOLIDAY_REGION = 'cfg|holidayRegion';
 
 function isISODate(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -117,6 +123,25 @@ export function isMeetupOverride(doc: Doc, weekStartISO: string): boolean {
   const cell = doc.cells[meetupKey(weekStartISO)];
   return cell ? Boolean(cell.v) : isMeetupWeek(weekStartISO);
 }
+export function getHolidayRegion(doc: Doc): HolidayRegionId {
+  const value = doc.cells[CFG_HOLIDAY_REGION]?.v;
+  return isHolidayRegionId(value) ? value : DEFAULT_HOLIDAY_REGION;
+}
+/** Region default for the date, unless the user has explicitly added or removed it. */
+export function isHolidayOverride(doc: Doc, iso: string): boolean {
+  const cell = doc.cells[holidayKey(iso)];
+  if (cell) return Boolean(cell.v);
+  return holidayNameFor(getHolidayRegion(doc), iso) !== null;
+}
+/** Label for a resolved holiday: the user's own name when set, else the region's. */
+export function holidayLabel(doc: Doc, iso: string): string | null {
+  const cell = doc.cells[holidayKey(iso)];
+  if (cell && !cell.v) return null;
+  if (typeof cell?.v === 'string' && cell.v.trim()) return cell.v.trim();
+  const regionName = holidayNameFor(getHolidayRegion(doc), iso);
+  if (regionName) return regionName;
+  return cell?.v ? 'Holiday' : null;
+}
 export function getNotes(doc: Doc, start?: string, end?: string): CalendarNote[] {
   const notes: CalendarNote[] = [];
   for (const key of Object.keys(doc.cells)) {
@@ -161,7 +186,7 @@ export function resolveDay(
 ): ResolvedDay {
   const weekday = weekdayOf(iso);
   const override = doc.cells[dateKey(iso)]?.v as Status | undefined;
-  const holiday = isHolidayDate(iso);
+  const holiday = isHolidayOverride(doc, iso);
   let status: Status;
   if (override != null) status = override;
   else if (holiday) status = 'holiday';
@@ -209,7 +234,7 @@ export function migrate(doc: Doc): Doc {
       if (offset != null) {
         const iso = addDays(weekStart, offset);
         const raw = doc.cells[key].v;
-        const mapped = (typeof raw === 'string' && EXCEL_STATUS_MAP[raw]) || raw;
+        const mapped = (typeof raw === 'string' && LEGACY_STATUS_MAP[raw]) || raw;
         cells[dateKey(iso)] = { v: mapped as CellValue, t: doc.cells[key].t };
         delete cells[key];
         changed = true;

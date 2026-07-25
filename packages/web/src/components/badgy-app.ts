@@ -1,4 +1,4 @@
-import { beltBand, STATUS_LABEL, shiftMonth } from '@rto/shared';
+import { beltBand, STATUS_LABEL, shiftMonth } from '@badgy/shared';
 import { html, nothing } from 'lit';
 import { type InteractiveAuthFlow, reconnect } from '../auth/msal.js';
 import { getSession } from '../auth/session.js';
@@ -6,7 +6,7 @@ import { formatPct } from '../lib/format.js';
 import { STATUS_ICON, STATUS_ORDER } from '../lib/status.js';
 import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
-import { RtoElement } from './base.js';
+import { BadgyElement } from './base.js';
 import './compliance-bar.js';
 import './help-dialog.js';
 import type { MonthChangeDetail, MonthScroller } from './month-scroller.js';
@@ -30,7 +30,7 @@ const MONTHS = [
 ];
 type CalendarView = 'month' | 'year';
 
-export class RtoApp extends RtoElement {
+export class BadgyApp extends BadgyElement {
   static override properties = {
     year: { state: true },
     month0: { state: true },
@@ -213,7 +213,7 @@ export class RtoApp extends RtoElement {
             >
               ›
             </button>
-            <button class="mai-button today-btn" @click=${() => this.goToday()}>Today</button>
+            <button class="badgy-button today-btn" @click=${() => this.goToday()}>Today</button>
           </div>
           <div class="app-bar-actions">
             ${
@@ -250,7 +250,7 @@ export class RtoApp extends RtoElement {
             }
             ${this.statusPill()}
             <button
-              class="mai-button mai-button--icon"
+              class="badgy-button badgy-button--icon"
               @click=${() => {
                 this.activeDialog = 'help';
               }}
@@ -260,7 +260,7 @@ export class RtoApp extends RtoElement {
               ?
             </button>
             <button
-              class="mai-button mai-button--icon"
+              class="badgy-button badgy-button--icon"
               @click=${() => {
                 this.activeDialog = 'settings';
               }}
@@ -324,4 +324,4 @@ export class RtoApp extends RtoElement {
   }
 }
 
-customElements.define('rto-app', RtoApp);
+customElements.define('badgy-app', BadgyApp);
