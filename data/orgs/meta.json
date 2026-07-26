@@ -1,0 +1,34 @@
+{
+  "id": "meta",
+  "label": "Meta",
+  "summary": "Facebook / WhatsApp / Reality Labs: 3 days a week",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 3,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "reported",
+  "assumptions": [
+    "No measurement window is published.",
+    "No badge escalation thresholds are published.",
+    "The US federal holiday set is assumed for this preset.",
+    "This preset models the Facebook, WhatsApp and Reality Labs hybrid policy; Instagram US employees are subject to a separate 5-day office mandate effective 2026-02-02."
+  ],
+  "sources": [
+    {
+      "label": "CNBC Meta RTO announcement report",
+      "url": "https://www.cnbc.com/2023/06/01/meta-will-require-employees-to-return-to-the-office-three-days-a-week-starting-in-september.html"
+    }
+  ]
+}

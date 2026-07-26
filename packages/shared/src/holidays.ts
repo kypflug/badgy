@@ -1,12 +1,6 @@
-/**
- * Public-holiday rule engine.
- *
- * Regions are described as *rules* (fixed date, nth/last weekday of a month, Easter offsets,
- * weekend-observance shifts) rather than hardcoded date tables, so any year resolves without
- * yearly maintenance. Users pick a region in Settings and can add, remove or import their own
- * days on top of it — see the `h|` override cells in `sync/doc.ts`.
- */
+/** Public-holiday rule engine backed by generated JSON data. */
 import { addDays, toISO, weekdayOf } from './calendar.js';
+import { HOLIDAY_SETS } from './generated/data.js';
 import type { Weekday } from './types.js';
 
 export interface Holiday {
@@ -14,42 +8,38 @@ export interface Holiday {
   name: string;
 }
 
-export type HolidayRegionId =
-  | 'us-microsoft'
-  | 'us-federal'
-  | 'ca'
-  | 'uk'
-  | 'ie'
-  | 'au'
-  | 'de'
-  | 'fr'
-  | 'in';
+export type HolidayRegionId = string;
 
 export interface HolidayRegion {
   id: HolidayRegionId;
   label: string;
-  /** Shown under the region picker to set expectations about coverage. */
   note?: string;
 }
 
-/**
- * How a holiday moves when it lands on a weekend.
- * - `none` — stays put (most of continental Europe).
- * - `nearest-weekday` — Saturday → Friday, Sunday → Monday (United States).
- * - `next-weekday` — always forward to the next free weekday (UK/Ireland substitute days).
- */
-type Observance = 'none' | 'nearest-weekday' | 'next-weekday';
+export type Observance = 'none' | 'nearest-weekday' | 'next-weekday';
 
-type Rule =
+export type Rule =
   | { kind: 'fixed'; month: number; day: number; name: string; observance?: Observance }
   | { kind: 'nth-weekday'; month: number; weekday: Weekday; nth: number; name: string }
   | { kind: 'last-weekday'; month: number; weekday: Weekday; name: string }
-  /** Latest `weekday` falling on or before `month`/`day` — e.g. Canada's Victoria Day. */
   | { kind: 'weekday-on-or-before'; month: number; day: number; weekday: Weekday; name: string }
   | { kind: 'easter'; offset: number; name: string }
-  /** Anchored to an already-resolved rule's *observed* date — e.g. the day after Thanksgiving. */
   | { kind: 'relative'; to: string; offset: number; name: string }
-  | { kind: 'computed'; name: string; resolve: (year: number) => string };
+  | {
+      kind: 'fixed-or-nth-weekday';
+      month: number;
+      day: number;
+      onWeekday: Weekday;
+      weekday: Weekday;
+      nth: number;
+      name: string;
+    };
+
+export interface HolidaySet extends HolidayRegion {
+  rules: readonly Rule[];
+}
+
+const HOLIDAY_DATA: readonly HolidaySet[] = HOLIDAY_SETS;
 
 const ymd = (year: number, month: number, day: number): string =>
   toISO(new Date(Date.UTC(year, month - 1, day)));
@@ -73,7 +63,6 @@ export function easterSunday(year: number): string {
   return ymd(year, month, day);
 }
 
-/** Date of the `nth` (1-based) `weekday` in a month; `nth` past the end clamps to the last one. */
 function nthWeekday(year: number, month: number, weekday: Weekday, nth: number): string {
   const first = ymd(year, month, 1);
   const offset = (weekday - weekdayOf(first) + 7) % 7;
@@ -123,196 +112,25 @@ function resolveRule(rule: Rule, year: number, resolved: Map<string, string>): s
         throw new Error(`Holiday rule "${rule.name}" references unresolved "${rule.to}"`);
       return addDays(anchor, rule.offset);
     }
-    case 'computed':
-      return rule.resolve(year);
+    case 'fixed-or-nth-weekday': {
+      const fixed = ymd(year, rule.month, rule.day);
+      return weekdayOf(fixed) === rule.onWeekday
+        ? fixed
+        : nthWeekday(year, rule.month, rule.weekday, rule.nth);
+    }
   }
 }
 
-const NEW_YEAR_US: Rule = {
-  kind: 'fixed',
-  month: 1,
-  day: 1,
-  name: "New Year's Day",
-  observance: 'nearest-weekday',
-};
-const MLK: Rule = {
-  kind: 'nth-weekday',
-  month: 1,
-  weekday: 1,
-  nth: 3,
-  name: 'Martin Luther King Jr. Day',
-};
-const PRESIDENTS: Rule = {
-  kind: 'nth-weekday',
-  month: 2,
-  weekday: 1,
-  nth: 3,
-  name: "Presidents' Day",
-};
-const MEMORIAL: Rule = { kind: 'last-weekday', month: 5, weekday: 1, name: 'Memorial Day' };
-const INDEPENDENCE: Rule = {
-  kind: 'fixed',
-  month: 7,
-  day: 4,
-  name: 'Independence Day',
-  observance: 'nearest-weekday',
-};
-const LABOR_US: Rule = { kind: 'nth-weekday', month: 9, weekday: 1, nth: 1, name: 'Labor Day' };
-const THANKSGIVING: Rule = {
-  kind: 'nth-weekday',
-  month: 11,
-  weekday: 4,
-  nth: 4,
-  name: 'Thanksgiving Day',
-};
-const CHRISTMAS_US: Rule = {
-  kind: 'fixed',
-  month: 12,
-  day: 25,
-  name: 'Christmas Day',
-  observance: 'nearest-weekday',
-};
+const REGION_RULES = new Map(HOLIDAY_DATA.map((set) => [set.id, set.rules]));
 
-const REGION_RULES: Record<HolidayRegionId, readonly Rule[]> = {
-  // Microsoft's observed US holidays: the federal core minus Juneteenth, Columbus Day and
-  // Veterans Day, plus the day after Thanksgiving and Christmas Eve. Christmas Eve tracks the
-  // *observed* Christmas Day so the pair always stays adjacent.
-  'us-microsoft': [
-    NEW_YEAR_US,
-    MLK,
-    PRESIDENTS,
-    MEMORIAL,
-    INDEPENDENCE,
-    LABOR_US,
-    THANKSGIVING,
-    { kind: 'relative', to: 'Thanksgiving Day', offset: 1, name: 'Day after Thanksgiving' },
-    CHRISTMAS_US,
-    { kind: 'relative', to: 'Christmas Day', offset: -1, name: 'Christmas Eve' },
-  ],
-  'us-federal': [
-    NEW_YEAR_US,
-    MLK,
-    PRESIDENTS,
-    MEMORIAL,
-    { kind: 'fixed', month: 6, day: 19, name: 'Juneteenth', observance: 'nearest-weekday' },
-    INDEPENDENCE,
-    LABOR_US,
-    { kind: 'nth-weekday', month: 10, weekday: 1, nth: 2, name: 'Columbus Day' },
-    { kind: 'fixed', month: 11, day: 11, name: 'Veterans Day', observance: 'nearest-weekday' },
-    THANKSGIVING,
-    CHRISTMAS_US,
-  ],
-  ca: [
-    { kind: 'fixed', month: 1, day: 1, name: "New Year's Day", observance: 'next-weekday' },
-    { kind: 'easter', offset: -2, name: 'Good Friday' },
-    { kind: 'weekday-on-or-before', month: 5, day: 24, weekday: 1, name: 'Victoria Day' },
-    { kind: 'fixed', month: 7, day: 1, name: 'Canada Day', observance: 'next-weekday' },
-    { kind: 'nth-weekday', month: 9, weekday: 1, nth: 1, name: 'Labour Day' },
-    {
-      kind: 'fixed',
-      month: 9,
-      day: 30,
-      name: 'National Day for Truth and Reconciliation',
-      observance: 'next-weekday',
-    },
-    { kind: 'nth-weekday', month: 10, weekday: 1, nth: 2, name: 'Thanksgiving' },
-    { kind: 'fixed', month: 11, day: 11, name: 'Remembrance Day', observance: 'next-weekday' },
-    { kind: 'fixed', month: 12, day: 25, name: 'Christmas Day', observance: 'next-weekday' },
-    { kind: 'fixed', month: 12, day: 26, name: 'Boxing Day', observance: 'next-weekday' },
-  ],
-  uk: [
-    { kind: 'fixed', month: 1, day: 1, name: "New Year's Day", observance: 'next-weekday' },
-    { kind: 'easter', offset: -2, name: 'Good Friday' },
-    { kind: 'easter', offset: 1, name: 'Easter Monday' },
-    { kind: 'nth-weekday', month: 5, weekday: 1, nth: 1, name: 'Early May bank holiday' },
-    { kind: 'last-weekday', month: 5, weekday: 1, name: 'Spring bank holiday' },
-    { kind: 'last-weekday', month: 8, weekday: 1, name: 'Summer bank holiday' },
-    { kind: 'fixed', month: 12, day: 25, name: 'Christmas Day', observance: 'next-weekday' },
-    { kind: 'fixed', month: 12, day: 26, name: 'Boxing Day', observance: 'next-weekday' },
-  ],
-  ie: [
-    { kind: 'fixed', month: 1, day: 1, name: "New Year's Day", observance: 'next-weekday' },
-    {
-      kind: 'computed',
-      name: "St Brigid's Day",
-      // 1 February when that is a Friday, otherwise the first Monday in February.
-      resolve: (year) =>
-        weekdayOf(ymd(year, 2, 1)) === 5 ? ymd(year, 2, 1) : nthWeekday(year, 2, 1, 1),
-    },
-    { kind: 'fixed', month: 3, day: 17, name: "St Patrick's Day", observance: 'next-weekday' },
-    { kind: 'easter', offset: 1, name: 'Easter Monday' },
-    { kind: 'nth-weekday', month: 5, weekday: 1, nth: 1, name: 'May Day' },
-    { kind: 'nth-weekday', month: 6, weekday: 1, nth: 1, name: 'June bank holiday' },
-    { kind: 'nth-weekday', month: 8, weekday: 1, nth: 1, name: 'August bank holiday' },
-    { kind: 'last-weekday', month: 10, weekday: 1, name: 'October bank holiday' },
-    { kind: 'fixed', month: 12, day: 25, name: 'Christmas Day', observance: 'next-weekday' },
-    { kind: 'fixed', month: 12, day: 26, name: "St Stephen's Day", observance: 'next-weekday' },
-  ],
-  au: [
-    { kind: 'fixed', month: 1, day: 1, name: "New Year's Day", observance: 'next-weekday' },
-    { kind: 'fixed', month: 1, day: 26, name: 'Australia Day', observance: 'next-weekday' },
-    { kind: 'easter', offset: -2, name: 'Good Friday' },
-    { kind: 'easter', offset: 1, name: 'Easter Monday' },
-    { kind: 'fixed', month: 4, day: 25, name: 'Anzac Day' },
-    { kind: 'nth-weekday', month: 6, weekday: 1, nth: 2, name: "King's Birthday" },
-    { kind: 'fixed', month: 12, day: 25, name: 'Christmas Day', observance: 'next-weekday' },
-    { kind: 'fixed', month: 12, day: 26, name: 'Boxing Day', observance: 'next-weekday' },
-  ],
-  de: [
-    { kind: 'fixed', month: 1, day: 1, name: 'Neujahr' },
-    { kind: 'easter', offset: -2, name: 'Karfreitag' },
-    { kind: 'easter', offset: 1, name: 'Ostermontag' },
-    { kind: 'fixed', month: 5, day: 1, name: 'Tag der Arbeit' },
-    { kind: 'easter', offset: 39, name: 'Christi Himmelfahrt' },
-    { kind: 'easter', offset: 50, name: 'Pfingstmontag' },
-    { kind: 'fixed', month: 10, day: 3, name: 'Tag der Deutschen Einheit' },
-    { kind: 'fixed', month: 12, day: 25, name: '1. Weihnachtstag' },
-    { kind: 'fixed', month: 12, day: 26, name: '2. Weihnachtstag' },
-  ],
-  fr: [
-    { kind: 'fixed', month: 1, day: 1, name: "Jour de l'An" },
-    { kind: 'easter', offset: 1, name: 'Lundi de Pâques' },
-    { kind: 'fixed', month: 5, day: 1, name: 'Fête du Travail' },
-    { kind: 'fixed', month: 5, day: 8, name: 'Victoire 1945' },
-    { kind: 'easter', offset: 39, name: 'Ascension' },
-    { kind: 'easter', offset: 50, name: 'Lundi de Pentecôte' },
-    { kind: 'fixed', month: 7, day: 14, name: 'Fête nationale' },
-    { kind: 'fixed', month: 8, day: 15, name: 'Assomption' },
-    { kind: 'fixed', month: 11, day: 1, name: 'Toussaint' },
-    { kind: 'fixed', month: 11, day: 11, name: 'Armistice 1918' },
-    { kind: 'fixed', month: 12, day: 25, name: 'Noël' },
-  ],
-  in: [
-    { kind: 'fixed', month: 1, day: 26, name: 'Republic Day' },
-    { kind: 'fixed', month: 8, day: 15, name: 'Independence Day' },
-    { kind: 'fixed', month: 10, day: 2, name: 'Gandhi Jayanti' },
-  ],
-};
-
-export const HOLIDAY_REGIONS: readonly HolidayRegion[] = [
-  {
-    id: 'us-microsoft',
-    label: 'United States — Microsoft',
-    note: 'Microsoft’s observed US holidays.',
-  },
-  { id: 'us-federal', label: 'United States — federal' },
-  { id: 'ca', label: 'Canada' },
-  { id: 'uk', label: 'United Kingdom' },
-  { id: 'ie', label: 'Ireland' },
-  { id: 'au', label: 'Australia' },
-  { id: 'de', label: 'Germany' },
-  { id: 'fr', label: 'France' },
-  {
-    id: 'in',
-    label: 'India',
-    note: 'Gazetted national days only — festival dates vary, so import an .ics for the rest.',
-  },
-];
+export const HOLIDAY_REGIONS: readonly HolidayRegion[] = HOLIDAY_DATA.map(({ id, label, note }) =>
+  note ? { id, label, note } : { id, label },
+);
 
 export const DEFAULT_HOLIDAY_REGION: HolidayRegionId = 'us-microsoft';
 
 export function isHolidayRegionId(value: unknown): value is HolidayRegionId {
-  return typeof value === 'string' && value in REGION_RULES;
+  return typeof value === 'string' && REGION_RULES.has(value);
 }
 
 const cache = new Map<string, readonly Holiday[]>();
@@ -323,10 +141,13 @@ export function holidaysForYear(region: HolidayRegionId, year: number): readonly
   const hit = cache.get(key);
   if (hit) return hit;
 
+  const rules = REGION_RULES.get(region);
+  if (!rules) return [];
+
   const taken = new Set<string>();
   const resolved = new Map<string, string>();
   const out: Holiday[] = [];
-  for (const rule of REGION_RULES[region]) {
+  for (const rule of rules) {
     const observance = rule.kind === 'fixed' ? (rule.observance ?? 'none') : 'none';
     const date = shiftForObservance(resolveRule(rule, year, resolved), observance, taken);
     resolved.set(rule.name, date);
@@ -341,9 +162,7 @@ export function holidaysForYear(region: HolidayRegionId, year: number): readonly
 }
 
 /**
- * Holidays *observed on dates inside* `year`. A holiday can shift across a year boundary — a
- * Saturday 1 January is observed on 31 December of the previous year — so the neighbouring
- * years are resolved and filtered too.
+ * Holidays observed on dates inside `year`, including shifts from neighbouring calendar years.
  */
 export function holidaysInYear(region: HolidayRegionId, year: number): readonly Holiday[] {
   const prefix = `${String(year).padStart(4, '0')}-`;

@@ -1,0 +1,40 @@
+{
+  "id": "ibm",
+  "label": "IBM",
+  "summary": "3 days a week at assigned office, hub or client site",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 3,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "reported",
+  "effectiveDate": "2025-07-01",
+  "geographicScope": "Within 50 miles of an assigned office, sales hub or client site",
+  "assumptions": [
+    "No measurement window is published.",
+    "The US federal holiday set is assumed for this preset.",
+    "The sources cover US Sales staff and US Cloud employees specifically; other IBM divisions may differ."
+  ],
+  "notes": "Press reports say approved leave does not count toward the requirement.",
+  "sources": [
+    {
+      "label": "The Register IBM RTO report",
+      "url": "https://www.theregister.com/on-prem/2025/04/18/ibm-orders-us-sales-to-locate-near-customers-or-offices/479328"
+    },
+    {
+      "label": "Buildremote IBM RTO tracker",
+      "url": "https://buildremote.co/rto-tracker/ibm/"
+    }
+  ]
+}

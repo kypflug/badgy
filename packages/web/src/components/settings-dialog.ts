@@ -1,7 +1,13 @@
 import {
+  type ComplianceScheme,
+  defaultSchemeFor,
   HOLIDAY_REGIONS,
   type HolidayRegionId,
   isWeekend,
+  ORGS,
+  SCHEME_KINDS,
+  SCHEME_LABEL,
+  type SchemeKind,
   STATUS_LABEL,
   type Status,
   WEEK_DAYS,
@@ -9,7 +15,7 @@ import {
   weekStartsOfYear,
 } from '@badgy/shared';
 import { html, nothing } from 'lit';
-import { type InteractiveAuthFlow, switchAccount } from '../auth/msal.js';
+import { type InteractiveAuthFlow, providerMeta, switchAccount } from '../auth/provider.js';
 import { getSession } from '../auth/session.js';
 import { formatPct, formatWeekLabel } from '../lib/format.js';
 import { STATUS_ORDER } from '../lib/status.js';
@@ -24,6 +30,143 @@ const THEME_MODES: { id: ThemeMode; label: string }[] = [
 ];
 
 const MAX_ICS_BYTES = 2_000_000;
+
+const CONFIDENCE_LABEL = {
+  official: 'Published by the employer',
+  reported: 'Reported by the press',
+  community: 'Contributed by the community',
+} as const;
+
+/** Numeric knobs for the active scheme kind, so Settings renders itself from the taxonomy. */
+interface SchemeField {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
+  apply: (scheme: ComplianceScheme, value: number) => ComplianceScheme;
+}
+
+function schemeFields(scheme: ComplianceScheme): SchemeField[] {
+  switch (scheme.kind) {
+    case 'best-of-window':
+      return [
+        {
+          label: 'Best weeks counted',
+          value: scheme.bestCount,
+          min: 1,
+          max: scheme.windowWeeks,
+          step: 1,
+          apply: (s, v) => ({ ...s, bestCount: v }) as ComplianceScheme,
+        },
+        {
+          label: 'Window',
+          value: scheme.windowWeeks,
+          min: 2,
+          max: 52,
+          step: 1,
+          suffix: 'weeks',
+          apply: (s, v) => {
+            if (s.kind !== 'best-of-window') return s;
+            return {
+              ...s,
+              windowWeeks: v,
+              bestCount: Math.min(s.bestCount, v),
+            };
+          },
+        },
+        {
+          label: 'Days in a full week',
+          value: scheme.weeklyCap,
+          min: 1,
+          max: 7,
+          step: 1,
+          apply: (s, v) => ({ ...s, weeklyCap: v }) as ComplianceScheme,
+        },
+      ];
+    case 'qualifying-weeks':
+      return [
+        {
+          label: 'Days to qualify a week',
+          value: scheme.daysPerWeek,
+          min: 1,
+          max: 7,
+          step: 1,
+          apply: (s, v) => ({ ...s, daysPerWeek: v }) as ComplianceScheme,
+        },
+        {
+          label: 'Qualifying weeks needed',
+          value: scheme.minQualifying,
+          min: 1,
+          max: scheme.windowWeeks,
+          step: 1,
+          apply: (s, v) => ({ ...s, minQualifying: v }) as ComplianceScheme,
+        },
+        {
+          label: 'Window',
+          value: scheme.windowWeeks,
+          min: 2,
+          max: 52,
+          step: 1,
+          suffix: 'weeks',
+          apply: (s, v) => {
+            if (s.kind !== 'qualifying-weeks') return s;
+            return {
+              ...s,
+              windowWeeks: v,
+              minQualifying: Math.min(s.minQualifying, v),
+            };
+          },
+        },
+      ];
+    case 'weekly-quota':
+      return [
+        {
+          label: 'Office days a week',
+          value: scheme.daysPerWeek,
+          min: 0,
+          max: 7,
+          step: 1,
+          apply: (s, v) => ({ ...s, daysPerWeek: v }) as ComplianceScheme,
+        },
+        {
+          label: 'Averaged over',
+          value: scheme.averagingWeeks,
+          min: 1,
+          max: 26,
+          step: 1,
+          suffix: 'weeks',
+          apply: (s, v) => ({ ...s, averagingWeeks: v }) as ComplianceScheme,
+        },
+      ];
+    case 'period-quota':
+      return [
+        {
+          label: `Office days a ${scheme.period}`,
+          value: scheme.days,
+          min: 1,
+          max: 92,
+          step: 1,
+          apply: (s, v) => ({ ...s, days: v }) as ComplianceScheme,
+        },
+      ];
+    case 'period-percentage':
+      return [
+        {
+          label: `Share of working days a ${scheme.period}`,
+          value: Math.round(scheme.percent * 100),
+          min: 0,
+          max: 100,
+          step: 5,
+          suffix: '%',
+          apply: (s, v) => ({ ...s, percent: v / 100 }) as ComplianceScheme,
+        },
+      ];
+    case 'none':
+      return [];
+  }
+}
 
 const formatHolidayDate = (iso: string): string =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString(undefined, {
@@ -71,6 +214,12 @@ export class SettingsDialog extends BadgyElement {
     store.setHolidayRegion(region);
     this.holidayMsg = '';
   }
+  private setSchemeKind(kind: SchemeKind): void {
+    store.setScheme(defaultSchemeFor(kind, store.scheme));
+  }
+  private patchScheme(next: ComplianceScheme): void {
+    store.setScheme(next);
+  }
   private addHoliday(value: string): void {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
     if (store.isHoliday(value)) {
@@ -112,11 +261,11 @@ export class SettingsDialog extends BadgyElement {
   private beginAccountSwitch(): void {
     this.accountMessage = '';
     if (this.accountFlow?.snapshot.stage === 'blocked') {
-      this.accountFlow.openMicrosoft();
+      this.accountFlow.openProvider();
       this.accountStage = this.accountFlow.snapshot.stage;
       return;
     }
-    const flow = switchAccount();
+    const flow = switchAccount(getSession()?.provider);
     this.accountFlow = flow;
     const update = (): void => {
       this.accountStage = flow.snapshot.stage;
@@ -138,9 +287,10 @@ export class SettingsDialog extends BadgyElement {
       this.accountMessage = 'Sign-out could not reach the server. Try again when connected.';
   }
   private accountSwitchLabel(): string {
+    const name = providerMeta(getSession()?.provider ?? 'microsoft').label;
     if (this.accountStage === 'starting') return 'Preparing…';
-    if (this.accountStage === 'waiting') return 'Finish in Microsoft…';
-    if (this.accountStage === 'blocked') return 'Open Microsoft sign-in';
+    if (this.accountStage === 'waiting') return `Finish in ${name}…`;
+    if (this.accountStage === 'blocked') return `Open ${name} sign-in`;
     if (this.accountStage === 'failed') return 'Try switching again';
     return 'Use another account';
   }
@@ -155,6 +305,9 @@ export class SettingsDialog extends BadgyElement {
     const region = store.holidayRegion;
     const regionNote = HOLIDAY_REGIONS.find((r) => r.id === region)?.note;
     const holidays = store.holidaysInYear(this.holidayYear);
+    const org = store.org;
+    const scheme = store.scheme;
+    const fields = schemeFields(scheme);
 
     return html`
       <div class="dialog-backdrop" @click=${() => this.close()}></div>
@@ -194,7 +347,161 @@ export class SettingsDialog extends BadgyElement {
         </section>
 
         <section class="setting">
-          <h3 class="setting-title">Target BELT — ${formatPct(store.target)}</h3>
+          <h3 class="setting-title">Workplace policy</h3>
+          <p class="setting-help">
+            Pick the workplace whose return-to-office rule you're measured against. This only sets
+            starting values — every number below stays yours to change.
+          </p>
+          <label class="field field--inline">
+            <span class="field-label">Workplace</span>
+            <select
+              class="select"
+              @change=${(e: Event) => store.setOrg((e.target as HTMLSelectElement).value)}
+            >
+              ${ORGS.map(
+                (o) => html`<option value=${o.id} ?selected=${o.id === org.id}>${o.label}</option>`,
+              )}
+            </select>
+          </label>
+          <p class="setting-help">
+            <span class="org-confidence org-confidence--${org.confidence}">
+              ${CONFIDENCE_LABEL[org.confidence]}
+            </span>
+            ${org.effectiveDate ? html` · effective ${org.effectiveDate}` : nothing}
+            ${org.geographicScope ? html` · ${org.geographicScope}` : nothing}
+          </p>
+          ${
+            org.assumptions?.length
+              ? html`<details class="policy-assumptions">
+                  <summary>${org.assumptions.length} detail${org.assumptions.length === 1 ? ' is' : 's are'} assumed, not published</summary>
+                  <ul class="help-list">
+                    ${org.assumptions.map((a) => html`<li>${a}</li>`)}
+                  </ul>
+                </details>`
+              : nothing
+          }
+          <p class="setting-help">
+            ${org.sources.map(
+              (s, i) =>
+                html`${i ? ' · ' : 'Sources: '}<a
+                    class="signin-link"
+                    href=${s.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    >${s.label}</a
+                  >`,
+            )}
+          </p>
+
+          <label class="field field--inline">
+            <span class="field-label">Measured as</span>
+            <select
+              class="select"
+              @change=${(e: Event) =>
+                this.setSchemeKind((e.target as HTMLSelectElement).value as SchemeKind)}
+            >
+              ${SCHEME_KINDS.map(
+                (k) =>
+                  html`<option value=${k} ?selected=${k === scheme.kind}>
+                    ${SCHEME_LABEL[k]}
+                  </option>`,
+              )}
+            </select>
+          </label>
+          ${
+            scheme.kind === 'period-quota' || scheme.kind === 'period-percentage'
+              ? html`<label class="field field--inline">
+                  <span class="field-label">Period</span>
+                  <select
+                    class="select"
+                    @change=${(e: Event) =>
+                      this.patchScheme({
+                        ...scheme,
+                        period: (e.target as HTMLSelectElement).value as 'month' | 'quarter',
+                      } as ComplianceScheme)}
+                  >
+                    <option value="month" ?selected=${scheme.period === 'month'}>Month</option>
+                    <option value="quarter" ?selected=${scheme.period === 'quarter'}>Quarter</option>
+                  </select>
+                </label>`
+              : nothing
+          }
+          ${fields.map(
+            (f) => html`<label class="field field--inline">
+              <span class="field-label">${f.label}</span>
+              <input
+                class="select number-input"
+                type="number"
+                min=${f.min}
+                max=${f.max}
+                step=${f.step}
+                .value=${String(f.value)}
+                @change=${(e: Event) => {
+                  const input = e.target as HTMLInputElement;
+                  const value = Math.min(f.max, Math.max(f.min, Number(input.value)));
+                  input.value = String(value);
+                  this.patchScheme(f.apply(scheme, value));
+                }}
+              />
+              ${f.suffix ? html`<span class="field-suffix">${f.suffix}</span>` : nothing}
+            </label>`,
+          )}
+
+          <h4 class="setting-subtitle">Time away from the office</h4>
+          <label class="toggle-row">
+            <input
+              type="checkbox"
+              .checked=${scheme.absence.travelCountsAsOffice}
+              @change=${(e: Event) =>
+                this.patchScheme({
+                  ...scheme,
+                  absence: {
+                    ...scheme.absence,
+                    travelCountsAsOffice: (e.target as HTMLInputElement).checked,
+                  },
+                })}
+            />
+            <span>Business travel counts as office time</span>
+          </label>
+          ${
+            scheme.kind === 'best-of-window'
+              ? html`<label class="toggle-row">
+                    <input type="checkbox" .checked=${false} disabled />
+                    <span>Time off is already absorbed by the rolling window</span>
+                  </label>
+                  <p class="setting-help">
+                    Best-of-window policies count your strongest weeks, so time away does not need a
+                    separate weekly proration.
+                  </p>`
+              : html`<label class="toggle-row">
+                  <input
+                    type="checkbox"
+                    .checked=${scheme.absence.proration === 'prorate'}
+                    @change=${(e: Event) =>
+                      this.patchScheme({
+                        ...scheme,
+                        absence: {
+                          ...scheme.absence,
+                          proration: (e.target as HTMLInputElement).checked ? 'prorate' : 'ignore',
+                        },
+                      })}
+                  />
+                  <span>Time off and holidays reduce the week's requirement</span>
+                </label>`
+          }
+          ${
+            store.schemeIsCustom
+              ? html`<div class="chip-row">
+                  <button class="badgy-button" @click=${() => store.resetScheme()}>
+                    Reset to ${org.label} defaults
+                  </button>
+                </div>`
+              : nothing
+          }
+        </section>
+
+        <section class="setting">
+          <h3 class="setting-title">Target — ${formatPct(store.target)}</h3>
           <p class="setting-help">Drives the "on track?" indicator and the planner.</p>
           <input
             class="range"
@@ -223,7 +530,7 @@ export class SettingsDialog extends BadgyElement {
 
         <section class="setting">
           <h3 class="setting-title">Meetup weeks — ${year}</h3>
-          <p class="setting-help">Highlighted on the calendar; they don't affect BELT.</p>
+          <p class="setting-help">Highlighted on the calendar; they never affect your score.</p>
           <div class="chip-row">
             ${
               meetups.length
@@ -256,7 +563,7 @@ export class SettingsDialog extends BadgyElement {
         <section class="setting">
           <h3 class="setting-title">Holidays</h3>
           <p class="setting-help">
-            Holidays fill in automatically and never count toward BELT. Pick the set that matches
+            Holidays fill in automatically and never count toward your score. Pick the set that matches
             your organization, then add or remove individual days.
           </p>
           <label class="field field--inline">
@@ -348,7 +655,8 @@ export class SettingsDialog extends BadgyElement {
             ? html`<section class="setting">
               <h3 class="setting-title">Account</h3>
               <p class="setting-help">
-                Signed in as <strong>${session.name}</strong>. Your data lives in your OneDrive.
+                Signed in as <strong>${session.name}</strong>. Your data lives in your
+                ${providerMeta(session.provider).label === 'Google' ? 'Google Drive' : 'OneDrive'}.
               </p>
               <div class="chip-row">
                 <button

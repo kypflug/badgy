@@ -1,18 +1,56 @@
 /**
  * Client auth via the token-mediating BFF. Long-lived refresh tokens stay server-side; the
- * browser holds only an HttpOnly session cookie and short-lived Graph access tokens.
+ * browser holds only an HttpOnly session cookie and short-lived provider access tokens.
+ *
+ * Two identity providers are supported, and the provider also decides where the attendance
+ * document lives: Microsoft → the OneDrive app folder, Google → the Drive `appDataFolder`.
+ * Either way the document goes straight from the browser to the provider's API.
  */
 
 export const AUTH_INTERACTION_REQUIRED = 'auth_interaction_required';
-const AUTH_WINDOW_NAME = 'badgy-microsoft-auth';
+const AUTH_WINDOW_NAME = 'badgy-auth';
 const POLL_INTERVAL_MS = 1_000;
 const CLAIM_RESUME_GRACE_MS = 30 * 60_000;
 const START_RETRIES_MS = [0, 350, 1_000] as const;
+
+export type ProviderId = 'microsoft' | 'google';
+
+export interface ProviderMeta {
+  id: ProviderId;
+  label: string;
+  /** Where this provider stores the document, for the sign-in card's sub-caption. */
+  storage: string;
+}
+
+export const PROVIDERS: readonly ProviderMeta[] = [
+  { id: 'microsoft', label: 'Microsoft', storage: 'Saved to your OneDrive' },
+  { id: 'google', label: 'Google', storage: 'Saved to your Google Drive' },
+];
+
+export const DEFAULT_PROVIDER: ProviderId = 'microsoft';
+
+/**
+ * Providers to offer on the sign-in card. Google is withheld until its OAuth client is verified,
+ * but the rest of the Google path stays live: an account that already signed in with Google keeps
+ * resolving through `providerMeta`, `/auth/me` and the Drive transport regardless of this flag.
+ */
+export function signInProviders(googleEnabled: boolean): readonly ProviderMeta[] {
+  return googleEnabled ? PROVIDERS : PROVIDERS.filter((p) => p.id !== 'google');
+}
+
+export function isProviderId(value: unknown): value is ProviderId {
+  return value === 'microsoft' || value === 'google';
+}
+
+export function providerMeta(id: ProviderId): ProviderMeta {
+  return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
+}
 
 export interface AuthAccount {
   id: string;
   name: string;
   email: string;
+  provider: ProviderId;
 }
 
 export type AuthInitResult =
@@ -40,7 +78,7 @@ interface ErrorResponse {
 
 interface CompleteResponse {
   status: 'pending' | 'complete' | 'failed' | 'expired' | 'invalid' | 'error';
-  account?: AuthAccount;
+  account?: { id: string; name: string; email: string; provider?: string };
   error?: string;
 }
 
@@ -61,6 +99,11 @@ async function responseJson<T>(response: Response): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+/** Sessions predating multi-provider support carry no `provider` and are always Microsoft. */
+function providerOf(value: unknown): ProviderId {
+  return isProviderId(value) ? value : DEFAULT_PROVIDER;
 }
 
 /** Resolve the BFF session without turning temporary service failures into a signed-out state. */
@@ -86,9 +129,15 @@ export async function initAuth(): Promise<AuthInitResult> {
         id: string;
         name: string;
         email: string;
+        provider?: string;
       }>(response);
       if (!data?.signedIn) return { status: 'signed-out', reason: 'signed_out' };
-      const account = { id: data.id, name: data.name, email: data.email };
+      const account: AuthAccount = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        provider: providerOf(data.provider),
+      };
       return { status: 'signed-in', account };
     } catch {
       // Retry below; the dock app can still open its local cache after all retries fail.
@@ -104,14 +153,21 @@ export class InteractiveAuthFlow extends EventTarget {
   private popup: Window | null = null;
   private authorizationUrl: string | null = null;
 
-  constructor(private readonly selectAccount: boolean) {
+  constructor(
+    readonly provider: ProviderId,
+    private readonly selectAccount: boolean,
+  ) {
     super();
     this.popup = this.openWindow();
     this.completion = this.run();
   }
 
-  /** Retry opening Microsoft from a fresh user gesture after Safari blocks the initial popup. */
-  openMicrosoft(): boolean {
+  get providerLabel(): string {
+    return providerMeta(this.provider).label;
+  }
+
+  /** Retry opening the provider from a fresh user gesture after Safari blocks the initial popup. */
+  openProvider(): boolean {
     this.popup = this.openWindow(this.authorizationUrl ?? undefined);
     if (!this.popup) {
       this.setSnapshot('blocked', null);
@@ -129,8 +185,9 @@ export class InteractiveAuthFlow extends EventTarget {
     );
     if (popup && !url) {
       try {
-        popup.document.title = 'Opening Microsoft sign-in…';
-        popup.document.body.textContent = 'Opening Microsoft sign-in…';
+        const message = `Opening ${this.providerLabel} sign-in…`;
+        popup.document.title = message;
+        popup.document.body.textContent = message;
       } catch {
         // The window may already have crossed into a separate Safari context.
       }
@@ -152,7 +209,7 @@ export class InteractiveAuthFlow extends EventTarget {
           'content-type': 'application/json',
           'x-requested-with': 'badgy',
         },
-        body: JSON.stringify({ selectAccount: this.selectAccount }),
+        body: JSON.stringify({ selectAccount: this.selectAccount, provider: this.provider }),
       });
       const start = await responseJson<StartResponse & ErrorResponse>(startResponse);
       if (!startResponse.ok || !start) throw new Error(start?.error ?? 'auth_start_failed');
@@ -198,7 +255,12 @@ export class InteractiveAuthFlow extends EventTarget {
         if (response.ok && result?.status === 'complete' && result.account) {
           this.setSnapshot('complete', null);
           if (this.popup && !this.popup.closed) this.popup.close();
-          return result.account;
+          return {
+            id: result.account.id,
+            name: result.account.name,
+            email: result.account.email,
+            provider: providerOf(result.account.provider ?? this.provider),
+          };
         }
         if (response.status >= 500) continue;
         throw new Error(result?.error ?? `auth_complete_${response.status}`);
@@ -215,9 +277,12 @@ export class InteractiveAuthFlow extends EventTarget {
 
 let activeFlow: InteractiveAuthFlow | null = null;
 
-export function startInteractiveAuth(selectAccount = false): InteractiveAuthFlow {
+export function startInteractiveAuth(
+  provider: ProviderId = DEFAULT_PROVIDER,
+  selectAccount = false,
+): InteractiveAuthFlow {
   if (activeFlow) return activeFlow;
-  const flow = new InteractiveAuthFlow(selectAccount);
+  const flow = new InteractiveAuthFlow(provider, selectAccount);
   activeFlow = flow;
   void flow.completion
     .finally(() => {
@@ -227,16 +292,16 @@ export function startInteractiveAuth(selectAccount = false): InteractiveAuthFlow
   return flow;
 }
 
-export function signIn(): InteractiveAuthFlow {
-  return startInteractiveAuth(false);
+export function signIn(provider: ProviderId = DEFAULT_PROVIDER): InteractiveAuthFlow {
+  return startInteractiveAuth(provider, false);
 }
 
-export function reconnect(): InteractiveAuthFlow {
-  return startInteractiveAuth(false);
+export function reconnect(provider: ProviderId = DEFAULT_PROVIDER): InteractiveAuthFlow {
+  return startInteractiveAuth(provider, false);
 }
 
-export function switchAccount(): InteractiveAuthFlow {
-  return startInteractiveAuth(true);
+export function switchAccount(provider: ProviderId = DEFAULT_PROVIDER): InteractiveAuthFlow {
+  return startInteractiveAuth(provider, true);
 }
 
 export async function signOut(): Promise<boolean> {
@@ -255,8 +320,11 @@ export async function signOut(): Promise<boolean> {
 
 let cached: { token: string; exp: number } | null = null;
 
-/** A Graph access token brokered by the BFF, cached client-side until ~1 min before expiry. */
-export async function getGraphToken(): Promise<string> {
+/**
+ * An access token for the signed-in provider's storage API, brokered by the BFF and cached
+ * client-side until ~1 min before expiry. The BFF resolves the provider from the session cookie.
+ */
+export async function getAccessToken(): Promise<string> {
   const now = Date.now();
   if (cached && cached.exp - 60_000 > now) return cached.token;
   const response = await fetch('/api/token', {

@@ -1,0 +1,39 @@
+{
+  "id": "salesforce",
+  "label": "Salesforce",
+  "summary": "10 office days each quarter",
+  "scheme": {
+    "kind": "period-quota",
+    "period": "quarter",
+    "days": 10,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "official",
+  "effectiveDate": "2024-10-01",
+  "assumptions": [
+    "PTO treatment inside the quarterly quota is not documented — Badgy assumes approved leave reduces the working-day pool while the 10-day target stays absolute.",
+    "This preset models the Office-Flex engineering track; Office-Based roles such as sales, workplace services, data-centre engineering and onsite support are 4–5 days per week, while the Remote track has no office minimum.",
+    "The US federal holiday set is assumed for this preset."
+  ],
+  "notes": "The separate Office-Based track is 4–5 days a week.",
+  "sources": [
+    {
+      "label": "Salesforce hybrid work guidelines",
+      "url": "https://www.salesforce.com/news/stories/hybrid-work-guidelines/"
+    },
+    {
+      "label": "Entrepreneur Salesforce RTO report",
+      "url": "https://www.entrepreneur.com/business-news/salesforce-will-require-employees-in-office-5-times-per-week/477422"
+    }
+  ]
+}

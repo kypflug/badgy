@@ -5,10 +5,19 @@ import { InteractionRequiredAuthError, ServerError } from '@azure/msal-node';
 import { logout } from '../functions/auth-logout';
 import { isValidEncryptionKey } from '../lib/crypto';
 import { classifyTokenFailure, isCorruptTokenCacheFailure } from '../lib/errors';
+import { isProviderId } from '../lib/providers';
+import { createGoogleProvider, decodeGoogleIdToken, type FetchLike } from '../lib/providers/google';
 import { FixedWindowRateLimiter, forwardedClientKey } from '../lib/rate-limit';
 import { isBadgyRequest } from '../lib/req';
-import { clearCookie, oauthCookie, sessionCookie } from '../lib/session';
-import { isConcurrencyConflict, isEntityNotFound, StoreError } from '../lib/store';
+import {
+  clearCookie,
+  oauthCookie,
+  readSessionResult,
+  sessionCookie,
+  sessionProvider,
+  validSession,
+} from '../lib/session';
+import { cacheRowKey, isConcurrencyConflict, isEntityNotFound, StoreError } from '../lib/store';
 import {
   AUTH_CLAIM_TTL_MS,
   AUTH_REDEMPTION_LEASE_MS,
@@ -35,6 +44,14 @@ function transaction(overrides: Partial<AuthTransactionData> = {}): AuthTransact
     status: 'pending',
     ...overrides,
   };
+}
+
+function googleIdToken(payload: Record<string, unknown>): string {
+  return [
+    Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url'),
+    Buffer.from(JSON.stringify(payload)).toString('base64url'),
+    '',
+  ].join('.');
 }
 
 test('poll secrets are hashed and verified without storing the secret', () => {
@@ -297,6 +314,101 @@ test('session and OAuth cookies include absolute and relative expiry', () => {
   assert.equal((cleared.expires as Date).getTime(), 0);
 });
 
+test('provider ids are limited to Microsoft and Google', () => {
+  assert.equal(isProviderId('microsoft'), true);
+  assert.equal(isProviderId('google'), true);
+  assert.equal(isProviderId('github'), false);
+  assert.equal(isProviderId(undefined), false);
+});
+
+test('sessions default to Microsoft and preserve Google provider cookies', () => {
+  const legacy = { uid: 'id', name: 'name', email: 'email' };
+  assert.equal(validSession(legacy), true);
+  assert.equal(sessionProvider(legacy), 'microsoft');
+
+  const cookie = sessionCookie({ ...legacy, provider: 'google' }, true);
+  const request = new HttpRequest({
+    method: 'GET',
+    url: 'https://badgy.tech/api/auth/me',
+    headers: { cookie: `${cookie.name}=${encodeURIComponent(cookie.value)}` },
+  });
+  const result = readSessionResult(request);
+  assert.equal(result.status, 'valid');
+  if (result.status !== 'valid') return;
+  assert.equal(result.session.provider, 'google');
+  assert.equal(sessionProvider(result.session), 'google');
+});
+
+test('provider storage keys keep Microsoft legacy derivation and namespace Google', () => {
+  const uid = 'same-user';
+  assert.equal(cacheRowKey('microsoft', uid), cacheRowKey('microsoft', uid));
+  assert.equal(
+    cacheRowKey('microsoft', uid),
+    '22f1c171e7e2f7446db324e6662359999ff7642c68bc65c219cb4e09de5b3b90',
+  );
+  assert.notEqual(cacheRowKey('google', uid), cacheRowKey('microsoft', uid));
+});
+
+test('Google authorization URL requests offline appdata access with optional consent prompt', async () => {
+  process.env.GOOGLE_CLIENT_ID = 'google-client';
+  process.env.GOOGLE_CLIENT_SECRET = 'google-secret';
+  const provider = createGoogleProvider();
+  const base = {
+    redirectUri: 'https://badgy.tech/api/auth/callback',
+    state: 'state',
+    codeChallenge: 'challenge',
+  };
+  const plain = new URL(await provider.authorizationUrl({ ...base, selectAccount: false }));
+  assert.equal(plain.searchParams.get('access_type'), 'offline');
+  assert.equal(plain.searchParams.get('code_challenge_method'), 'S256');
+  assert.match(plain.searchParams.get('scope') ?? '', /drive\.appdata/);
+  assert.equal(plain.searchParams.get('include_granted_scopes'), null);
+  assert.equal(plain.searchParams.get('prompt'), 'consent');
+
+  const selected = new URL(await provider.authorizationUrl({ ...base, selectAccount: true }));
+  assert.equal(selected.searchParams.get('prompt'), 'consent select_account');
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
+});
+
+test('Google id_token decoder extracts identity and rejects malformed tokens', () => {
+  const account = decodeGoogleIdToken(
+    googleIdToken({ sub: 'sub-id', email: 'user@example.com', name: 'User' }),
+  );
+  assert.deepEqual(account, { id: 'sub-id', email: 'user@example.com', name: 'User' });
+  assert.throws(() => decodeGoogleIdToken('malformed'), /Malformed Google id_token/);
+});
+
+test('Google refresh keeps previous refresh token when Google omits a rotated one', async () => {
+  process.env.GOOGLE_CLIENT_ID = 'google-client';
+  process.env.GOOGLE_CLIENT_SECRET = 'google-secret';
+  let body: URLSearchParams | undefined;
+  const fetchImpl: FetchLike = async (_input, init) => {
+    body = init?.body;
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { access_token: 'access-token', expires_in: 3600 };
+      },
+    };
+  };
+  const provider = createGoogleProvider(fetchImpl);
+  const cache = JSON.stringify({
+    v: 1,
+    refreshToken: 'refresh-token',
+    sub: 'sub-id',
+    email: 'user@example.com',
+    name: 'User',
+  });
+  const result = await provider.accessToken(cache);
+  assert.equal(result.token.accessToken, 'access-token');
+  assert.equal(body?.get('grant_type'), 'refresh_token');
+  assert.equal(JSON.parse(result.cache).refreshToken, 'refresh-token');
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
+});
+
 test('token failures distinguish reauthentication from service failures', () => {
   assert.equal(
     classifyTokenFailure(new InteractionRequiredAuthError('interaction_required')),
@@ -315,6 +427,7 @@ test('token failures distinguish reauthentication from service failures', () => 
   assert.equal(classifyTokenFailure(new Error('network failure')), 'unavailable');
   assert.equal(classifyTokenFailure(new StoreError('encryption')), 'unavailable');
   assert.equal(classifyTokenFailure(new StoreError('corrupt')), 'reauth');
+  assert.equal(classifyTokenFailure({ code: 'invalid_grant' }), 'reauth');
   assert.equal(isCorruptTokenCacheFailure(new StoreError('corrupt')), true);
   assert.equal(isCorruptTokenCacheFailure(new StoreError('encryption')), false);
 });

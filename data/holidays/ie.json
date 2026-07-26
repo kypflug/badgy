@@ -1,0 +1,75 @@
+{
+  "id": "ie",
+  "label": "Ireland",
+  "rules": [
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 1,
+      "name": "New Year's Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "fixed-or-nth-weekday",
+      "month": 2,
+      "day": 1,
+      "onWeekday": 5,
+      "weekday": 1,
+      "nth": 1,
+      "name": "St Brigid's Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 3,
+      "day": 17,
+      "name": "St Patrick's Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "easter",
+      "offset": 1,
+      "name": "Easter Monday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 5,
+      "weekday": 1,
+      "nth": 1,
+      "name": "May Day"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 6,
+      "weekday": 1,
+      "nth": 1,
+      "name": "June bank holiday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 8,
+      "weekday": 1,
+      "nth": 1,
+      "name": "August bank holiday"
+    },
+    {
+      "kind": "last-weekday",
+      "month": 10,
+      "weekday": 1,
+      "name": "October bank holiday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 25,
+      "name": "Christmas Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 26,
+      "name": "St Stephen's Day",
+      "observance": "next-weekday"
+    }
+  ]
+}

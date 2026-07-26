@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { odata, TableClient, type TransactionAction } from '@azure/data-tables';
 import { decrypt, encrypt, isValidEncryptionKey } from './crypto';
+import type { ProviderId } from './providers/types';
 import {
   type AuthTransactionData,
   cleanupIsDue,
@@ -9,9 +10,9 @@ import {
 } from './transactions';
 
 /**
- * Per-user MSAL token cache, encrypted at rest in Azure Table Storage. The refresh token never
+ * Per-user provider token cache, encrypted at rest in Azure Table Storage. The refresh token never
  * leaves the server; the browser only ever holds the session cookie (and a short-lived AT it
- * fetches via /api/token). RowKey is a hash of the MSAL home account id.
+ * fetches via /api/token). RowKey is a provider-qualified hash of the stable account id.
  */
 const TABLE = 'tokencache';
 let client: TableClient | undefined;
@@ -33,6 +34,12 @@ function tokenKey(): string {
 
 function rowKey(uid: string): string {
   return createHash('sha256').update(uid).digest('hex');
+}
+
+export function cacheRowKey(provider: ProviderId, uid: string): string {
+  // Keep Microsoft's historical row key as sha256(uid) so existing encrypted MSAL caches are
+  // read without migration; only non-Microsoft providers are explicitly namespaced.
+  return rowKey(provider === 'microsoft' ? uid : `${provider}:${uid}`);
 }
 
 interface CacheEntity {
@@ -118,10 +125,10 @@ function stateRowKey(state: string): string {
   return `s-${rowKey(state)}`;
 }
 
-export async function loadCache(uid: string): Promise<string | null> {
+export async function loadCache(provider: ProviderId, uid: string): Promise<string | null> {
   let entity: CacheEntity;
   try {
-    entity = await table().getEntity<CacheEntity>('u', rowKey(uid));
+    entity = await table().getEntity<CacheEntity>('u', cacheRowKey(provider, uid));
   } catch (error: unknown) {
     if (isEntityNotFound(error)) return null;
     throw new StoreError('unavailable', { cause: error });
@@ -130,10 +137,14 @@ export async function loadCache(uid: string): Promise<string | null> {
   return decrypted(entity.blob);
 }
 
-export async function saveCache(uid: string, serialized: string): Promise<void> {
+export async function saveCache(
+  provider: ProviderId,
+  uid: string,
+  serialized: string,
+): Promise<void> {
   const entity: CacheEntity = {
     partitionKey: 'u',
-    rowKey: rowKey(uid),
+    rowKey: cacheRowKey(provider, uid),
     blob: encrypted(serialized),
   };
   try {
@@ -143,9 +154,9 @@ export async function saveCache(uid: string, serialized: string): Promise<void> 
   }
 }
 
-export async function deleteCache(uid: string): Promise<void> {
+export async function deleteCache(provider: ProviderId, uid: string): Promise<void> {
   try {
-    await table().deleteEntity('u', rowKey(uid));
+    await table().deleteEntity('u', cacheRowKey(provider, uid));
   } catch (error: unknown) {
     if (!isEntityNotFound(error)) throw new StoreError('unavailable', { cause: error });
   }

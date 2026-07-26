@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://badgy.tech/schema/holiday-set.schema.json",
+  "title": "Badgy holiday rule set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "label", "rules"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "note": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "month", "day", "name"],
+            "properties": {
+              "kind": {
+                "const": "fixed"
+              },
+              "month": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "day": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31
+              },
+              "observance": {
+                "enum": ["none", "nearest-weekday", "next-weekday"]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "month", "weekday", "nth", "name"],
+            "properties": {
+              "kind": {
+                "const": "nth-weekday"
+              },
+              "month": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "weekday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              },
+              "nth": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "month", "weekday", "name"],
+            "properties": {
+              "kind": {
+                "const": "last-weekday"
+              },
+              "month": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "weekday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "month", "day", "weekday", "name"],
+            "properties": {
+              "kind": {
+                "const": "weekday-on-or-before"
+              },
+              "month": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "day": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31
+              },
+              "weekday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "offset", "name"],
+            "properties": {
+              "kind": {
+                "const": "easter"
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "to", "offset", "name"],
+            "properties": {
+              "kind": {
+                "const": "relative"
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "month", "day", "onWeekday", "weekday", "nth", "name"],
+            "properties": {
+              "kind": {
+                "const": "fixed-or-nth-weekday"
+              },
+              "month": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "day": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31
+              },
+              "onWeekday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              },
+              "weekday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              },
+              "nth": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "id": "uk",
+  "label": "United Kingdom",
+  "rules": [
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 1,
+      "name": "New Year's Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "easter",
+      "offset": -2,
+      "name": "Good Friday"
+    },
+    {
+      "kind": "easter",
+      "offset": 1,
+      "name": "Easter Monday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 5,
+      "weekday": 1,
+      "nth": 1,
+      "name": "Early May bank holiday"
+    },
+    {
+      "kind": "last-weekday",
+      "month": 5,
+      "weekday": 1,
+      "name": "Spring bank holiday"
+    },
+    {
+      "kind": "last-weekday",
+      "month": 8,
+      "weekday": 1,
+      "name": "Summer bank holiday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 25,
+      "name": "Christmas Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 26,
+      "name": "Boxing Day",
+      "observance": "next-weekday"
+    }
+  ]
+}

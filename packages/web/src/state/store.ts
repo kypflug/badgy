@@ -1,20 +1,27 @@
 import {
   addDays,
-  beltForWeek,
+  type Band,
+  bandOf,
   type CalendarNote,
   type CellValue,
   CFG_HOLIDAY_REGION,
+  CFG_ORG,
+  CFG_SCHEME,
   CFG_TARGET,
-  type Compliance,
+  type ComplianceResult,
+  type ComplianceScheme,
   cellValueEqual,
-  compliance as computeCompliance,
   DEFAULT_HOLIDAY_REGION,
+  DEFAULT_ORG_ID,
   type Doc,
   dateKey,
   emptyDoc,
+  evaluate,
   getHolidayRegion,
   getNotes,
+  getOrgId,
   getPattern,
+  getSchemeOverride,
   getTarget,
   Hlc,
   type Holiday,
@@ -24,6 +31,7 @@ import {
   holidayNameFor,
   holidaysInYear,
   isCalendarNote,
+  isComplianceScheme,
   isHolidayOverride,
   isMeetupWeek as isMeetupBuiltin,
   isMeetupOverride,
@@ -33,11 +41,12 @@ import {
   migrate,
   monthGrid,
   noteKey,
-  officeDaysByWeek,
+  type OrgPreset,
+  orgOrDefault,
   type ProjectionResult,
   patternKey,
+  planOfficeDays,
   type ResolvedDay,
-  requiredOfficeDays,
   resolveDay,
   resolveRange,
   type Status,
@@ -45,9 +54,10 @@ import {
   todayISO,
   type Weekday,
   weekdayOf,
+  weekScore,
   yearBounds,
 } from '@badgy/shared';
-import { AUTH_INTERACTION_REQUIRED } from '../auth/msal.js';
+import { AUTH_INTERACTION_REQUIRED } from '../auth/provider.js';
 import type { SyncTransport } from '../sync/types.js';
 
 const PUSH_DEBOUNCE = 800;
@@ -84,7 +94,7 @@ function docEqual(a: Doc, b: Doc): boolean {
 
 /**
  * Reactive store + CRDT sync engine. Edits update a local per-date doc (localStorage cache),
- * re-render optimistically, and debounce a pull→merge→push to the user's OneDrive app folder.
+ * re-render optimistically, and debounce a pull→merge→push to the user's cloud app folder.
  * Reads resolve the sparse doc into calendar views on demand.
  */
 export class Store extends EventTarget {
@@ -92,6 +102,7 @@ export class Store extends EventTarget {
   private readonly hlc = new Hlc();
   private transport: SyncTransport | null = null;
   private cacheKey = 'badgy:doc';
+  private legacyCacheKey: string | undefined;
   private etag: string | null = null;
   private pushTimer: ReturnType<typeof setTimeout> | undefined;
   private syncChain: Promise<void> = Promise.resolve();
@@ -99,20 +110,54 @@ export class Store extends EventTarget {
   private redoStack: HistoryEntry[] = [];
   private authPaused = false;
   private syncUnavailable = false;
+  /** The preset this visit arrived under; only seeded into the doc once the first pull confirms it's new. */
+  private entryOrg: OrgPreset = orgOrDefault(DEFAULT_ORG_ID);
+  private seeded = false;
 
-  async start(transport: SyncTransport, cacheKey: string): Promise<void> {
+  async start(
+    transport: SyncTransport,
+    cacheKey: string,
+    entryOrg?: OrgPreset,
+    legacyCacheKey?: string,
+  ): Promise<void> {
     this.transport = transport;
     this.cacheKey = cacheKey;
+    this.legacyCacheKey = legacyCacheKey;
+    if (entryOrg) this.entryOrg = entryOrg;
     this.loadCache();
     this.emitChange();
-    // Render immediately from the local cache; pull from OneDrive in the background
-    // so first paint after sign-in never waits on a token + Graph round-trip.
+    // Render immediately from the local cache; pull in the background so first paint after
+    // sign-in never waits on a token + storage round-trip.
     void this.sync();
     window.addEventListener('focus', () => void this.sync());
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') void this.sync();
     });
     setInterval(() => void this.sync(), PULL_INTERVAL);
+  }
+
+  /**
+   * Write the entry preset's defaults, but only once a pull has proven the document has never
+   * chosen one. Seeding on a failed or offline first sync would let whichever URL a returning user
+   * happened to open silently overwrite the org they already picked on another device.
+   */
+  private seedOrgDefaults(): void {
+    if (this.seeded) return;
+    this.seeded = true;
+    if (getOrgId(this.doc) !== null) return;
+    const org = this.entryOrg;
+    this.commit((d) => {
+      setCell(d, CFG_ORG, org.id, this.hlc.tick());
+      if (d.cells[CFG_SCHEME] === undefined)
+        setCell(d, CFG_SCHEME, JSON.stringify(org.scheme), this.hlc.tick());
+      if (d.cells[CFG_TARGET] === undefined) setCell(d, CFG_TARGET, org.target, this.hlc.tick());
+      if (d.cells[CFG_HOLIDAY_REGION] === undefined)
+        setCell(d, CFG_HOLIDAY_REGION, org.holidaySet, this.hlc.tick());
+      for (const [weekday, status] of Object.entries(org.pattern ?? {})) {
+        const key = patternKey(Number(weekday) as Weekday);
+        if (d.cells[key] === undefined) setCell(d, key, status, this.hlc.tick());
+      }
+    });
   }
 
   // --- reads ---
@@ -143,17 +188,31 @@ export class Store extends EventTarget {
   weekDays(weekStart: string): ResolvedDay[] {
     return resolveRange(this.doc, weekStart, addDays(weekStart, 6));
   }
-  weekBelt(weekStart: string): number | null {
-    return beltForWeek(this.doc, weekStart, todayISO());
+  /** The org preset backing the current defaults. */
+  get org(): OrgPreset {
+    return orgOrDefault(getOrgId(this.doc) ?? this.entryOrg.id);
   }
-  weekOffice(weekStart: string): number {
-    return officeDaysByWeek(this.doc, [weekStart], todayISO())[0];
+  /** The active rule: the user's customization if they've made one, else the org's. */
+  get scheme(): ComplianceScheme {
+    return getSchemeOverride(this.doc) ?? this.org.scheme;
   }
-  compliance(): Compliance {
-    return computeCompliance(this.doc, this.target, todayISO());
+  /** True once the user has edited the scheme away from their org's preset. */
+  get schemeIsCustom(): boolean {
+    const override = getSchemeOverride(this.doc);
+    return override !== null && JSON.stringify(override) !== JSON.stringify(this.org.scheme);
+  }
+  band(value: number): Band {
+    return bandOf(value, this.scheme.bands);
+  }
+  /** The scheme's rolling score as of a given week, for the calendar's per-week column. */
+  weekScore(weekStart: string): number | null {
+    return weekScore(this.doc, weekStart, this.scheme, todayISO());
+  }
+  compliance(): ComplianceResult {
+    return evaluate(this.doc, this.scheme, this.target, todayISO());
   }
   plan(horizon: number, hold: boolean): ProjectionResult {
-    return requiredOfficeDays(this.doc, todayISO(), horizon, this.target, hold);
+    return planOfficeDays(this.doc, this.scheme, todayISO(), horizon, this.target, hold);
   }
   isMeetupWeek(weekStart: string): boolean {
     return isMeetupOverride(this.doc, weekStart);
@@ -220,6 +279,24 @@ export class Store extends EventTarget {
   }
   setHolidayRegion(region: HolidayRegionId): void {
     this.apply((d) => setCell(d, CFG_HOLIDAY_REGION, region, this.hlc.tick()));
+  }
+  /** Switch workplace: adopt its scheme, target and holidays as one undoable step. */
+  setOrg(id: string): void {
+    const org = orgOrDefault(id);
+    this.apply((d) => {
+      setCell(d, CFG_ORG, org.id, this.hlc.tick());
+      setCell(d, CFG_SCHEME, JSON.stringify(org.scheme), this.hlc.tick());
+      setCell(d, CFG_TARGET, org.target, this.hlc.tick());
+      setCell(d, CFG_HOLIDAY_REGION, org.holidaySet, this.hlc.tick());
+    });
+  }
+  setScheme(scheme: ComplianceScheme): void {
+    if (!isComplianceScheme(scheme)) return;
+    this.apply((d) => setCell(d, CFG_SCHEME, JSON.stringify(scheme), this.hlc.tick()));
+  }
+  /** Drop customizations and go back to the workplace preset's own rule. */
+  resetScheme(): void {
+    this.setScheme(this.org.scheme);
   }
   /** Add a holiday, optionally under a custom name; `true` keeps the region's own label. */
   addHoliday(date: string, name?: string): void {
@@ -331,8 +408,10 @@ export class Store extends EventTarget {
     if (key.startsWith('m|')) return isMeetupBuiltin(key.slice(2));
     if (key.startsWith('h|')) return holidayNameFor(this.holidayRegion, key.slice(2)) !== null;
     if (key.startsWith('n|')) return null;
-    if (key === CFG_TARGET) return 0.8;
+    if (key === CFG_TARGET) return this.org.target;
     if (key === CFG_HOLIDAY_REGION) return DEFAULT_HOLIDAY_REGION;
+    if (key === CFG_ORG) return this.entryOrg.id;
+    if (key === CFG_SCHEME) return JSON.stringify(this.org.scheme);
     return 'none';
   }
 
@@ -370,7 +449,15 @@ export class Store extends EventTarget {
   private loadCache(): void {
     try {
       const raw = localStorage.getItem(this.cacheKey);
-      if (raw) this.doc = migrate(JSON.parse(raw) as Doc);
+      if (raw) {
+        this.doc = migrate(JSON.parse(raw) as Doc);
+        return;
+      }
+      const legacyRaw = this.legacyCacheKey ? localStorage.getItem(this.legacyCacheKey) : null;
+      if (!legacyRaw) return;
+      this.doc = migrate(JSON.parse(legacyRaw) as Doc);
+      localStorage.setItem(this.cacheKey, JSON.stringify(this.doc));
+      localStorage.removeItem(this.legacyCacheKey as string);
     } catch {
       // ignore corrupt cache
     }
@@ -405,7 +492,7 @@ export class Store extends EventTarget {
       });
     return this.syncChain;
   }
-  /** True when OneDrive sync is paused because the session lapsed and needs interactive re-auth. */
+  /** True when sync is paused because the session lapsed and needs interactive re-auth. */
   get needsReconnect(): boolean {
     return this.authPaused;
   }
@@ -437,6 +524,8 @@ export class Store extends EventTarget {
       }
       this.saveCache();
       this.emitChange();
+      // The pull succeeded, so the doc now reflects any workplace this account already chose.
+      this.seedOrgDefaults();
       const needsPush = !remote || !docEqual(this.doc, migrate(remote.doc));
       if (!needsPush) return;
       const res = await transport.putRemote(this.doc, remote ? this.etag : null);

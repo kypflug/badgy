@@ -1,0 +1,74 @@
+{
+  "id": "ca",
+  "label": "Canada",
+  "rules": [
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 1,
+      "name": "New Year's Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "easter",
+      "offset": -2,
+      "name": "Good Friday"
+    },
+    {
+      "kind": "weekday-on-or-before",
+      "month": 5,
+      "day": 24,
+      "weekday": 1,
+      "name": "Victoria Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 7,
+      "day": 1,
+      "name": "Canada Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 9,
+      "weekday": 1,
+      "nth": 1,
+      "name": "Labour Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 9,
+      "day": 30,
+      "name": "National Day for Truth and Reconciliation",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 10,
+      "weekday": 1,
+      "nth": 2,
+      "name": "Thanksgiving"
+    },
+    {
+      "kind": "fixed",
+      "month": 11,
+      "day": 11,
+      "name": "Remembrance Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 25,
+      "name": "Christmas Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 26,
+      "name": "Boxing Day",
+      "observance": "next-weekday"
+    }
+  ]
+}

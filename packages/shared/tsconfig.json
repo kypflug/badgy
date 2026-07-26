@@ -4,7 +4,8 @@
     "composite": true,
     "outDir": "dist",
     "rootDir": "src",
-    "lib": ["ES2022"]
+    "lib": ["ES2022"],
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": ["src"],
   "exclude": ["**/*.test.ts", "src/__fixtures__"]

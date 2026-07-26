@@ -11,6 +11,7 @@ import {
   holidayNameFor,
   isHolidayRegionId,
 } from '../holidays.js';
+import { type ComplianceScheme, parseScheme } from '../policy/types.js';
 import {
   type CalendarNote,
   isWeekend,
@@ -48,6 +49,10 @@ export const holidayKey = (iso: string): string => `h|${iso}`;
 export const noteKey = (id: string): string => `n|${id}`;
 export const CFG_TARGET = 'cfg|targetBelt';
 export const CFG_HOLIDAY_REGION = 'cfg|holidayRegion';
+/** The org preset the user picked; seeds defaults but never locks them. */
+export const CFG_ORG = 'cfg|org';
+/** A customized `ComplianceScheme`, stored as JSON. Absent = use the org preset's scheme. */
+export const CFG_SCHEME = 'cfg|scheme';
 
 function isISODate(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -126,6 +131,15 @@ export function isMeetupOverride(doc: Doc, weekStartISO: string): boolean {
 export function getHolidayRegion(doc: Doc): HolidayRegionId {
   const value = doc.cells[CFG_HOLIDAY_REGION]?.v;
   return isHolidayRegionId(value) ? value : DEFAULT_HOLIDAY_REGION;
+}
+/** The org preset id the user entered under, if any. */
+export function getOrgId(doc: Doc): string | null {
+  const value = doc.cells[CFG_ORG]?.v;
+  return typeof value === 'string' && value ? value : null;
+}
+/** A user-customized scheme overriding the org preset's, or null when untouched. */
+export function getSchemeOverride(doc: Doc): ComplianceScheme | null {
+  return parseScheme(doc.cells[CFG_SCHEME]?.v);
 }
 /** Region default for the date, unless the user has explicitly added or removed it. */
 export function isHolidayOverride(doc: Doc, iso: string): boolean {

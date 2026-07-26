@@ -7,7 +7,7 @@ import {
 import { cca } from '../lib/auth';
 import { isCorruptTokenCacheFailure, safeErrorDetail } from '../lib/errors';
 import { isSecure } from '../lib/req';
-import { readSessionResult, sessionCookie } from '../lib/session';
+import { readSessionResult, sessionCookie, sessionProvider } from '../lib/session';
 import { deleteCache, loadCache, logError, StoreError } from '../lib/store';
 
 /** Who is signed in (from the session cookie), or 401. Replaces the client's initAuth(). */
@@ -19,28 +19,32 @@ async function me(req: HttpRequest, context: InvocationContext): Promise<HttpRes
     return { status: 401, jsonBody: { signedIn: false, error: 'invalid_session' } };
 
   const session = result.session;
+  const provider = sessionProvider(session);
   try {
-    const cache = await loadCache(session.uid);
+    const cache = await loadCache(provider, session.uid);
     if (!cache) return { status: 401, jsonBody: { signedIn: false, error: 'reauth' } };
-    const client = cca();
-    try {
-      client.getTokenCache().deserialize(cache);
-    } catch (error: unknown) {
-      throw new StoreError('corrupt', { cause: error });
-    }
-    const account = await client.getTokenCache().getAccountByHomeId(session.uid);
-    if (!account) {
-      await deleteCache(session.uid);
-      return { status: 401, jsonBody: { signedIn: false, error: 'reauth' } };
+    if (provider === 'microsoft') {
+      const client = cca();
+      try {
+        client.getTokenCache().deserialize(cache);
+      } catch (error: unknown) {
+        throw new StoreError('corrupt', { cause: error });
+      }
+      const account = await client.getTokenCache().getAccountByHomeId(session.uid);
+      if (!account) {
+        await deleteCache(provider, session.uid);
+        return { status: 401, jsonBody: { signedIn: false, error: 'reauth' } };
+      }
     }
     return {
       headers: { 'Cache-Control': 'no-store' },
-      cookies: [sessionCookie(session, isSecure(req))],
+      cookies: [sessionCookie({ ...session, provider }, isSecure(req))],
       jsonBody: {
         signedIn: true,
         id: session.uid,
         name: session.name,
         email: session.email,
+        provider,
       },
     };
   } catch (error: unknown) {
@@ -49,7 +53,7 @@ async function me(req: HttpRequest, context: InvocationContext): Promise<HttpRes
     await logError('auth-me', JSON.stringify(detail));
     if (isCorruptTokenCacheFailure(error)) {
       try {
-        await deleteCache(session.uid);
+        await deleteCache(provider, session.uid);
         return { status: 401, jsonBody: { signedIn: false, error: 'reauth' } };
       } catch (deleteError: unknown) {
         const deleteDetail = safeErrorDetail(deleteError);

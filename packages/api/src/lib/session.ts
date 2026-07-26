@@ -1,5 +1,6 @@
 import type { Cookie, HttpRequest } from '@azure/functions';
 import { decrypt, encrypt } from './crypto';
+import { DEFAULT_PROVIDER, isProviderId, type ProviderId } from './providers';
 
 const SESSION_COOKIE = 'badgy_session';
 const OAUTH_COOKIE = 'badgy_oauth';
@@ -10,6 +11,7 @@ export interface SessionData {
   uid: string;
   name: string;
   email: string;
+  provider?: ProviderId;
 }
 export interface OAuthState {
   state: string;
@@ -42,15 +44,20 @@ export function readSession(req: HttpRequest): SessionData | null {
   return result.status === 'valid' ? result.session : null;
 }
 
-function validSession(value: unknown): value is SessionData {
+export function validSession(value: unknown): value is SessionData {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<SessionData>;
   return (
     typeof candidate.uid === 'string' &&
     candidate.uid.length > 0 &&
     typeof candidate.name === 'string' &&
-    typeof candidate.email === 'string'
+    typeof candidate.email === 'string' &&
+    (candidate.provider === undefined || isProviderId(candidate.provider))
   );
+}
+
+export function sessionProvider(session: SessionData): ProviderId {
+  return session.provider ?? DEFAULT_PROVIDER;
 }
 
 export function readSessionResult(req: HttpRequest): SessionReadResult {

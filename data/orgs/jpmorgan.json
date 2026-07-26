@@ -1,0 +1,31 @@
+{
+  "id": "jpmorgan",
+  "label": "JPMorgan Chase",
+  "aliases": ["jpmc", "jp-morgan"],
+  "summary": "5 days a week, every week",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 5,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "reported",
+  "effectiveDate": "2025-03-01",
+  "assumptions": ["Vacation treatment is not documented."],
+  "sources": [
+    {
+      "label": "Banking Dive JPMorgan RTO report",
+      "url": "https://www.bankingdive.com/news/jpmorgan-chase-dimon-5-days-a-week-return-office/736871/"
+    }
+  ]
+}

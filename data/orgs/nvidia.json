@@ -1,0 +1,27 @@
+{
+  "id": "nvidia",
+  "label": "NVIDIA",
+  "summary": "Remote-first — no office-day requirement",
+  "scheme": {
+    "kind": "none",
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "reported",
+  "assumptions": ["The US federal holiday set is assumed for this preset."],
+  "sources": [
+    {
+      "label": "Buildremote NVIDIA RTO tracker",
+      "url": "https://buildremote.co/rto-tracker/nvidia/"
+    }
+  ]
+}

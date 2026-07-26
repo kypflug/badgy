@@ -1,0 +1,40 @@
+{
+  "id": "google",
+  "label": "Google",
+  "summary": "3 days a week, with Tue/Thu anchors",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 3,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    },
+    "anchorDays": [2, 4]
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "reported",
+  "geographicScope": "Within 50 miles of a Google office",
+  "assumptions": [
+    "Tue/Thu anchor days are widely reported but not officially published.",
+    "No rolling-average scheme is confirmed for Google.",
+    "Partial-vacation-week proration is Badgy's assumption.",
+    "The US federal holiday set is assumed for this preset."
+  ],
+  "sources": [
+    {
+      "label": "Buildremote Google RTO tracker",
+      "url": "https://buildremote.co/return-to-office/google/"
+    },
+    {
+      "label": "Alphabet Workers Union RTO press release",
+      "url": "https://www.alphabetworkersunion.org/press/knowledge-and-core-vep-and-rto"
+    }
+  ]
+}

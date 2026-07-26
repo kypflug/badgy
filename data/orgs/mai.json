@@ -1,0 +1,36 @@
+{
+  "id": "mai",
+  "label": "Microsoft AI",
+  "aliases": ["microsoft-ai"],
+  "summary": "4 days a week, modelled with Microsoft BELT",
+  "scheme": {
+    "kind": "best-of-window",
+    "windowWeeks": 12,
+    "bestCount": 8,
+    "weeklyCap": 5,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "ignore"
+    }
+  },
+  "target": 0.8,
+  "holidaySet": "us-microsoft",
+  "confidence": "reported",
+  "geographicScope": "Within 50 miles of Redmond, Silicon Valley or NYC; within 25 miles of other AI hubs",
+  "assumptions": [
+    "Only the 4-days-a-week minimum is reported — the measurement window, best-of count, divisor and bands are all assumed to match company-wide BELT.",
+    "MAI's actual scoring mechanism is not public.",
+    "The target attainment is assumed to match the Microsoft preset."
+  ],
+  "sources": [
+    {
+      "label": "Entrepreneur MAI in-person policy report",
+      "url": "https://www.entrepreneur.com/business-news/microsofts-ai-ceo-has-a-strict-in-person-work-policy/499594"
+    }
+  ]
+}

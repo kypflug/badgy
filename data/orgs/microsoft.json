@@ -1,0 +1,42 @@
+{
+  "id": "microsoft",
+  "label": "Microsoft",
+  "aliases": ["msft"],
+  "summary": "Best 8 of the last 12 weeks",
+  "scheme": {
+    "kind": "best-of-window",
+    "windowWeeks": 12,
+    "bestCount": 8,
+    "weeklyCap": 5,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "ignore"
+    }
+  },
+  "target": 0.8,
+  "holidaySet": "us-microsoft",
+  "confidence": "reported",
+  "effectiveDate": "2026-02-23",
+  "geographicScope": "Within 50 miles of a Microsoft office",
+  "assumptions": [
+    "The best-of-window BELT measurement scheme is Badgy's own modelling choice; Microsoft says three days a week in the office without specifying a measurement window, rolling average or best-of calculation.",
+    "The 80%/90% band thresholds are Badgy's own, not published by Microsoft.",
+    "The stated minimum is 3 days a week, which scores 60% under BELT, so the bands are aspirational.",
+    "Business travel not counting as office time is Badgy's convention, not confirmed policy."
+  ],
+  "sources": [
+    {
+      "label": "Microsoft flexible work update",
+      "url": "https://blogs.microsoft.com/blog/2025/09/09/flexible-work-update/"
+    },
+    {
+      "label": "GeekWire Microsoft RTO report",
+      "url": "https://www.geekwire.com/2026/microsofts-new-rto-policy-starts-feb-23-bringing-seattle-area-workers-back-3-days-a-week/"
+    }
+  ]
+}

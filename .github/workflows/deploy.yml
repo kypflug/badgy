@@ -27,6 +27,11 @@ jobs:
         env:
           # Public client id (not a secret) — flips the client into BFF/production mode.
           MSAL_CLIENT_ID: 9b7c7443-27bd-4158-99d5-0163198cb949
+          # Set to 'true' to show the Google sign-in button. Keep it off until the Google OAuth
+          # client exists and Google has verified the `drive.appdata` scope (unverified apps are
+          # capped at 100 users). The Drive transport and BFF provider ship either way, so this
+          # is the only change needed to turn Google on.
+          GOOGLE_ENABLED: 'false'
         run: |
           npm ci
           npm run build:shared

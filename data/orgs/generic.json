@@ -1,0 +1,32 @@
+{
+  "id": "generic",
+  "label": "Generic hybrid",
+  "aliases": ["default"],
+  "summary": "3 days a week — a neutral starting point",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 3,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 0.8,
+  "holidaySet": "us-federal",
+  "confidence": "community",
+  "assumptions": [
+    "This neutral preset is a community starting point, not a sourced employer policy."
+  ],
+  "sources": [
+    {
+      "label": "Badgy data contributor guide",
+      "url": "https://github.com/kypflug/badgy/blob/main/data/README.md"
+    }
+  ]
+}

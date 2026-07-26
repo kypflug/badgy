@@ -1,0 +1,57 @@
+{
+  "id": "au",
+  "label": "Australia",
+  "rules": [
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 1,
+      "name": "New Year's Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 26,
+      "name": "Australia Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "easter",
+      "offset": -2,
+      "name": "Good Friday"
+    },
+    {
+      "kind": "easter",
+      "offset": 1,
+      "name": "Easter Monday"
+    },
+    {
+      "kind": "fixed",
+      "month": 4,
+      "day": 25,
+      "name": "Anzac Day"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 6,
+      "weekday": 1,
+      "nth": 2,
+      "name": "King's Birthday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 25,
+      "name": "Christmas Day",
+      "observance": "next-weekday"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 26,
+      "name": "Boxing Day",
+      "observance": "next-weekday"
+    }
+  ]
+}
