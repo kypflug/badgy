@@ -18,7 +18,7 @@ jobs:
     name: Shared + web
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
@@ -40,7 +40,7 @@ jobs:
     name: API
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The Functions app runs on node:20 per staticwebapp.config.json — test it there, not on
       # the repo-wide Node 24, so a runtime incompatibility fails here rather than in production.
