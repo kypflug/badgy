@@ -22,7 +22,7 @@ updates:
       # Pinned to the node:20 Azure Functions runtime; a major bump would typecheck
       # the API against a Node it does not run on.
       - dependency-name: '@types/node'
-        update-types: [version-update:semver-major]
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /
