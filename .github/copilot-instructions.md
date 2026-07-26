@@ -220,6 +220,9 @@ and its 2026/2027 output is pinned by a parity test — don't change those rules
   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY`, `TOKEN_ENC_KEY` and
   `STORAGE_CONNECTION` live only in Static Web App settings (see `docs/SETUP.md`).
 - Google's `drive.appdata` is a **sensitive scope**: an unverified app is capped at 100 test users,
-  so Google verification is a launch prerequisite, not a code task.
+  so Google verification is a launch prerequisite, not a code task. Until then the sign-in button is
+  hidden by the `GOOGLE_ENABLED` build flag (`signInProviders()` in `auth/provider.ts`, default
+  off). The flag gates **only the sign-in choice** — an existing Google session still resolves its
+  provider, transport and metadata normally, so don't "simplify" it into the session path.
 - Deploys happen on push to `main` via `.github/workflows/deploy.yml` (builds shared + web, then
   `packages/api` with its own lockfile, and uploads both to Azure Static Web Apps).

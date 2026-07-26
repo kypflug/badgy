@@ -19,6 +19,8 @@ Settings, so any organisation with an RTO target can use it.
   — a hidden per-app folder in OneDrive or Google Drive — synced across devices with conflict-free
   **CRDT** merge. A small token-mediating backend keeps the refresh token encrypted server-side;
   attendance data still flows directly between your browser and Microsoft Graph or Google Drive.
+  (Google sign-in is built but ships behind the `GOOGLE_ENABLED` build flag until Google verifies
+  the `drive.appdata` scope.)
 - **Pick your workplace.** Arriving at `badgy.tech/<employer>` preconfigures the compliance scheme,
   holidays and usual week for that employer. Presets only ever *seed* defaults — everything stays
   editable, and you can switch workplace at any time.

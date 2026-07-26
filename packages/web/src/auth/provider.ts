@@ -29,6 +29,15 @@ export const PROVIDERS: readonly ProviderMeta[] = [
 
 export const DEFAULT_PROVIDER: ProviderId = 'microsoft';
 
+/**
+ * Providers to offer on the sign-in card. Google is withheld until its OAuth client is verified,
+ * but the rest of the Google path stays live: an account that already signed in with Google keeps
+ * resolving through `providerMeta`, `/auth/me` and the Drive transport regardless of this flag.
+ */
+export function signInProviders(googleEnabled: boolean): readonly ProviderMeta[] {
+  return googleEnabled ? PROVIDERS : PROVIDERS.filter((p) => p.id !== 'google');
+}
+
 export function isProviderId(value: unknown): value is ProviderId {
   return value === 'microsoft' || value === 'google';
 }

@@ -3,10 +3,10 @@ import {
   type AuthAccount,
   type InteractiveAuthFlow,
   initAuth,
-  PROVIDERS,
   type ProviderId,
   providerMeta,
   signIn,
+  signInProviders,
   signOut,
 } from './auth/provider.js';
 import { setSession } from './auth/session.js';
@@ -117,7 +117,9 @@ function renderSignIn(reason: string | null = null): void {
       }
       <p class="signin-sub">Plan your office time against your return-to-office target. Your data is
         saved privately to your own cloud storage — only you can see it.</p>
-      <div class="provider-list">${PROVIDERS.map((p) => providerButton(p.id)).join('')}</div>
+      <div class="provider-list">${signInProviders(CONFIG.googleEnabled)
+        .map((p) => providerButton(p.id))
+        .join('')}</div>
       <p class="signin-status" role="status">${reason ?? legacyAuthError() ?? ''}</p>
       <p class="signin-fine">
         <a class="signin-link" href="/orgs">${branded ? 'Not your workplace?' : 'Pick your workplace'}</a>

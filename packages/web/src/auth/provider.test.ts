@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { initAuth, startInteractiveAuth } from './provider.js';
+import { initAuth, signInProviders, startInteractiveAuth } from './provider.js';
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -30,6 +30,16 @@ function jsonResponse(body: unknown, status = 200): Response {
     headers: { 'content-type': 'application/json' },
   });
 }
+
+describe('sign-in providers', () => {
+  it('offers both providers when Google is enabled', () => {
+    expect(signInProviders(true).map((p) => p.id)).toEqual(['microsoft', 'google']);
+  });
+
+  it('withholds Google until its OAuth client is verified', () => {
+    expect(signInProviders(false).map((p) => p.id)).toEqual(['microsoft']);
+  });
+});
 
 describe('auth startup', () => {
   beforeEach(() => {

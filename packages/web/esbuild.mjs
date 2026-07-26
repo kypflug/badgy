@@ -6,6 +6,10 @@ const outdir = 'dist';
 
 const define = {
   __MSAL_CLIENT_ID__: JSON.stringify(process.env.MSAL_CLIENT_ID ?? ''),
+  // Google sign-in stays hidden until the OAuth client exists and Google has verified the
+  // `drive.appdata` scope — unverified apps are capped at 100 users. Set GOOGLE_ENABLED=true
+  // to show the button; the Drive transport and BFF provider ship either way.
+  __GOOGLE_ENABLED__: JSON.stringify(process.env.GOOGLE_ENABLED === 'true'),
   __MSAL_AUTHORITY__: JSON.stringify(
     process.env.MSAL_AUTHORITY ?? 'https://login.microsoftonline.com/consumers',
   ),

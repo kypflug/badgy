@@ -34,6 +34,11 @@ requested only by the explicit **Use another account** action.
 
 ## Google OAuth client
 
+> **Google sign-in ships disabled.** The web build gates the button on `GOOGLE_ENABLED`, which
+> `.github/workflows/deploy.yml` sets to `'false'`. The Drive transport and the BFF provider ship
+> regardless, so turning Google on is a build-flag flip plus the two app settings below — no code
+> change. Do that only once the steps in this section are complete.
+
 In the Google Cloud console, create an **OAuth 2.0 Client ID** of type **Web application** and
 register the same callback path:
 
@@ -52,9 +57,15 @@ https://www.googleapis.com/auth/drive.appdata
 
 `drive.appdata` reaches only Badgy's own hidden folder in the user's Drive — it cannot see any other
 file — but it is still a **sensitive scope**. An unverified app is limited to 100 test users, so
-**Google verification is a launch prerequisite** for public Google sign-in. Provide the consent
-screen with a justification describing the app-data folder as the user's private attendance
-document.
+**Google verification is a launch prerequisite** for public Google sign-in, and is the reason
+`GOOGLE_ENABLED` defaults to `'false'`. Provide the consent screen with a justification describing
+the app-data folder as the user's private attendance document.
+
+To enable Google sign-in once verification is granted: set `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` in Static Web App settings, then change `GOOGLE_ENABLED` to `'true'` in
+`.github/workflows/deploy.yml` and redeploy. Note the BFF is independently gated by whether those
+two settings are present — a `provider: "google"` request with no credentials configured returns
+`503 temporarily_unavailable` rather than a broken sign-in.
 
 Two Google-specific behaviours are deliberate and should not be "optimised" away:
 

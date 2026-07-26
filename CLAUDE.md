@@ -101,5 +101,7 @@ Settings, including `.ics` import.
 Push `main` to run `.github/workflows/deploy.yml`, which builds web + API and deploys both to
 **Azure Static Web Apps**. Microsoft is a confidential web client and Google a web OAuth client,
 both with callback `https://badgy.tech/api/auth/callback`; secrets and encryption/storage settings
-live in SWA app settings. Google's `drive.appdata` is a sensitive scope, so Google verification is a
-launch prerequisite. See `docs/SETUP.md`.
+live in SWA app settings. **Google sign-in ships hidden behind the `GOOGLE_ENABLED` build flag**
+(default `'false'`) because `drive.appdata` is a sensitive scope and unverified apps cap at 100
+users — the transport and BFF provider ship either way, so enabling it is a flag flip plus two app
+settings. See `docs/SETUP.md`.
