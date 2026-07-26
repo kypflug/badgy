@@ -178,6 +178,7 @@ async function startApp(account: AuthAccount): Promise<void> {
     transportFor(account.provider),
     `badgy:doc:${account.provider}:${account.id}`,
     entry.org,
+    account.provider === 'microsoft' ? `badgy:doc:${account.id}` : undefined,
   );
   await mountApp();
 }

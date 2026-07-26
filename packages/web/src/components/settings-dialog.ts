@@ -67,7 +67,14 @@ function schemeFields(scheme: ComplianceScheme): SchemeField[] {
           max: 52,
           step: 1,
           suffix: 'weeks',
-          apply: (s, v) => ({ ...s, windowWeeks: v }) as ComplianceScheme,
+          apply: (s, v) => {
+            if (s.kind !== 'best-of-window') return s;
+            return {
+              ...s,
+              windowWeeks: v,
+              bestCount: Math.min(s.bestCount, v),
+            };
+          },
         },
         {
           label: 'Days in a full week',
@@ -103,7 +110,14 @@ function schemeFields(scheme: ComplianceScheme): SchemeField[] {
           max: 52,
           step: 1,
           suffix: 'weeks',
-          apply: (s, v) => ({ ...s, windowWeeks: v }) as ComplianceScheme,
+          apply: (s, v) => {
+            if (s.kind !== 'qualifying-weeks') return s;
+            return {
+              ...s,
+              windowWeeks: v,
+              minQualifying: Math.min(s.minQualifying, v),
+            };
+          },
         },
       ];
     case 'weekly-quota':
@@ -449,21 +463,32 @@ export class SettingsDialog extends BadgyElement {
             />
             <span>Business travel counts as office time</span>
           </label>
-          <label class="toggle-row">
-            <input
-              type="checkbox"
-              .checked=${scheme.absence.proration === 'prorate'}
-              @change=${(e: Event) =>
-                this.patchScheme({
-                  ...scheme,
-                  absence: {
-                    ...scheme.absence,
-                    proration: (e.target as HTMLInputElement).checked ? 'prorate' : 'ignore',
-                  },
-                })}
-            />
-            <span>Time off and holidays reduce the week's requirement</span>
-          </label>
+          ${
+            scheme.kind === 'best-of-window'
+              ? html`<label class="toggle-row">
+                    <input type="checkbox" .checked=${false} disabled />
+                    <span>Time off is already absorbed by the rolling window</span>
+                  </label>
+                  <p class="setting-help">
+                    Best-of-window policies count your strongest weeks, so time away does not need a
+                    separate weekly proration.
+                  </p>`
+              : html`<label class="toggle-row">
+                  <input
+                    type="checkbox"
+                    .checked=${scheme.absence.proration === 'prorate'}
+                    @change=${(e: Event) =>
+                      this.patchScheme({
+                        ...scheme,
+                        absence: {
+                          ...scheme.absence,
+                          proration: (e.target as HTMLInputElement).checked ? 'prorate' : 'ignore',
+                        },
+                      })}
+                  />
+                  <span>Time off and holidays reduce the week's requirement</span>
+                </label>`
+          }
           ${
             store.schemeIsCustom
               ? html`<div class="chip-row">

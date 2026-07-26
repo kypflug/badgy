@@ -31,6 +31,7 @@ import {
   holidayNameFor,
   holidaysInYear,
   isCalendarNote,
+  isComplianceScheme,
   isHolidayOverride,
   isMeetupWeek as isMeetupBuiltin,
   isMeetupOverride,
@@ -101,6 +102,7 @@ export class Store extends EventTarget {
   private readonly hlc = new Hlc();
   private transport: SyncTransport | null = null;
   private cacheKey = 'badgy:doc';
+  private legacyCacheKey: string | undefined;
   private etag: string | null = null;
   private pushTimer: ReturnType<typeof setTimeout> | undefined;
   private syncChain: Promise<void> = Promise.resolve();
@@ -112,9 +114,15 @@ export class Store extends EventTarget {
   private entryOrg: OrgPreset = orgOrDefault(DEFAULT_ORG_ID);
   private seeded = false;
 
-  async start(transport: SyncTransport, cacheKey: string, entryOrg?: OrgPreset): Promise<void> {
+  async start(
+    transport: SyncTransport,
+    cacheKey: string,
+    entryOrg?: OrgPreset,
+    legacyCacheKey?: string,
+  ): Promise<void> {
     this.transport = transport;
     this.cacheKey = cacheKey;
+    this.legacyCacheKey = legacyCacheKey;
     if (entryOrg) this.entryOrg = entryOrg;
     this.loadCache();
     this.emitChange();
@@ -140,7 +148,8 @@ export class Store extends EventTarget {
     const org = this.entryOrg;
     this.commit((d) => {
       setCell(d, CFG_ORG, org.id, this.hlc.tick());
-      setCell(d, CFG_SCHEME, JSON.stringify(org.scheme), this.hlc.tick());
+      if (d.cells[CFG_SCHEME] === undefined)
+        setCell(d, CFG_SCHEME, JSON.stringify(org.scheme), this.hlc.tick());
       if (d.cells[CFG_TARGET] === undefined) setCell(d, CFG_TARGET, org.target, this.hlc.tick());
       if (d.cells[CFG_HOLIDAY_REGION] === undefined)
         setCell(d, CFG_HOLIDAY_REGION, org.holidaySet, this.hlc.tick());
@@ -282,6 +291,7 @@ export class Store extends EventTarget {
     });
   }
   setScheme(scheme: ComplianceScheme): void {
+    if (!isComplianceScheme(scheme)) return;
     this.apply((d) => setCell(d, CFG_SCHEME, JSON.stringify(scheme), this.hlc.tick()));
   }
   /** Drop customizations and go back to the workplace preset's own rule. */
@@ -439,7 +449,15 @@ export class Store extends EventTarget {
   private loadCache(): void {
     try {
       const raw = localStorage.getItem(this.cacheKey);
-      if (raw) this.doc = migrate(JSON.parse(raw) as Doc);
+      if (raw) {
+        this.doc = migrate(JSON.parse(raw) as Doc);
+        return;
+      }
+      const legacyRaw = this.legacyCacheKey ? localStorage.getItem(this.legacyCacheKey) : null;
+      if (!legacyRaw) return;
+      this.doc = migrate(JSON.parse(legacyRaw) as Doc);
+      localStorage.setItem(this.cacheKey, JSON.stringify(this.doc));
+      localStorage.removeItem(this.legacyCacheKey as string);
     } catch {
       // ignore corrupt cache
     }

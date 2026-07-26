@@ -41,7 +41,12 @@ function fromHost(hostname: string): string | null {
 function fromPath(pathname: string): string | null {
   const segment = pathname.split('/').filter(Boolean)[0];
   if (!segment) return null;
-  const decoded = decodeURIComponent(segment).toLowerCase();
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(segment).toLowerCase();
+  } catch {
+    return null;
+  }
   return RESERVED_SEGMENTS.has(decoded) || decoded.includes('.') ? null : decoded;
 }
 
@@ -90,15 +95,19 @@ export function resolveOrgFrom(parts: LocationParts, stored: string | null = nul
  * URL so the auth round-trip and the cached service-worker shell both stay on `/`.
  */
 export function resolveOrg(): OrgEntry {
-  const entry = resolveOrgFrom(window.location, readStored());
-  if (entry.source !== 'stored' && entry.source !== 'default') rememberOrg(entry.org.id);
-  const url = new URL(window.location.href);
-  const hadPath = url.pathname !== '/';
-  const hadQuery = url.searchParams.has('org');
-  if (hadPath || hadQuery) {
-    url.pathname = '/';
-    url.searchParams.delete('org');
-    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  try {
+    const entry = resolveOrgFrom(window.location, readStored());
+    if (entry.source !== 'stored' && entry.source !== 'default') rememberOrg(entry.org.id);
+    const url = new URL(window.location.href);
+    const hadPath = url.pathname !== '/';
+    const hadQuery = url.searchParams.has('org');
+    if (hadPath || hadQuery) {
+      url.pathname = '/';
+      url.searchParams.delete('org');
+      history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+    return entry;
+  } catch {
+    return { org: orgOrDefault(DEFAULT_ORG_ID), source: 'default' };
   }
-  return entry;
 }

@@ -1,4 +1,13 @@
-import { type emptyDoc, findOrg, orgOrDefault } from '@badgy/shared';
+import {
+  CFG_ORG,
+  type ComplianceScheme,
+  defaultSchemeFor,
+  emptyDoc,
+  findOrg,
+  Hlc,
+  orgOrDefault,
+  setCell,
+} from '@badgy/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SyncTransport } from '../sync/types.js';
 import { Store } from './store.js';
@@ -39,6 +48,10 @@ function fakeTransport(initial: ReturnType<typeof emptyDoc> | null = null) {
     },
   };
   return { transport, state };
+}
+
+async function syncNow(store: Store): Promise<void> {
+  await (store as unknown as { sync(): Promise<void> }).sync();
 }
 
 async function startStore(transport: SyncTransport, orgId: string): Promise<Store> {
@@ -89,6 +102,59 @@ describe('Store workplace seeding', () => {
     // The preset still drives the in-memory view, but nothing was written to the document.
     expect(store.org.id).toBe('amazon');
     expect(state.doc).toBeNull();
+  });
+
+  it('preserves a custom scheme when seeding after a failed first pull', async () => {
+    const { transport, state } = fakeTransport();
+    state.failGet = true;
+    const store = await startStore(transport, 'amazon');
+    const custom = {
+      ...defaultSchemeFor('weekly-quota', store.scheme),
+      daysPerWeek: 4,
+      averagingWeeks: 2,
+    };
+
+    store.setScheme(custom);
+    state.failGet = false;
+    await syncNow(store);
+
+    expect(store.scheme).toEqual(custom);
+    expect(state.doc).not.toBeNull();
+    expect(store.org.id).toBe('amazon');
+  });
+
+  it('ignores invalid scheme writes', async () => {
+    const { transport } = fakeTransport();
+    const store = await startStore(transport, 'amazon');
+    const before = store.scheme;
+    const invalid = {
+      ...defaultSchemeFor('best-of-window', before),
+      bestCount: 8,
+      windowWeeks: 4,
+    } as ComplianceScheme;
+
+    store.setScheme(invalid);
+
+    expect(store.scheme).toEqual(before);
+    expect(store.schemeIsCustom).toBe(false);
+  });
+
+  it('migrates a legacy Microsoft cache key to the provider-scoped key', async () => {
+    const storage = localStorage;
+    const legacyKey = 'badgy:doc:abc';
+    const cacheKey = 'badgy:doc:microsoft:abc';
+    const legacyDoc = emptyDoc();
+    setCell(legacyDoc, CFG_ORG, 'nvidia', new Hlc().tick());
+    storage.setItem(legacyKey, JSON.stringify(legacyDoc));
+    const { transport } = fakeTransport();
+    const store = new Store();
+
+    await store.start(transport, cacheKey, orgOrDefault('amazon'), legacyKey);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(store.org.id).toBe('nvidia');
+    expect(storage.getItem(cacheKey)).not.toBeNull();
+    expect(storage.getItem(legacyKey)).toBeNull();
   });
 
   it('switches workplace on demand and can be reset', async () => {
