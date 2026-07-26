@@ -23,7 +23,8 @@
   "geographicScope": "Within 50 miles of an assigned office, sales hub or client site",
   "assumptions": [
     "No measurement window is published.",
-    "The US federal holiday set is assumed for this preset."
+    "The US federal holiday set is assumed for this preset.",
+    "The sources cover US Sales staff and US Cloud employees specifically; other IBM divisions may differ."
   ],
   "notes": "Press reports say approved leave does not count toward the requirement.",
   "sources": [
@@ -33,7 +34,7 @@
     },
     {
       "label": "Buildremote IBM RTO tracker",
-      "url": "https://buildremote.co/return-to-office/ibm/"
+      "url": "https://buildremote.co/rto-tracker/ibm/"
     }
   ]
 }
