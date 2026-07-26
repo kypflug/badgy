@@ -15,7 +15,7 @@
   "dependencies": {
     "@azure/data-tables": "^13",
     "@azure/functions": "^4",
-    "@azure/msal-node": "^2"
+    "@azure/msal-node": "^5"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
