@@ -10,6 +10,9 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+        # Majors stay out of the group so a compiler or test-runner upgrade arrives as its
+        # own reviewable PR instead of riding along with routine patches.
+        update-types: [minor, patch]
 
   # packages/api is deliberately not an npm workspace — it has its own lockfile and
   # dependency tree, so the root entry above never sees it.
