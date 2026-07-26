@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Shared + web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
+      # `gates` runs this too, but as its own step a malformed policy or holiday contribution
+      # fails against an obviously-named check instead of inside a long build.
+      - name: Validate policy and holiday data
+        run: npm run gen:data
+
+      - name: Lint, typecheck, build and test
+        run: npm run gates
+
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Functions app runs on node:20 per staticwebapp.config.json — test it there, not on
+      # the repo-wide Node 24, so a runtime incompatibility fails here rather than in production.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: packages/api/package-lock.json
+
+      - run: npm ci
+        working-directory: packages/api
+
+      - name: Build and test
+        run: npm test
+        working-directory: packages/api

@@ -18,6 +18,7 @@
     "@azure/msal-node": "^2"
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "typescript": "^5.7.0"
   }
 }
