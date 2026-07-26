@@ -1,5 +1,4 @@
 import {
-  beltBand,
   type CalendarNote,
   meetupCycleLabel,
   type PickableStatus,
@@ -307,17 +306,18 @@ export class MonthCalendar extends BadgyElement {
       days.length > 0 ? store.notesInRange(days[0].date, days[days.length - 1].date) : [];
     const weeks: ResolvedDay[][] = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+    const scoreTitle = `${store.org.label} — ${store.org.summary}`;
 
     return html`
       <div class="cal">
         <div class="cal-grid cal-head">
           ${DOW.map((l) => html`<div class="cal-dow">${l}</div>`)}
-          <div class="cal-dow cal-dow--belt">BELT</div>
+          <div class="cal-dow cal-dow--score">Score</div>
         </div>
         ${weeks.map((week, wi) => {
           const weekStart = weekStarts[wi];
-          const belt = store.weekBelt(weekStart);
-          const beltCls = belt == null ? '' : `belt-${beltBand(belt)}`;
+          const score = store.weekScore(weekStart);
+          const scoreCls = score == null ? '' : `score-${store.band(score)}`;
           const meetupLabel = store.isMeetupWeek(weekStart)
             ? (meetupCycleLabel(weekStart) ?? 'Meetup')
             : null;
@@ -327,7 +327,7 @@ export class MonthCalendar extends BadgyElement {
           return html`<div class="cal-grid cal-row">
             ${annotationOverlay(segments, (note) => this.editNote(note))}
             ${week.map((d) => this.dayCell(d, selected))}
-            <div class="cal-belt ${beltCls}" title="Best-8-of-12 BELT for this week">${formatPct(belt)}</div>
+            <div class="cal-score ${scoreCls}" title=${scoreTitle}>${formatPct(score)}</div>
           </div>`;
         })}
       </div>

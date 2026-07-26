@@ -49,7 +49,12 @@ await buildSw();
 if (serve) {
   const ctx = await context(appOpts);
   await ctx.watch();
-  const { port } = await ctx.serve({ servedir: outdir, port: 5173 });
+  // SPA fallback so org routes like /amazon resolve locally the way SWA rewrites them in prod.
+  const { port } = await ctx.serve({
+    servedir: outdir,
+    fallback: `${outdir}/index.html`,
+    port: 5173,
+  });
   console.log(`web dev server: http://localhost:${port}`);
 } else {
   await build(appOpts);

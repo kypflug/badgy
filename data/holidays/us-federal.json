@@ -1,0 +1,82 @@
+{
+  "id": "us-federal",
+  "label": "United States — federal",
+  "rules": [
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 1,
+      "name": "New Year's Day",
+      "observance": "nearest-weekday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 1,
+      "weekday": 1,
+      "nth": 3,
+      "name": "Martin Luther King Jr. Day"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 2,
+      "weekday": 1,
+      "nth": 3,
+      "name": "Presidents' Day"
+    },
+    {
+      "kind": "last-weekday",
+      "month": 5,
+      "weekday": 1,
+      "name": "Memorial Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 6,
+      "day": 19,
+      "name": "Juneteenth",
+      "observance": "nearest-weekday"
+    },
+    {
+      "kind": "fixed",
+      "month": 7,
+      "day": 4,
+      "name": "Independence Day",
+      "observance": "nearest-weekday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 9,
+      "weekday": 1,
+      "nth": 1,
+      "name": "Labor Day"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 10,
+      "weekday": 1,
+      "nth": 2,
+      "name": "Columbus Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 11,
+      "day": 11,
+      "name": "Veterans Day",
+      "observance": "nearest-weekday"
+    },
+    {
+      "kind": "nth-weekday",
+      "month": 11,
+      "weekday": 4,
+      "nth": 4,
+      "name": "Thanksgiving Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 25,
+      "name": "Christmas Day",
+      "observance": "nearest-weekday"
+    }
+  ]
+}

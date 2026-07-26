@@ -6,7 +6,7 @@ import {
 } from '@azure/functions';
 import { safeErrorDetail } from '../lib/errors';
 import { isSecure } from '../lib/req';
-import { clearCookie, readSession, SESSION_COOKIE } from '../lib/session';
+import { clearCookie, readSession, SESSION_COOKIE, sessionProvider } from '../lib/session';
 import { deleteCache, logError } from '../lib/store';
 
 export interface LogoutDependencies {
@@ -25,7 +25,7 @@ export async function logout(
   const s = readSession(req);
   if (s) {
     try {
-      await dependencies.deleteCache(s.uid);
+      await dependencies.deleteCache(sessionProvider(s), s.uid);
     } catch (error: unknown) {
       const detail = safeErrorDetail(error);
       context.error('logout cache delete failed', detail);

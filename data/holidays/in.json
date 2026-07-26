@@ -1,0 +1,25 @@
+{
+  "id": "in",
+  "label": "India",
+  "note": "Gazetted national days only — festival dates vary, so import an .ics for the rest.",
+  "rules": [
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 26,
+      "name": "Republic Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 8,
+      "day": 15,
+      "name": "Independence Day"
+    },
+    {
+      "kind": "fixed",
+      "month": 10,
+      "day": 2,
+      "name": "Gandhi Jayanti"
+    }
+  ]
+}

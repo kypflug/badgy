@@ -1,0 +1,39 @@
+{
+  "id": "apple",
+  "label": "Apple",
+  "summary": "3 days a week, Tue/Thu plus team day",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 3,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    },
+    "anchorDays": [2, 4]
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "reported",
+  "effectiveDate": "2022-09-05",
+  "assumptions": [
+    "The third in-office day is team-determined.",
+    "Partial-vacation-week treatment is not documented.",
+    "The US federal holiday set is assumed for this preset."
+  ],
+  "sources": [
+    {
+      "label": "Buildremote Apple RTO tracker",
+      "url": "https://buildremote.co/return-to-office/apple/"
+    },
+    {
+      "label": "The Pragmatic Engineer Apple RTO report",
+      "url": "https://blog.pragmaticengineer.com/the-scoop-apple-rto/"
+    }
+  ]
+}

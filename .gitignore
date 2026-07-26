@@ -34,3 +34,6 @@ dist-deploy.zip
 # Azure Functions local secrets
 local.settings.json
 packages/api/local.settings.json
+
+# generated data
+packages/shared/src/generated/

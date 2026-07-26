@@ -1,0 +1,33 @@
+{
+  "id": "meta",
+  "label": "Meta",
+  "summary": "3 days a week, measured each week",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 3,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "reported",
+  "assumptions": [
+    "No measurement window is published.",
+    "No badge escalation thresholds are published.",
+    "The US federal holiday set is assumed for this preset."
+  ],
+  "sources": [
+    {
+      "label": "WFA Meta remote-work policy report",
+      "url": "https://www.wfa.team/blog/meta-remote-work-from-anywhere-policy/"
+    }
+  ]
+}

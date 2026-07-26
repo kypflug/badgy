@@ -1,6 +1,6 @@
-import { beltBand, STATUS_LABEL, shiftMonth } from '@badgy/shared';
+import { STATUS_LABEL, shiftMonth } from '@badgy/shared';
 import { html, nothing } from 'lit';
-import { type InteractiveAuthFlow, reconnect } from '../auth/msal.js';
+import { type InteractiveAuthFlow, reconnect } from '../auth/provider.js';
 import { getSession } from '../auth/session.js';
 import { formatPct } from '../lib/format.js';
 import { STATUS_ICON, STATUS_ORDER } from '../lib/status.js';
@@ -120,12 +120,19 @@ export class BadgyApp extends BadgyElement {
   private statusPill() {
     const c = store.compliance();
     if (c.current == null) return nothing;
-    const band = beltBand(c.current);
+    const band = store.band(c.current);
     const onTrack = c.current + 1e-9 >= c.target;
-    const label = onTrack ? 'On track' : c.current >= c.target - 0.1 ? 'At risk' : 'Off track';
+    const label =
+      store.scheme.kind === 'none'
+        ? 'No requirement'
+        : onTrack
+          ? 'On track'
+          : c.current >= c.target - 0.1
+            ? 'At risk'
+            : 'Off track';
     return html`<span
-      class="status-pill belt-${band}"
-      title="BELT ${formatPct(c.current)} · target ${formatPct(c.target)}"
+      class="status-pill score-${band}"
+      title="${c.headline} · target ${formatPct(c.target)}"
     >
       <span class="status-dot"></span>${label} · ${formatPct(c.current)}
     </span>`;
@@ -142,7 +149,7 @@ export class BadgyApp extends BadgyElement {
   }
   private beginReconnect(): void {
     if (this.reconnectFlow?.snapshot.stage === 'blocked') {
-      this.reconnectFlow.openMicrosoft();
+      this.reconnectFlow.openProvider();
       this.reconnectStage = this.reconnectFlow.snapshot.stage;
       return;
     }
@@ -224,14 +231,14 @@ export class BadgyApp extends BadgyElement {
                     ?disabled=${
                       this.reconnectStage === 'starting' || this.reconnectStage === 'waiting'
                     }
-                    title="Your changes aren't syncing to OneDrive. Tap to reconnect."
+                    title="Your changes aren't syncing to your cloud storage. Tap to reconnect."
                   >
                     ${this.reconnectLabel()}
                   </button>`
                 : store.isSyncUnavailable
                   ? html`<span
                       class="offline-pill"
-                      title="Badgy is using your local cache and will retry OneDrive automatically."
+                      title="Badgy is using your local cache and will retry your cloud storage automatically."
                       >Offline</span
                     >`
                   : nothing

@@ -8,7 +8,7 @@ import { safeErrorDetail } from '../lib/errors';
 import { isBadgyRequest, isSecure } from '../lib/req';
 import { sessionCookie } from '../lib/session';
 import { loadAuthTransactionById, logError, updateAuthTransaction } from '../lib/store';
-import { completionDecision } from '../lib/transactions';
+import { completionDecision, transactionProvider } from '../lib/transactions';
 
 interface CompleteBody {
   transactionId: string;
@@ -82,16 +82,17 @@ async function complete(req: HttpRequest, context: InvocationContext): Promise<H
       }
 
       const account = decision.account;
+      const provider = transactionProvider(stored.data);
       return {
         status: 200,
         headers: { 'Cache-Control': 'no-store' },
         cookies: [
           sessionCookie(
-            { uid: account.id, name: account.name, email: account.email },
+            { uid: account.id, name: account.name, email: account.email, provider },
             isSecure(req),
           ),
         ],
-        jsonBody: { status: 'complete', account },
+        jsonBody: { status: 'complete', account: { ...account, provider } },
       };
     }
     return {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { initAuth, startInteractiveAuth } from './msal.js';
+import { initAuth, startInteractiveAuth } from './provider.js';
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -65,9 +65,40 @@ describe('auth startup', () => {
     await vi.runAllTimersAsync();
     await expect(result).resolves.toEqual({
       status: 'signed-in',
-      account: { id: 'u1', name: 'Ada', email: 'k@example.com' },
+      account: { id: 'u1', name: 'Ada', email: 'k@example.com', provider: 'microsoft' },
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('reads the provider from the session', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        signedIn: true,
+        id: 'g1',
+        name: 'Ada',
+        email: 'a@example.com',
+        provider: 'google',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(initAuth()).resolves.toEqual({
+      status: 'signed-in',
+      account: { id: 'g1', name: 'Ada', email: 'a@example.com', provider: 'google' },
+    });
+  });
+
+  it('treats a session with no provider as Microsoft', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ signedIn: true, id: 'u1', name: 'Ada', email: 'k@e.com' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await initAuth();
+    expect(result).toEqual({
+      status: 'signed-in',
+      account: { id: 'u1', name: 'Ada', email: 'k@e.com', provider: 'microsoft' },
+    });
   });
 
   it('keeps temporary auth outages distinct from signed out', async () => {
@@ -102,25 +133,23 @@ describe('interactive auth transaction', () => {
       open: vi.fn(() => popup),
       location: { assign: vi.fn() },
     });
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(
-          jsonResponse({
-            transactionId: 'tx',
-            pollSecret: 'secret',
-            authorizationUrl: 'https://login.example/authorize',
-            expiresAt: new Date(Date.now() + 60_000).toISOString(),
-          }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({
-            status: 'complete',
-            account: { id: 'u1', name: 'Ada', email: 'k@example.com' },
-          }),
-        ),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          transactionId: 'tx',
+          pollSecret: 'secret',
+          authorizationUrl: 'https://login.example/authorize',
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: 'complete',
+          account: { id: 'u1', name: 'Ada', email: 'k@example.com' },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
 
     const first = startInteractiveAuth();
     const second = startInteractiveAuth();
@@ -130,8 +159,47 @@ describe('interactive auth transaction', () => {
       id: 'u1',
       name: 'Ada',
       email: 'k@example.com',
+      provider: 'microsoft',
     });
     expect(popup.location.replace).toHaveBeenCalledWith('https://login.example/authorize');
     expect(popup.close).toHaveBeenCalled();
+  });
+
+  it('asks the BFF to start the requested provider', async () => {
+    const popup = {
+      closed: false,
+      close: vi.fn(),
+      document: { title: '', body: { textContent: '' } },
+      location: { replace: vi.fn() },
+    };
+    vi.stubGlobal('window', { open: vi.fn(() => popup), location: { assign: vi.fn() } });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          transactionId: 'tx',
+          pollSecret: 'secret',
+          authorizationUrl: 'https://accounts.google.example/authorize',
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: 'complete',
+          account: { id: 'g1', name: 'Ada', email: 'a@example.com', provider: 'google' },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const flow = startInteractiveAuth('google', true);
+    await vi.runAllTimersAsync();
+    await expect(flow.completion).resolves.toEqual({
+      id: 'g1',
+      name: 'Ada',
+      email: 'a@example.com',
+      provider: 'google',
+    });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+    expect(body).toEqual({ selectAccount: true, provider: 'google' });
   });
 });

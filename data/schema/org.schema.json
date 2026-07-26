@@ -1,0 +1,444 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://badgy.tech/schema/org.schema.json",
+  "title": "Badgy organisation policy preset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "label", "summary", "scheme", "target", "holidaySet", "confidence", "sources"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scheme": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "windowWeeks", "bestCount", "weeklyCap", "bands", "absence"],
+          "properties": {
+            "kind": {
+              "const": "best-of-window"
+            },
+            "windowWeeks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "bestCount": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "weeklyCap": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "bands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["warn", "success"],
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "success": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "absence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["excused", "travelCountsAsOffice", "proration"],
+              "properties": {
+                "excused": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof"]
+                  }
+                },
+                "travelCountsAsOffice": {
+                  "type": "boolean"
+                },
+                "proration": {
+                  "enum": ["prorate", "ignore"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "windowWeeks", "minQualifying", "daysPerWeek", "bands", "absence"],
+          "properties": {
+            "kind": {
+              "const": "qualifying-weeks"
+            },
+            "windowWeeks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minQualifying": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "daysPerWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "bands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["warn", "success"],
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "success": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "absence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["excused", "travelCountsAsOffice", "proration"],
+              "properties": {
+                "excused": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof"]
+                  }
+                },
+                "travelCountsAsOffice": {
+                  "type": "boolean"
+                },
+                "proration": {
+                  "enum": ["prorate", "ignore"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "daysPerWeek", "averagingWeeks", "bands", "absence"],
+          "properties": {
+            "kind": {
+              "const": "weekly-quota"
+            },
+            "daysPerWeek": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 7
+            },
+            "averagingWeeks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "anchorDays": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              }
+            },
+            "bands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["warn", "success"],
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "success": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "absence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["excused", "travelCountsAsOffice", "proration"],
+              "properties": {
+                "excused": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof"]
+                  }
+                },
+                "travelCountsAsOffice": {
+                  "type": "boolean"
+                },
+                "proration": {
+                  "enum": ["prorate", "ignore"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "period", "days", "bands", "absence"],
+          "properties": {
+            "kind": {
+              "const": "period-quota"
+            },
+            "period": {
+              "enum": ["month", "quarter"]
+            },
+            "days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "bands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["warn", "success"],
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "success": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "absence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["excused", "travelCountsAsOffice", "proration"],
+              "properties": {
+                "excused": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof"]
+                  }
+                },
+                "travelCountsAsOffice": {
+                  "type": "boolean"
+                },
+                "proration": {
+                  "enum": ["prorate", "ignore"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "period", "percent", "bands", "absence"],
+          "properties": {
+            "kind": {
+              "const": "period-percentage"
+            },
+            "period": {
+              "enum": ["month", "quarter"]
+            },
+            "percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "bands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["warn", "success"],
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "success": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "absence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["excused", "travelCountsAsOffice", "proration"],
+              "properties": {
+                "excused": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof"]
+                  }
+                },
+                "travelCountsAsOffice": {
+                  "type": "boolean"
+                },
+                "proration": {
+                  "enum": ["prorate", "ignore"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bands", "absence"],
+          "properties": {
+            "kind": {
+              "const": "none"
+            },
+            "bands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["warn", "success"],
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "success": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "absence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["excused", "travelCountsAsOffice", "proration"],
+              "properties": {
+                "excused": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof"]
+                  }
+                },
+                "travelCountsAsOffice": {
+                  "type": "boolean"
+                },
+                "proration": {
+                  "enum": ["prorate", "ignore"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "target": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "holidaySet": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "pattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "0": {
+          "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof", "none"]
+        },
+        "1": {
+          "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof", "none"]
+        },
+        "2": {
+          "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof", "none"]
+        },
+        "3": {
+          "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof", "none"]
+        },
+        "4": {
+          "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof", "none"]
+        },
+        "5": {
+          "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof", "none"]
+        },
+        "6": {
+          "enum": ["office", "remote", "travel", "holiday", "vacation", "sick", "oof", "none"]
+        }
+      }
+    },
+    "confidence": {
+      "enum": ["official", "reported", "community"]
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "url"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https?://"
+          }
+        }
+      }
+    },
+    "effectiveDate": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "geographicScope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "notes": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

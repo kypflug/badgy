@@ -5,9 +5,8 @@ import {
   type HttpResponseInit,
   type InvocationContext,
 } from '@azure/functions';
-import type { AuthorizationUrlRequest } from '@azure/msal-node';
-import { cca, GRAPH_SCOPES } from '../lib/auth';
 import { safeErrorDetail } from '../lib/errors';
+import { getProvider, isProviderId, type ProviderId } from '../lib/providers';
 import { FixedWindowRateLimiter, forwardedClientKey } from '../lib/rate-limit';
 import { isBadgyRequest, redirectUri } from '../lib/req';
 import { cleanupExpiredAuthEntities, createAuthTransaction, logError } from '../lib/store';
@@ -19,15 +18,19 @@ const startRateLimiter = new FixedWindowRateLimiter({
   maxKeys: 4096,
 });
 
-async function requestBody(req: HttpRequest): Promise<{ selectAccount: boolean }> {
+async function requestBody(
+  req: HttpRequest,
+): Promise<{ selectAccount: boolean; provider: ProviderId }> {
   const text = await req.text();
-  if (!text.trim()) return { selectAccount: false };
+  if (!text.trim()) return { selectAccount: false, provider: 'microsoft' };
   const value: unknown = JSON.parse(text);
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid body');
   const selectAccount = (value as { selectAccount?: unknown }).selectAccount;
   if (selectAccount !== undefined && typeof selectAccount !== 'boolean')
     throw new Error('invalid selectAccount');
-  return { selectAccount: selectAccount === true };
+  const provider = (value as { provider?: unknown }).provider;
+  if (provider !== undefined && !isProviderId(provider)) throw new Error('invalid provider');
+  return { selectAccount: selectAccount === true, provider: provider ?? 'microsoft' };
 }
 
 async function start(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
@@ -40,9 +43,9 @@ async function start(req: HttpRequest, context: InvocationContext): Promise<Http
     };
   }
 
-  let selectAccount: boolean;
+  let body: { selectAccount: boolean; provider: ProviderId };
   try {
-    ({ selectAccount } = await requestBody(req));
+    body = await requestBody(req);
   } catch {
     return { status: 400, jsonBody: { error: 'invalid_request' } };
   }
@@ -58,17 +61,16 @@ async function start(req: HttpRequest, context: InvocationContext): Promise<Http
     const state = randomBytes(32).toString('base64url');
     const verifier = randomBytes(32).toString('base64url');
     const expiresAt = Date.now() + AUTH_TRANSACTION_TTL_MS;
-    const authRequest: AuthorizationUrlRequest = {
-      scopes: GRAPH_SCOPES,
+    const provider = getProvider(body.provider);
+    const authorizationUrl = await provider.authorizationUrl({
       redirectUri: redirectUri(req),
       state,
       codeChallenge: createHash('sha256').update(verifier).digest('base64url'),
-      codeChallengeMethod: 'S256',
-    };
-    if (selectAccount) authRequest.prompt = 'select_account';
-    const authorizationUrl = await cca().getAuthCodeUrl(authRequest);
+      selectAccount: body.selectAccount,
+    });
     const transaction: AuthTransactionData = {
       version: 1,
+      provider: provider.id,
       state,
       verifier,
       pollSecretHash: hashSecret(pollSecret),

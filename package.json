@@ -12,6 +12,7 @@
     "packages/web"
   ],
   "scripts": {
+    "gen:data": "node tools/gen-data.mjs",
     "build:shared": "npm run build -w @badgy/shared",
     "build:web": "npm run build -w @badgy/web",
     "build": "npm run build:shared && npm run build:web",
@@ -22,7 +23,10 @@
     "lint:css": "stylelint \"packages/web/src/**/*.css\"",
     "test": "npm run test --workspaces --if-present",
     "thumbs": "node tools/thumbs.mjs",
-    "gates": "npm run lint && npm run lint:css && npm run typecheck && npm run build && npm run test"
+    "gates": "npm run gen:data && npm run lint && npm run lint:css && npm run typecheck && npm run build && npm run test",
+    "prebuild:shared": "npm run gen:data",
+    "pretypecheck": "npm run gen:data",
+    "pretest": "npm run gen:data"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",

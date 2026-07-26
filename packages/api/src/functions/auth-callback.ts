@@ -7,6 +7,7 @@ import {
 } from '@azure/functions';
 import { cca, GRAPH_SCOPES } from '../lib/auth';
 import { safeErrorDetail } from '../lib/errors';
+import { getProvider } from '../lib/providers';
 import { baseUrl, isSecure, redirectUri } from '../lib/req';
 import { clearCookie, OAUTH_COOKIE, readOAuth, sessionCookie } from '../lib/session';
 import {
@@ -22,6 +23,7 @@ import {
   callbackClaimRecoveryDecision,
   callbackFailureCode,
   callbackStateDecision,
+  transactionProvider,
 } from '../lib/transactions';
 
 function htmlPage(success: boolean): HttpResponseInit {
@@ -114,28 +116,23 @@ async function transactionCallback(
   }
 
   try {
-    const client = cca();
-    const result = await client.acquireTokenByCode({
+    const provider = getProvider(transactionProvider(claimed.data));
+    const result = await provider.redeem({
       code,
-      scopes: GRAPH_SCOPES,
       redirectUri: redirectUri(req),
-      codeVerifier: claimed.data.verifier,
+      verifier: claimed.data.verifier,
     });
     const account = result.account;
-    if (!account) {
-      const failed = await failOwnedTransaction(claimed, 'auth_failed');
-      if (!failed) return responseAfterConflict(claimed.data.state);
-      return htmlPage(false);
-    }
-    await saveCache(account.homeAccountId, client.getTokenCache().serialize());
+    await saveCache(provider.id, account.id, result.cache);
     const completed = await updateAuthTransaction(claimed, {
       ...claimed.data,
+      provider: provider.id,
       status: 'completed',
       claimExpiresAt: Date.now() + AUTH_CLAIM_TTL_MS,
       account: {
-        id: account.homeAccountId,
-        name: account.name ?? account.username,
-        email: account.username,
+        id: account.id,
+        name: account.name,
+        email: account.email,
       },
     });
     if (completed) return htmlPage(true);
@@ -178,11 +175,12 @@ async function legacyCallback(
   const account = result.account;
   if (!account) return home('?auth=noaccount');
 
-  await saveCache(account.homeAccountId, client.getTokenCache().serialize());
+  await saveCache('microsoft', account.homeAccountId, client.getTokenCache().serialize());
   const session = {
     uid: account.homeAccountId,
     name: account.name ?? account.username,
     email: account.username,
+    provider: 'microsoft' as const,
   };
   return {
     status: 302,

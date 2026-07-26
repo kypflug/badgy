@@ -1,0 +1,31 @@
+{
+  "id": "amazon",
+  "label": "Amazon",
+  "summary": "5 days a week, every week",
+  "scheme": {
+    "kind": "weekly-quota",
+    "daysPerWeek": 5,
+    "averagingWeeks": 1,
+    "bands": {
+      "warn": 0.8,
+      "success": 0.9
+    },
+    "absence": {
+      "excused": ["vacation", "sick", "holiday", "oof"],
+      "travelCountsAsOffice": false,
+      "proration": "prorate"
+    }
+  },
+  "target": 1,
+  "holidaySet": "us-federal",
+  "confidence": "official",
+  "effectiveDate": "2025-01-02",
+  "assumptions": ["The US federal holiday set is assumed for this preset."],
+  "notes": "PTO, sick leave and business travel are explicitly excused.",
+  "sources": [
+    {
+      "label": "Amazon CEO update",
+      "url": "https://www.aboutamazon.com/news/company-news/ceo-andy-jassy-latest-update-on-amazon-return-to-office-manager-team-ratio"
+    }
+  ]
+}

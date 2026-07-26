@@ -1,5 +1,5 @@
 import { type Doc, emptyDoc } from '@badgy/shared';
-import { getGraphToken } from '../auth/msal.js';
+import { getAccessToken } from '../auth/provider.js';
 import type { SyncTransport } from './types.js';
 
 // The app folder ("approot") is private to this app — the token can only touch this folder.
@@ -18,7 +18,7 @@ function isDoc(value: unknown): value is Doc {
 
 export const graphTransport: SyncTransport = {
   async getRemote() {
-    const token = await getGraphToken();
+    const token = await getAccessToken();
     const metaRes = await fetch(ITEM, { headers: { authorization: `Bearer ${token}` } });
     if (metaRes.status === 404) return null;
     if (!metaRes.ok) throw new Error(`graph metadata ${metaRes.status}`);
@@ -36,7 +36,7 @@ export const graphTransport: SyncTransport = {
   },
 
   async putRemote(doc, etag) {
-    const token = await getGraphToken();
+    const token = await getAccessToken();
     const headers: Record<string, string> = {
       authorization: `Bearer ${token}`,
       'content-type': 'application/json',

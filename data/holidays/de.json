@@ -1,0 +1,56 @@
+{
+  "id": "de",
+  "label": "Germany",
+  "rules": [
+    {
+      "kind": "fixed",
+      "month": 1,
+      "day": 1,
+      "name": "Neujahr"
+    },
+    {
+      "kind": "easter",
+      "offset": -2,
+      "name": "Karfreitag"
+    },
+    {
+      "kind": "easter",
+      "offset": 1,
+      "name": "Ostermontag"
+    },
+    {
+      "kind": "fixed",
+      "month": 5,
+      "day": 1,
+      "name": "Tag der Arbeit"
+    },
+    {
+      "kind": "easter",
+      "offset": 39,
+      "name": "Christi Himmelfahrt"
+    },
+    {
+      "kind": "easter",
+      "offset": 50,
+      "name": "Pfingstmontag"
+    },
+    {
+      "kind": "fixed",
+      "month": 10,
+      "day": 3,
+      "name": "Tag der Deutschen Einheit"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 25,
+      "name": "1. Weihnachtstag"
+    },
+    {
+      "kind": "fixed",
+      "month": 12,
+      "day": 26,
+      "name": "2. Weihnachtstag"
+    }
+  ]
+}

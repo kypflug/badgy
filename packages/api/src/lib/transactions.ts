@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import type { ProviderId } from './providers/types';
 
 export const AUTH_TRANSACTION_TTL_MS = 10 * 60 * 1000;
 export const AUTH_REDEMPTION_LEASE_MS = 2 * 60 * 1000;
@@ -14,6 +15,7 @@ export interface AuthTransactionAccount {
 
 export interface AuthTransactionData {
   version: 1;
+  provider?: ProviderId;
   state: string;
   verifier: string;
   pollSecretHash: string;
@@ -24,6 +26,10 @@ export interface AuthTransactionData {
   status: AuthTransactionStatus;
   account?: AuthTransactionAccount;
   failureCode?: AuthFailureCode;
+}
+
+export function transactionProvider(transaction: AuthTransactionData): ProviderId {
+  return transaction.provider ?? 'microsoft';
 }
 
 export type AuthFailureCode =
@@ -144,6 +150,7 @@ export function isAuthTransactionData(value: unknown): value is AuthTransactionD
   const data = value as Partial<AuthTransactionData>;
   const validBase =
     data.version === 1 &&
+    (data.provider === undefined || data.provider === 'microsoft' || data.provider === 'google') &&
     typeof data.state === 'string' &&
     data.state.length >= 32 &&
     typeof data.verifier === 'string' &&
