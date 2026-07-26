@@ -1,0 +1,30 @@
+version: 2
+
+updates:
+  # Root workspaces (packages/shared + packages/web).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+
+  # packages/api is deliberately not an npm workspace — it has its own lockfile and
+  # dependency tree, so the root entry above never sees it.
+  - package-ecosystem: npm
+    directory: /packages/api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      # Pinned to the node:20 Azure Functions runtime; a major bump would typecheck
+      # the API against a Node it does not run on.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

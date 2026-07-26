@@ -1,0 +1,7 @@
+# Every file needs an owner so reviews are requested automatically.
+* @kypflug
+
+# Community contributions land here most often — policy presets and holiday rule
+# sets. Same owner today, called out separately so a future data maintainer is a
+# one-line change.
+/data/ @kypflug
