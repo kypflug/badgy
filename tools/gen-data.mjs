@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = path.join(root, 'data');
@@ -14,6 +14,25 @@ const outFile = path.join(outDir, 'data.ts');
 const pointer = (pathParts) =>
   `/${pathParts.map((part) => String(part).replaceAll('~', '~0').replaceAll('/', '~1')).join('/')}`;
 
+const implementedSchemaKeywords = new Set([
+  '$id',
+  '$schema',
+  'additionalProperties',
+  'const',
+  'enum',
+  'items',
+  'maximum',
+  'minItems',
+  'minimum',
+  'minLength',
+  'oneOf',
+  'pattern',
+  'properties',
+  'required',
+  'title',
+  'type',
+]);
+
 async function readJson(file) {
   return JSON.parse(await readFile(file, 'utf8'));
 }
@@ -24,7 +43,16 @@ function typeOf(value) {
   return typeof value;
 }
 
-function validate(schema, value, file, pathParts = []) {
+function assertImplementedSchema(schema, file, pathParts) {
+  for (const key of Object.keys(schema)) {
+    if (!implementedSchemaKeywords.has(key)) {
+      throw new Error(`${file} ${pointer(pathParts)}: schema keyword "${key}" is not implemented`);
+    }
+  }
+}
+
+export function validate(schema, value, file, pathParts = []) {
+  assertImplementedSchema(schema, file, pathParts);
   const errors = [];
   const fail = (message) => errors.push(`${file} ${pointer(pathParts)}: ${message}`);
 
@@ -33,7 +61,6 @@ function validate(schema, value, file, pathParts = []) {
       (candidate) => validate(candidate, value, file, pathParts).length === 0,
     );
     if (matches.length !== 1) fail(`must match exactly one schema, matched ${matches.length}`);
-    return errors;
   }
 
   if (schema.const !== undefined && value !== schema.const)
@@ -76,20 +103,38 @@ function validate(schema, value, file, pathParts = []) {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const properties = schema.properties ?? {};
     for (const key of schema.required ?? []) {
-      if (!(key in value)) errors.push(`${file} ${pointer([...pathParts, key])}: is required`);
+      if (!Object.hasOwn(value, key))
+        errors.push(`${file} ${pointer([...pathParts, key])}: is required`);
     }
     if (schema.additionalProperties === false) {
       for (const key of Object.keys(value)) {
-        if (!(key in properties))
+        if (!Object.hasOwn(properties, key))
           errors.push(`${file} ${pointer([...pathParts, key])}: unknown property`);
       }
     }
     for (const [key, childSchema] of Object.entries(properties)) {
-      if (key in value)
+      if (Object.hasOwn(value, key))
         errors.push(...validate(childSchema, value[key], file, [...pathParts, key]));
     }
   }
 
+  return errors;
+}
+
+export function validateComplianceSchemeContract(scheme, file, pathParts = ['scheme']) {
+  const errors = [];
+  const at = (field) => pointer([...pathParts, field]);
+  // Keep this mirrored with isComplianceScheme in packages/shared/src/policy/types.ts.
+  if (scheme?.kind === 'best-of-window' && scheme.bestCount > scheme.windowWeeks) {
+    errors.push(
+      `${file} ${at('bestCount')}: must be <= windowWeeks (${scheme.windowWeeks}), got ${scheme.bestCount}`,
+    );
+  }
+  if (scheme?.kind === 'qualifying-weeks' && scheme.minQualifying > scheme.windowWeeks) {
+    errors.push(
+      `${file} ${at('minQualifying')}: must be <= windowWeeks (${scheme.windowWeeks}), got ${scheme.minQualifying}`,
+    );
+  }
   return errors;
 }
 
@@ -105,73 +150,80 @@ async function readData(dir) {
   );
 }
 
-const [orgSchema, holidaySchema, orgFiles, holidayFiles] = await Promise.all([
-  readJson(path.join(dataDir, 'schema', 'org.schema.json')),
-  readJson(path.join(dataDir, 'schema', 'holiday-set.schema.json')),
-  readData(orgDir),
-  readData(holidayDir),
-]);
+async function main() {
+  const [orgSchema, holidaySchema, orgFiles, holidayFiles] = await Promise.all([
+    readJson(path.join(dataDir, 'schema', 'org.schema.json')),
+    readJson(path.join(dataDir, 'schema', 'holiday-set.schema.json')),
+    readData(orgDir),
+    readData(holidayDir),
+  ]);
 
-const errors = [];
-for (const item of orgFiles) errors.push(...validate(orgSchema, item.value, item.path));
-for (const item of holidayFiles) errors.push(...validate(holidaySchema, item.value, item.path));
-
-const holidayIds = new Set();
-for (const item of holidayFiles) {
-  if (item.value.id !== item.stem) errors.push(`${item.path} /id: must equal filename stem`);
-  if (holidayIds.has(item.value.id)) errors.push(`${item.path} /id: duplicate holiday id`);
-  holidayIds.add(item.value.id);
-}
-
-const orgIds = new Set();
-const aliases = new Map();
-for (const item of orgFiles) {
-  const org = item.value;
-  if (org.id !== item.stem) errors.push(`${item.path} /id: must equal filename stem`);
-  if (orgIds.has(org.id)) errors.push(`${item.path} /id: duplicate org id`);
-  orgIds.add(org.id);
-  if (!holidayIds.has(org.holidaySet))
-    errors.push(`${item.path} /holidaySet: unknown holiday set "${org.holidaySet}"`);
-  for (const alias of org.aliases ?? []) {
-    const existing = aliases.get(alias);
-    if (existing)
-      errors.push(`${item.path} /aliases: alias "${alias}" already used by ${existing}`);
-    aliases.set(alias, org.id);
+  const errors = [];
+  for (const item of orgFiles) {
+    errors.push(...validate(orgSchema, item.value, item.path));
+    errors.push(...validateComplianceSchemeContract(item.value.scheme, item.path));
   }
+  for (const item of holidayFiles) errors.push(...validate(holidaySchema, item.value, item.path));
+
+  const holidayIds = new Set();
+  for (const item of holidayFiles) {
+    if (item.value.id !== item.stem) errors.push(`${item.path} /id: must equal filename stem`);
+    if (holidayIds.has(item.value.id)) errors.push(`${item.path} /id: duplicate holiday id`);
+    holidayIds.add(item.value.id);
+  }
+
+  const orgIds = new Set();
+  const aliases = new Map();
+  for (const item of orgFiles) {
+    const org = item.value;
+    if (org.id !== item.stem) errors.push(`${item.path} /id: must equal filename stem`);
+    if (orgIds.has(org.id)) errors.push(`${item.path} /id: duplicate org id`);
+    orgIds.add(org.id);
+    if (!holidayIds.has(org.holidaySet))
+      errors.push(`${item.path} /holidaySet: unknown holiday set "${org.holidaySet}"`);
+    for (const alias of org.aliases ?? []) {
+      const existing = aliases.get(alias);
+      if (existing)
+        errors.push(`${item.path} /aliases: alias "${alias}" already used by ${existing}`);
+      aliases.set(alias, org.id);
+    }
+  }
+  for (const [alias, owner] of aliases) {
+    if (orgIds.has(alias))
+      errors.push(`data/orgs/${owner}.json /aliases: alias "${alias}" collides with an org id`);
+  }
+
+  if (errors.length) {
+    console.error(errors.join('\n'));
+    process.exit(1);
+  }
+
+  const holidayOrder = ['us-microsoft', 'us-federal', 'ca', 'uk', 'ie', 'au', 'de', 'fr', 'in'];
+  const holidaySets = holidayFiles
+    .map((item) => item.value)
+    .sort((a, b) => {
+      const ai = holidayOrder.indexOf(a.id);
+      const bi = holidayOrder.indexOf(b.id);
+      if (ai !== -1 || bi !== -1)
+        return (ai === -1 ? holidayOrder.length : ai) - (bi === -1 ? holidayOrder.length : bi);
+      return a.label.localeCompare(b.label);
+    });
+  const orgs = orgFiles.map((item) => item.value);
+  const literal = (value) => JSON.stringify(value, null, 2);
+  const source = `// Generated by tools/gen-data.mjs from data/. Do not edit by hand.\nimport type { HolidaySet } from '../holidays.js';\nimport type { OrgPreset } from '../policy/types.js';\n\nexport const HOLIDAY_SETS = ${literal(holidaySets)} as const satisfies readonly HolidaySet[];\n\nexport const ORG_PRESETS = ${literal(orgs)} as const satisfies readonly OrgPreset[];\n`;
+
+  await mkdir(outDir, { recursive: true });
+  await writeFile(outFile, source.replace(/\r\n/g, '\n'));
+
+  const result = spawnSync(
+    process.platform === 'win32' ? 'npx.cmd' : 'npx',
+    ['biome', 'check', '--write', '--vcs-use-ignore-file=false', 'packages/shared/src/generated'],
+    {
+      cwd: root,
+      stdio: 'inherit',
+    },
+  );
+  if (result.status) process.exit(result.status);
 }
-for (const [alias, owner] of aliases) {
-  if (orgIds.has(alias))
-    errors.push(`data/orgs/${owner}.json /aliases: alias "${alias}" collides with an org id`);
-}
 
-if (errors.length) {
-  console.error(errors.join('\n'));
-  process.exit(1);
-}
-
-const holidayOrder = ['us-microsoft', 'us-federal', 'ca', 'uk', 'ie', 'au', 'de', 'fr', 'in'];
-const holidaySets = holidayFiles
-  .map((item) => item.value)
-  .sort((a, b) => {
-    const ai = holidayOrder.indexOf(a.id);
-    const bi = holidayOrder.indexOf(b.id);
-    if (ai !== -1 || bi !== -1)
-      return (ai === -1 ? holidayOrder.length : ai) - (bi === -1 ? holidayOrder.length : bi);
-    return a.label.localeCompare(b.label);
-  });
-const orgs = orgFiles.map((item) => item.value);
-const literal = (value) => JSON.stringify(value, null, 2);
-const source = `// Generated by tools/gen-data.mjs from data/. Do not edit by hand.\nimport type { HolidaySet } from '../holidays.js';\nimport type { OrgPreset } from '../policy/types.js';\n\nexport const HOLIDAY_SETS = ${literal(holidaySets)} as const satisfies readonly HolidaySet[];\n\nexport const ORG_PRESETS = ${literal(orgs)} as const satisfies readonly OrgPreset[];\n`;
-
-await mkdir(outDir, { recursive: true });
-await writeFile(outFile, source.replace(/\r\n/g, '\n'));
-
-const result = spawnSync(
-  process.platform === 'win32' ? 'npx.cmd' : 'npx',
-  ['biome', 'check', '--write', '--vcs-use-ignore-file=false', 'packages/shared/src/generated'],
-  {
-    cwd: root,
-    stdio: 'inherit',
-  },
-);
-if (result.status) process.exit(result.status);
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

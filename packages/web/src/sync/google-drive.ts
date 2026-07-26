@@ -1,4 +1,4 @@
-import { type Doc, emptyDoc } from '@badgy/shared';
+import { type Doc, emptyDoc, merge, migrate } from '@badgy/shared';
 import { getAccessToken } from '../auth/provider.js';
 import type { SyncTransport } from './types.js';
 
@@ -12,9 +12,9 @@ import type { SyncTransport } from './types.js';
  * Concurrency caveat: Drive v3 removed `etag` from the files resource and ignores `If-Match`, so
  * there is no server-enforced conditional write. We use the monotonically increasing `version`
  * field as the concurrency token and re-read it immediately before writing, reporting `'conflict'`
- * when it moved. That leaves a small race the OneDrive path does not have — which is survivable
- * only because the document is a CRDT and every client keeps a local copy: a write that loses the
- * race is merged and re-pushed on the next sync, because `docEqual` still fails against the remote.
+ * when it moved. First writes can also race because Drive creates by name rather than by path; list
+ * queries are ordered by creation time so every client chooses the same oldest file, and a client
+ * that created a loser merges its local doc into that deterministic winner.
  */
 const FILE_NAME = 'badgy.json';
 const FILES = 'https://www.googleapis.com/drive/v3/files';
@@ -46,6 +46,7 @@ async function findFile(): Promise<DriveFile | null> {
     spaces: 'appDataFolder',
     q: `name = '${FILE_NAME}' and trashed = false`,
     fields: 'files(id,version)',
+    orderBy: 'createdTime',
     pageSize: '1',
   });
   const res = await authorized(`${FILES}?${query}`);
@@ -54,7 +55,26 @@ async function findFile(): Promise<DriveFile | null> {
   return list.files?.[0] ?? null;
 }
 
-async function createFile(doc: Doc): Promise<string> {
+async function readDoc(fileId: string): Promise<Doc | null> {
+  const res = await authorized(`${FILES}/${fileId}?alt=media`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`drive content ${res.status}`);
+  const parsed = (await res.json()) as unknown;
+  return isDoc(parsed) ? parsed : emptyDoc();
+}
+
+async function writeDoc(fileId: string, doc: Doc): Promise<string | 'conflict'> {
+  const res = await authorized(`${UPLOAD}/${fileId}?uploadType=media&fields=id,version`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(doc),
+  });
+  if (res.status === 412 || res.status === 409) return 'conflict';
+  if (!res.ok) throw new Error(`drive put ${res.status}`);
+  return ((await res.json()) as DriveFile).version ?? '';
+}
+
+async function createFile(doc: Doc): Promise<DriveFile> {
   const boundary = `badgy-${globalThis.crypto.randomUUID()}`;
   const metadata = JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] });
   const body =
@@ -67,32 +87,35 @@ async function createFile(doc: Doc): Promise<string> {
     body,
   });
   if (!res.ok) throw new Error(`drive create ${res.status}`);
-  return ((await res.json()) as DriveFile).version ?? '';
+  return (await res.json()) as DriveFile;
+}
+
+async function createConvergedFile(doc: Doc): Promise<string | 'conflict'> {
+  const created = await createFile(doc);
+  const winner = await findFile();
+  if (!winner || winner.id === created.id) return created.version ?? winner?.version ?? '';
+  const merged = merge(migrate((await readDoc(winner.id)) ?? emptyDoc()), migrate(doc));
+  return writeDoc(winner.id, merged);
 }
 
 export const googleDriveTransport: SyncTransport = {
   async getRemote() {
     const file = await findFile();
     if (!file) return null;
-    const res = await authorized(`${FILES}/${file.id}?alt=media`);
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`drive content ${res.status}`);
-    const parsed = (await res.json()) as unknown;
-    return { doc: isDoc(parsed) ? parsed : emptyDoc(), etag: file.version ?? '' };
+    const doc = await readDoc(file.id);
+    if (!doc) return null;
+    return { doc, etag: file.version ?? '' };
   },
 
   async putRemote(doc, etag) {
     const file = await findFile();
-    if (!file) return { etag: await createFile(doc) };
+    if (!file) {
+      const created = await createConvergedFile(doc);
+      return created === 'conflict' ? 'conflict' : { etag: created };
+    }
     // Stands in for the `if-match` OneDrive gets for free; see the note at the top of the file.
     if (etag !== null && file.version !== undefined && file.version !== etag) return 'conflict';
-    const res = await authorized(`${UPLOAD}/${file.id}?uploadType=media&fields=id,version`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(doc),
-    });
-    if (res.status === 412 || res.status === 409) return 'conflict';
-    if (!res.ok) throw new Error(`drive put ${res.status}`);
-    return { etag: ((await res.json()) as DriveFile).version ?? '' };
+    const written = await writeDoc(file.id, doc);
+    return written === 'conflict' ? 'conflict' : { etag: written };
   },
 };
