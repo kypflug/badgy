@@ -25,7 +25,7 @@ const appOpts = {
   minify: !serve,
   outdir,
   loader: { '.svg': 'text' },
-  external: ['/favicon.svg'],
+  external: ['/favicon.svg', '/fonts/*'],
   define,
 };
 

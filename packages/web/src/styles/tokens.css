@@ -1,98 +1,200 @@
-/* Badgy design tokens.
-   A small, hand-authored palette and scale: neutral surfaces, one blue brand ramp, and four
-   status families (success / warning / violet / danger) used by the calendar status fills.
-   Light values sit on :root; [data-theme="dark"] overrides only what has to change. */
-:root {
-  /* type */
-  --badgy-font-body: system-ui, -apple-system, blinkmacsystemfont, "Helvetica Neue", arial,
-    sans-serif;
-  --badgy-font-display: var(--badgy-font-body);
-  --badgy-text-xs: 12px;
-  --badgy-text-sm: 14px;
-  --badgy-text-md: 16px;
+/* Badgy design tokens — the "Workbench" visual system.
+   Light is warm paper: a #f6f4f0 ground, a #fffdfa surface, warm near-black ink, one teal accent
+   and seven muted status inks. Dark is the matching warm charcoal: brown-black ground, lifted
+   charcoal surfaces, warm off-white ink and a brighter teal. Both sets are semantic — components
+   style themselves from these names and never hardcode a colour.
+   Separation is done with hairlines and the ground/surface value step: the only real shadow in the
+   app is `--badgy-shadow-frame` on the outer Workbench frame (popups float outside it). */
 
-  /* shape + metrics */
-  --badgy-radius-card: 20px;
-  --badgy-radius-ctrl: 12px;
-  --badgy-ctrl-size: 36px;
+/* Instrument Sans, variable (wght 400–700), self-hosted so an installed Badgy keeps its
+   typography offline. The woff2 files are vendored verbatim from
+   @fontsource-variable/instrument-sans 5.3.0 (SIL OFL 1.1 — see public/fonts/LICENSE.txt);
+   to update, re-copy that package's files/*-wght-normal.woff2. */
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-latin-wght-normal.woff2") format("woff2");
+  unicode-range: u+0000-00ff, u+0131, u+0152-0153, u+02bb-02bc, u+02c6, u+02da, u+02dc, u+0304,
+    u+0308, u+0329, u+2000-206f, u+20ac, u+2122, u+2191, u+2193, u+2212, u+2215, u+feff, u+fffd;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: u+0100-02ba, u+02bd-02c5, u+02c7-02cc, u+02ce-02d7, u+02dd-02ff, u+0304, u+0308,
+    u+0329, u+1d00-1dbf, u+1e00-1e9f, u+1ef2-1eff, u+2020, u+20a0-20ab, u+20ad-20c0, u+2113,
+    u+2c60-2c7f, u+a720-a7ff;
+}
+
+:root {
+  color-scheme: light;
+
+  /* type */
+  --badgy-font-body: "Instrument Sans", system-ui, -apple-system, blinkmacsystemfont,
+    "Helvetica Neue", arial, sans-serif;
+  --badgy-font-display: var(--badgy-font-body);
+  --badgy-text-xs: 11.5px;
+  --badgy-text-sm: 13px;
+  --badgy-text-md: 15px;
+
+  /* shape */
+  --badgy-radius-xs: 3px;
+  --badgy-radius-sm: 6px;
+  --badgy-radius-ctrl: 8px;
+  --badgy-radius-cell: 9px;
+  --badgy-radius-note: 10px;
+  --badgy-radius-card: 12px;
+  --badgy-radius-sheet: 14px;
+  --badgy-radius-pill: 999px;
+
+  /* metrics */
+  --badgy-ctrl-size: 30px;
   --badgy-ctrl-pad-x: 12px;
-  --badgy-page-max: 1120px;
+  --badgy-icon-size: 28px;
+  --badgy-rail-width: 272px;
+  --badgy-page-max: 1160px;
 
   /* motion */
   --badgy-ease: cubic-bezier(0.33, 0, 0.67, 1);
+  --badgy-dur: 120ms;
 
   /* surfaces */
-  --badgy-surface-page: #f4f5f8;
-  --badgy-surface-card: #fff;
-  --badgy-surface-ctrl: #fff;
-  --badgy-surface-ctrl-hover: #eceef3;
-  --badgy-surface-subtle-hover: rgb(18 21 31 / 6%);
-  --badgy-surface-track: #e5e8ef;
-  --badgy-surface-scrim: rgb(18 21 31 / 45%);
-  --badgy-surface-accent: #2f4bd4;
-  --badgy-surface-accent-hover: #253bab;
+  --badgy-surface-page: #f6f4f0;
+  --badgy-surface-card: #fffdfa;
+  --badgy-surface-ctrl: #fffdfa;
+  --badgy-surface-ctrl-hover: #f2efe9;
+  --badgy-surface-scrim: rgb(28 26 23 / 42%);
+  --badgy-wash: rgb(28 26 23 / 3%);
+  --badgy-wash-2: rgb(28 26 23 / 6%);
+  --badgy-wash-active: rgb(28 26 23 / 7%);
+  --badgy-wash-3: rgb(28 26 23 / 8%);
+  --badgy-stroke: rgb(28 26 23 / 10%);
+  --badgy-stroke-strong: rgb(28 26 23 / 12%);
+  --badgy-stroke-control: rgb(28 26 23 / 16%);
 
   /* ink */
-  --badgy-text-primary: #151824;
-  --badgy-text-secondary: #5c6579;
-  --badgy-text-on-accent: #fff;
-  --badgy-stroke: rgb(18 21 31 / 12%);
+  --badgy-text-primary: #1c1a17;
+  --badgy-text-secondary: #6f6a61;
+  --badgy-text-faint: #a09a90;
+  --badgy-fill-ink: #1c1a17;
+  --badgy-on-fill-ink: #fdfcfa;
+  --badgy-text-on-accent: #fdfcfa;
 
-  /* brand ramp — blue → indigo → rose, used for the mark, focus rings and today */
-  --badgy-brand-1: #2563eb;
-  --badgy-brand-2: #4f46e5;
-  --badgy-brand-3: #db2777;
+  /* accent — today, focus, links, avatar, the forecast line */
+  --badgy-accent: #12645a;
+  --badgy-accent-hover: #0e5049;
+  --badgy-accent-ink: #0e5049;
+  --badgy-accent-soft: rgb(18 100 90 / 8%);
+  --badgy-meetup: #12645a;
+  --badgy-on-meetup: #fffdfa;
+  --badgy-on-annotation: #fffdfa;
 
-  /* elevation */
-  --badgy-shadow-key: 0 1px 2px rgb(18 21 31 / 8%);
-  --badgy-shadow-ambient: 0 10px 28px rgb(18 21 31 / 8%);
+  /* elevation — the frame is the only thing inside the page that casts a shadow */
+  --badgy-shadow-frame: 0 18px 50px rgb(28 26 23 / 14%);
+  --badgy-shadow-popup: 0 12px 32px rgb(28 26 23 / 18%);
 
-  /* status families: solid line colour, soft fill, readable ink on the soft fill */
-  --badgy-success: #17864a;
-  --badgy-success-soft: rgb(23 134 74 / 16%);
-  --badgy-success-ink: #0e5c32;
-  --badgy-warning: #a86616;
-  --badgy-warning-soft: rgb(214 138 30 / 20%);
-  --badgy-warning-ink: #7a480b;
-  --badgy-violet: #6d3fc4;
-  --badgy-violet-soft: rgb(124 76 227 / 18%);
-  --badgy-violet-ink: #4d2795;
-  --badgy-danger: #c23c2c;
-  --badgy-danger-soft: rgb(194 60 44 / 16%);
-  --badgy-danger-ink: #8d2519;
-  --badgy-danger-text: #b3311f;
+  /* status families: a solid line colour plus a 12% tint of it */
+  --badgy-status-office: #1f6b4a;
+  --badgy-status-office-soft: rgb(31 107 74 / 12%);
+  --badgy-status-remote: #a5652a;
+  --badgy-status-remote-soft: rgb(165 101 42 / 12%);
+  --badgy-status-travel: #8a6d1f;
+  --badgy-status-travel-soft: rgb(138 109 31 / 12%);
+  --badgy-status-holiday: #3f4d9e;
+  --badgy-status-holiday-soft: rgb(63 77 158 / 12%);
+  --badgy-status-vacation: #7a3f8f;
+  --badgy-status-vacation-soft: rgb(122 63 143 / 12%);
+  --badgy-status-sick: #a53a2c;
+  --badgy-status-sick-soft: rgb(165 58 44 / 12%);
+  --badgy-status-oof: #6f6a61;
+  --badgy-status-oof-soft: rgb(111 106 97 / 10%);
+  --badgy-status-none: rgb(28 26 23 / 14%);
+
+  /* compliance bands — thresholds are unchanged: <80% danger, 80–90% warning, >=90% success */
+  --badgy-band-success: #1f6b4a;
+  --badgy-band-success-soft: rgb(31 107 74 / 12%);
+  --badgy-band-warning: #8a6d1f;
+  --badgy-band-warning-ink: #7a5f14;
+  --badgy-band-warning-soft: rgb(138 109 31 / 14%);
+  --badgy-band-danger: #a53a2c;
+  --badgy-band-danger-soft: rgb(165 58 44 / 12%);
+
+  /* the policy effect panel is a dark inset in both themes */
+  --badgy-effect-bg: #1c1a17;
+  --badgy-effect-ink: #fdfcfa;
+  --badgy-effect-muted: rgb(253 252 250 / 64%);
+  --badgy-effect-line: rgb(253 252 250 / 30%);
+  --badgy-effect-hover: rgb(253 252 250 / 12%);
+  --badgy-effect-positive: #7fd6a8;
+  --badgy-effect-caution: #e8c46a;
+  --badgy-effect-negative: #f0917f;
 }
 
 [data-theme="dark"] {
-  --badgy-surface-page: #12141b;
-  --badgy-surface-card: #1b1e28;
-  --badgy-surface-ctrl: #232733;
-  --badgy-surface-ctrl-hover: #2d3242;
-  --badgy-surface-subtle-hover: rgb(255 255 255 / 8%);
-  --badgy-surface-track: #262b38;
-  --badgy-surface-scrim: rgb(0 0 0 / 60%);
-  --badgy-surface-accent: #5b6ef0;
-  --badgy-surface-accent-hover: #6f80f5;
-  --badgy-text-primary: #e7eaf3;
-  --badgy-text-secondary: #9aa3b8;
-  --badgy-text-on-accent: #fff;
-  --badgy-stroke: rgb(255 255 255 / 14%);
-  --badgy-brand-1: #7b95f8;
-  --badgy-brand-2: #9184f5;
-  --badgy-brand-3: #ee7ab0;
-  --badgy-shadow-key: 0 1px 2px rgb(0 0 0 / 45%);
-  --badgy-shadow-ambient: 0 12px 32px rgb(0 0 0 / 50%);
-  --badgy-success: #45c07d;
-  --badgy-success-soft: rgb(69 192 125 / 20%);
-  --badgy-success-ink: #8fe4b2;
-  --badgy-warning: #dda03a;
-  --badgy-warning-soft: rgb(221 160 58 / 22%);
-  --badgy-warning-ink: #f2cd8a;
-  --badgy-violet: #a98cf7;
-  --badgy-violet-soft: rgb(140 108 246 / 26%);
-  --badgy-violet-ink: #d3c4fd;
-  --badgy-danger: #e8695a;
-  --badgy-danger-soft: rgb(232 105 90 / 22%);
-  --badgy-danger-ink: #f6ada2;
-  --badgy-danger-text: #ef8577;
+  color-scheme: dark;
+
+  --badgy-surface-page: #15120f;
+  --badgy-surface-card: #211d18;
+  --badgy-surface-ctrl: #211d18;
+  --badgy-surface-ctrl-hover: #2c2720;
+  --badgy-surface-scrim: rgb(8 6 4 / 62%);
+  --badgy-wash: rgb(255 251 244 / 4%);
+  --badgy-wash-2: rgb(255 251 244 / 7%);
+  --badgy-wash-active: rgb(255 251 244 / 9%);
+  --badgy-wash-3: rgb(255 251 244 / 10%);
+  --badgy-stroke: rgb(255 251 244 / 12%);
+  --badgy-stroke-strong: rgb(255 251 244 / 16%);
+  --badgy-stroke-control: rgb(255 251 244 / 20%);
+
+  --badgy-text-primary: #f5efe6;
+  --badgy-text-secondary: #b3aa9d;
+  --badgy-text-faint: #948b7c;
+  --badgy-fill-ink: #f2ece3;
+  --badgy-on-fill-ink: #191510;
+  --badgy-text-on-accent: #08201d;
+
+  --badgy-accent: #43bda8;
+  --badgy-accent-hover: #5ed0bb;
+  --badgy-accent-ink: #8fd9c9;
+  --badgy-accent-soft: rgb(67 189 168 / 14%);
+  --badgy-meetup: #43bda8;
+  --badgy-on-meetup: #08201d;
+
+  --badgy-shadow-frame: 0 18px 50px rgb(0 0 0 / 55%);
+  --badgy-shadow-popup: 0 12px 32px rgb(0 0 0 / 55%);
+
+  --badgy-status-office: #56bd8b;
+  --badgy-status-office-soft: rgb(86 189 139 / 16%);
+  --badgy-status-remote: #d99356;
+  --badgy-status-remote-soft: rgb(217 147 86 / 16%);
+  --badgy-status-travel: #ceac57;
+  --badgy-status-travel-soft: rgb(206 172 87 / 16%);
+  --badgy-status-holiday: #93a0ea;
+  --badgy-status-holiday-soft: rgb(147 160 234 / 16%);
+  --badgy-status-vacation: #c48ad9;
+  --badgy-status-vacation-soft: rgb(196 138 217 / 16%);
+  --badgy-status-sick: #e5806f;
+  --badgy-status-sick-soft: rgb(229 128 111 / 16%);
+  --badgy-status-oof: #a89e91;
+  --badgy-status-oof-soft: rgb(168 158 145 / 14%);
+  --badgy-status-none: rgb(255 251 244 / 16%);
+
+  --badgy-band-success: #56bd8b;
+  --badgy-band-success-soft: rgb(86 189 139 / 16%);
+  --badgy-band-warning: #ceac57;
+  --badgy-band-warning-ink: #ceac57;
+  --badgy-band-warning-soft: rgb(206 172 87 / 16%);
+  --badgy-band-danger: #e5806f;
+  --badgy-band-danger-soft: rgb(229 128 111 / 16%);
+
+  --badgy-effect-bg: #2a241d;
+  --badgy-effect-ink: #f7f1e8;
+  --badgy-effect-muted: rgb(247 241 232 / 66%);
+  --badgy-effect-line: rgb(247 241 232 / 28%);
+  --badgy-effect-hover: rgb(247 241 232 / 12%);
+  --badgy-effect-positive: #7fd6a8;
 }

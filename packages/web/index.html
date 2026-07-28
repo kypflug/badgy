@@ -5,13 +5,29 @@
     <script>
       // Canonicalize to the apex host before anything else loads (SW, /api, assets).
       if (location.hostname === 'www.badgy.tech')
-        location.replace('https://badgy.tech' + location.pathname + location.search + location.hash);
+        location.replace(
+          `https://badgy.tech${location.pathname}${location.search}${location.hash}`,
+        );
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Badgy</title>
-    <meta name="description" content="Plan office attendance against your rolling BELT badge-in compliance score." />
+    <meta name="description" content="Plan office attendance against your workplace policy." />
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#f6f4f0" />
+    <script>
+      // Apply the persisted/system theme before CSS loads so dark-mode launches do not flash paper.
+      try {
+        const mode = localStorage.getItem('badgy:theme') || 'system';
+        const dark =
+          mode === 'dark' ||
+          (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.querySelector('meta[name="theme-color"]').content = dark ? '#15120f' : '#f6f4f0';
+      } catch {
+        // Storage can be unavailable in hardened browsing modes; the light HTML default is safe.
+      }
+    </script>
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Badgy" />
@@ -19,6 +35,13 @@
     <link rel="icon" href="/favicon-48.png" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      rel="preload"
+      href="/fonts/instrument-sans-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="./main.css" />
   </head>
   <body>

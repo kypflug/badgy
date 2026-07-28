@@ -150,6 +150,8 @@ export interface ComplianceResult {
   unit: SchemePeriod;
   /** Trailing buckets, oldest to newest. */
   series: PeriodScore[];
+  /** Future buckets from the resolved calendar plan, nearest to farthest. */
+  futureSeries: PeriodScore[];
   /** Short scheme-specific summary, e.g. "2 of 3 days this week". */
   headline: string;
 }

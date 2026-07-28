@@ -1,17 +1,17 @@
 import { STATUS_LABEL, shiftMonth } from '@badgy/shared';
 import { html, nothing } from 'lit';
 import { type InteractiveAuthFlow, reconnect } from '../auth/provider.js';
-import { getSession } from '../auth/session.js';
-import { formatPct } from '../lib/format.js';
-import { STATUS_ICON, STATUS_ORDER } from '../lib/status.js';
+import { isSettingsHistoryState, pushSettingsHistoryState } from '../lib/settings-history.js';
+import { STATUS_ORDER } from '../lib/status.js';
 import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
 import { BadgyElement } from './base.js';
-import './compliance-bar.js';
 import './help-dialog.js';
 import type { MonthChangeDetail, MonthScroller } from './month-scroller.js';
 import './month-scroller.js';
-import './settings-dialog.js';
+import './score-rail.js';
+import type { SettingsPage } from './settings-page.js';
+import './settings-page.js';
 import './year-planner.js';
 
 const MONTHS = [
@@ -35,14 +35,22 @@ export class BadgyApp extends BadgyElement {
     year: { state: true },
     month0: { state: true },
     activeDialog: { state: true },
-    zoom: { state: true },
+    settingsOpen: { state: true },
     view: { state: true },
     reconnectStage: { state: true },
   };
   year: number;
   month0: number;
-  activeDialog: 'help' | 'settings' | null = null;
-  zoom = 1;
+  activeDialog: 'help' | null = null;
+  /**
+   * Settings is an in-frame Workbench destination, not a dialog — it replaces the rail and pane
+   * while open. `year`/`month0`/`view` are untouched while it's active, so leaving it always
+   * returns to the same month/year view the user left. Entry pushes a same-URL history entry
+   * (`settings-history.ts`) so browser Back leaves Settings without touching the workplace
+   * URL/path or org routing; closing from inside Settings (back chevron / Escape) also goes
+   * through `history.back()` so the stack never grows and Back behaves the same either way.
+   */
+  settingsOpen = false;
   view: CalendarView = 'month';
   reconnectStage = 'idle';
   private reconnectFlow: InteractiveAuthFlow | null = null;
@@ -52,9 +60,6 @@ export class BadgyApp extends BadgyElement {
     const now = new Date();
     this.year = now.getFullYear();
     this.month0 = now.getMonth();
-    const raw = localStorage.getItem('badgy.zoom');
-    const z = raw === null ? 1 : Number(raw);
-    this.zoom = z === 0 || z === 1 || z === 2 ? z : 1;
   }
 
   private doUndo(): void {
@@ -70,6 +75,8 @@ export class BadgyApp extends BadgyElement {
     if (k !== 'z' && k !== 'y') return;
     const el = e.target as HTMLElement | null;
     if (el && (/^(input|select|textarea)$/i.test(el.tagName) || el.isContentEditable)) return;
+    const settings = this.settingsOpen ? this.querySelector<SettingsPage>('settings-page') : null;
+    if (settings?.hasActivePolicyDraft()) return;
     e.preventDefault();
     if (k === 'y' || e.shiftKey) this.doRedo();
     else this.doUndo();
@@ -77,11 +84,47 @@ export class BadgyApp extends BadgyElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+    this.settingsOpen = isSettingsHistoryState(window.history.state);
     window.addEventListener('keydown', this.onKeydown);
+    window.addEventListener('popstate', this.onPopState);
   }
   override disconnectedCallback(): void {
     window.removeEventListener('keydown', this.onKeydown);
+    window.removeEventListener('popstate', this.onPopState);
     super.disconnectedCallback();
+  }
+
+  /**
+   * A real popstate can arrive either from the user's own browser Back/Forward, or from our own
+   * `history.back()` in `requestCloseSettings` (JS can't tell those apart). Either way, if Settings
+   * is open and we've popped off its history marker, ask it whether that's OK — an open workplace
+   * policy draft needs an explicit discard. If it says no, `history.forward()` re-lands on the
+   * settings entry (which still exists — going back never drops forward entries) rather than
+   * pushing a new one, so the stack stays exactly as it was and Settings stays open with its draft
+   * intact.
+   */
+  private readonly onPopState = (e: PopStateEvent): void => {
+    if (isSettingsHistoryState(e.state)) {
+      this.settingsOpen = true;
+      return;
+    }
+    if (!this.settingsOpen) return;
+    const page = this.querySelector<SettingsPage>('settings-page');
+    if (page && !page.confirmDiscardForClose()) {
+      window.history.forward();
+      return;
+    }
+    this.settingsOpen = false;
+  };
+  private openSettings(): void {
+    this.settingsOpen = true;
+    if (!isSettingsHistoryState(window.history.state)) pushSettingsHistoryState();
+  }
+  /** Settings' own back chevron / Escape route through here rather than closing directly. */
+  private requestCloseSettings(): void {
+    if (!this.settingsOpen) return;
+    if (isSettingsHistoryState(window.history.state)) window.history.back();
+    else this.settingsOpen = false;
   }
 
   private nav(delta: number): void {
@@ -117,33 +160,6 @@ export class BadgyApp extends BadgyElement {
     this.year = event.detail.year;
     this.month0 = event.detail.month0;
   };
-  private statusPill() {
-    const c = store.compliance();
-    if (c.current == null) return nothing;
-    const band = store.band(c.current);
-    const onTrack = c.current + 1e-9 >= c.target;
-    const label =
-      store.scheme.kind === 'none'
-        ? 'No requirement'
-        : onTrack
-          ? 'On track'
-          : c.current >= c.target - 0.1
-            ? 'At risk'
-            : 'Off track';
-    return html`<span
-      class="status-pill score-${band}"
-      title="${c.headline} · target ${formatPct(c.target)}"
-    >
-      <span class="status-dot"></span>${label} · ${formatPct(c.current)}
-    </span>`;
-  }
-  private setZoom(delta: number): void {
-    const z = Math.min(2, Math.max(0, this.zoom + delta));
-    if (z !== this.zoom) {
-      this.zoom = z;
-      localStorage.setItem('badgy.zoom', String(z));
-    }
-  }
   private setView(view: CalendarView): void {
     this.view = view;
   }
@@ -171,154 +187,118 @@ export class BadgyApp extends BadgyElement {
     if (this.reconnectStage === 'waiting') return 'Finish sign-in…';
     if (this.reconnectStage === 'blocked') return 'Open sign-in';
     if (this.reconnectStage === 'failed') return 'Try reconnect';
-    return '⟳ Reconnect';
+    return 'Reconnect';
   }
 
   override render() {
-    const session = getSession();
     const isYear = this.view === 'year';
     const periodTitle = isYear ? String(this.year) : `${MONTHS[this.month0]} ${this.year}`;
     return html`
-      <div class="app" data-zoom=${['s', 'm', 'l'][this.zoom]} data-view=${this.view}>
+      <div class="app" data-view=${this.view}>
         <div class="titlebar" aria-hidden="true"></div>
-        <header class="app-bar">
-          <div class="brand">
-            <div class="brand-mark" aria-hidden="true"></div>
-            <span class="brand-name">Badgy</span>
-          </div>
-          <div class="segmented view-switch" role="group" aria-label="Calendar view">
-            <button
-              type="button"
-              class="segmented-option ${isYear ? '' : 'is-active'}"
-              aria-pressed=${isYear ? 'false' : 'true'}
-              @click=${() => this.setView('month')}
-            >
-              Month
-            </button>
-            <button
-              type="button"
-              class="segmented-option ${isYear ? 'is-active' : ''}"
-              aria-pressed=${isYear ? 'true' : 'false'}
-              @click=${() => this.setView('year')}
-            >
-              Year
-            </button>
-          </div>
-          <div class="month-nav">
-            <button
-              class="nav-btn"
-              @click=${() => this.nav(-1)}
-              aria-label=${isYear ? 'Previous year' : 'Previous month'}
-            >
-              ‹
-            </button>
-            <span class="month-title">${periodTitle}</span>
-            <button
-              class="nav-btn"
-              @click=${() => this.nav(1)}
-              aria-label=${isYear ? 'Next year' : 'Next month'}
-            >
-              ›
-            </button>
-            <button class="badgy-button today-btn" @click=${() => this.goToday()}>Today</button>
-          </div>
-          <div class="app-bar-actions">
-            ${
-              store.needsReconnect
-                ? html`<button
-                    class="reconnect-pill"
-                    @click=${() => this.beginReconnect()}
-                    ?disabled=${
+        <div class="workbench">
+          ${
+            this.settingsOpen
+              ? html`<settings-page
+                  style="display:contents"
+                  @close=${() => this.requestCloseSettings()}
+                ></settings-page>`
+              : html`<score-rail
+                    .view=${this.view}
+                    .year=${this.year}
+                    .month0=${this.month0}
+                    .needsReconnect=${store.needsReconnect}
+                    .isSyncUnavailable=${store.isSyncUnavailable}
+                    .reconnecting=${
                       this.reconnectStage === 'starting' || this.reconnectStage === 'waiting'
                     }
-                    title="Your changes aren't syncing to your cloud storage. Tap to reconnect."
-                  >
-                    ${this.reconnectLabel()}
-                  </button>`
-                : store.isSyncUnavailable
-                  ? html`<span
-                      class="offline-pill"
-                      title="Badgy is using your local cache and will retry your cloud storage automatically."
-                      >Offline</span
-                    >`
-                  : nothing
-            }
-            <div class="zoom-group" role="group" aria-label="Edit history">
-              <button class="nav-btn" @click=${() => this.doUndo()} ?disabled=${!store.canUndo} aria-label="Undo" title="Undo (Ctrl/⌘ Z)">↶</button>
-              <button class="nav-btn" @click=${() => this.doRedo()} ?disabled=${!store.canRedo} aria-label="Redo" title="Redo (Ctrl/⌘ ⇧ Z)">↷</button>
-            </div>
-            ${
-              isYear
-                ? nothing
-                : html`<div class="zoom-group" role="group" aria-label="Calendar zoom">
-                    <button class="nav-btn" @click=${() => this.setZoom(-1)} ?disabled=${this.zoom === 0} aria-label="Zoom out" title="Smaller cells">−</button>
-                    <button class="nav-btn" @click=${() => this.setZoom(1)} ?disabled=${this.zoom === 2} aria-label="Zoom in" title="Larger cells">+</button>
+                    .reconnectLabel=${this.reconnectLabel()}
+                    .onReconnect=${() => this.beginReconnect()}
+                    .onHelp=${() => {
+                      this.activeDialog = 'help';
+                    }}
+                    .onSettings=${() => this.openSettings()}
+                  ></score-rail>
+
+                  <div class="pane">
+                    <div class="view-bar">
+                      <h1 class="view-title">${periodTitle}</h1>
+                      <div class="step-group" role="group" aria-label=${isYear ? 'Year' : 'Month'}>
+                        <button
+                          class="step-btn"
+                          @click=${() => this.nav(-1)}
+                          aria-label=${isYear ? 'Previous year' : 'Previous month'}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          class="step-btn"
+                          @click=${() => this.nav(1)}
+                          aria-label=${isYear ? 'Next year' : 'Next month'}
+                        >
+                          ›
+                        </button>
+                      </div>
+                      <button class="badgy-button today-btn" @click=${() => this.goToday()}>
+                        Today
+                      </button>
+                      <span class="view-hint">
+                        ${
+                          isYear
+                            ? 'Click or drag to set days · arrows change year'
+                            : 'Drag any range to set it · wheel or flick to change month'
+                        }
+                      </span>
+                      <div class="segmented view-switch" role="group" aria-label="Calendar view">
+                        <button
+                          type="button"
+                          class="segmented-option ${isYear ? '' : 'is-active'}"
+                          aria-label="Month"
+                          aria-pressed=${isYear ? 'false' : 'true'}
+                          @click=${() => this.setView('month')}
+                        >
+                          <span class="view-label-long">Month</span>
+                          <span class="view-label-short" aria-hidden="true">M</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="segmented-option ${isYear ? 'is-active' : ''}"
+                          aria-label="Year"
+                          aria-pressed=${isYear ? 'true' : 'false'}
+                          @click=${() => this.setView('year')}
+                        >
+                          <span class="view-label-long">Year</span>
+                          <span class="view-label-short" aria-hidden="true">Y</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <main class="cal-main">
+                      ${
+                        isYear
+                          ? html`<year-planner .year=${this.year}></year-planner>`
+                          : html`<month-scroller
+                              .year=${this.year}
+                              .month0=${this.month0}
+                              @month-change=${this.onMonthChange}
+                            ></month-scroller>`
+                      }
+                    </main>
+
+                    <div class="legend">
+                      ${STATUS_ORDER.map(
+                        (s) =>
+                          html`<span class="legend-item"
+                            ><span class="legend-swatch s-${s}" aria-hidden="true"></span
+                            >${STATUS_LABEL[s]}</span
+                          >`,
+                      )}
+                      <span class="legend-note">Filled bar = recorded · hollow = planned</span>
+                    </div>
                   </div>`
-            }
-            ${this.statusPill()}
-            <button
-              class="badgy-button badgy-button--icon"
-              @click=${() => {
-                this.activeDialog = 'help';
-              }}
-              aria-label="Help"
-              title="Help"
-            >
-              ?
-            </button>
-            <button
-              class="badgy-button badgy-button--icon"
-              @click=${() => {
-                this.activeDialog = 'settings';
-              }}
-              aria-label="Settings"
-              title="Settings"
-            >
-              ⚙
-            </button>
-            ${
-              session
-                ? html`<span class="user-chip" title=${session.email}>${session.name}</span>`
-                : nothing
-            }
-          </div>
-        </header>
-
-        ${isYear ? nothing : html`<compliance-bar></compliance-bar>`}
-
-        <main class="cal-main">
-          ${
-            isYear
-              ? html`<year-planner .year=${this.year}></year-planner>`
-              : html`<month-scroller
-                  .year=${this.year}
-                  .month0=${this.month0}
-                  @month-change=${this.onMonthChange}
-                ></month-scroller>`
           }
-        </main>
-
-        <div class="legend">
-          ${STATUS_ORDER.map(
-            (s) =>
-              html`<span class="legend-item"><span class="legend-swatch s-${s}">${STATUS_ICON[s]}</span>${STATUS_LABEL[s]}</span>`,
-          )}
-          <span class="legend-item legend-item--hint">
-            ${
-              isYear
-                ? 'Click or drag to set days · arrows change year'
-                : 'Click or drag to set days · wheel or flick to change month'
-            }
-          </span>
         </div>
 
-        ${
-          this.activeDialog === 'settings'
-            ? html`<settings-dialog @close=${() => {
-                this.activeDialog = null;
-              }}></settings-dialog>`
-            : nothing
-        }
         ${
           this.activeDialog === 'help'
             ? html`<help-dialog @close=${() => {

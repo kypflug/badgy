@@ -4,11 +4,12 @@
   },
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/*.{js,css,map,svg,png,ico,json,txt,webmanifest,woff,woff2}"]
+    "exclude": ["/*.{js,css,map,svg,png,ico,json,txt,webmanifest,woff,woff2}", "/fonts/*"]
   },
   "mimeTypes": {
     ".json": "application/json",
-    ".webmanifest": "application/manifest+json"
+    ".webmanifest": "application/manifest+json",
+    ".woff2": "font/woff2"
   },
   "globalHeaders": {
     "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet, noimageindex"

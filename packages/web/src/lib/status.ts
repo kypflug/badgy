@@ -7,15 +7,3 @@ export const STATUS_ORDER: readonly PickableStatus[] = STATUSES;
 export function statusClass(status: Status): string {
   return `s-${status}`;
 }
-
-/** A small glyph per status (used in cells + menus). */
-export const STATUS_ICON: Record<Status, string> = {
-  office: '🏢',
-  remote: '🏠',
-  vacation: '🌴',
-  sick: '🤒',
-  holiday: '🎉',
-  travel: '✈️',
-  oof: '🚫',
-  none: '·',
-};

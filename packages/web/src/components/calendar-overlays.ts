@@ -1,10 +1,12 @@
-import { addDays, type PickableStatus, STATUS_LABEL } from '@badgy/shared';
+import { addDays, type PickableStatus, STATUS_LABEL, STATUS_SHORT } from '@badgy/shared';
 import { html, nothing, render, type TemplateResult } from 'lit';
-import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
+import { STATUS_ORDER, statusClass } from '../lib/status.js';
 
 const VIEWPORT_MARGIN = 12;
 const POPUP_GAP = 4;
 const DAY_MENU_WIDTH = 210;
+/** Estimated width used only for placement math — `.range-toolbar` itself wraps to fit content. */
+export const RANGE_TOOLBAR_WIDTH = 360;
 
 export const NOTE_COLOR_PALETTE = [
   { label: 'Purple', value: '#7c3aed' },
@@ -18,30 +20,44 @@ export const NOTE_COLOR_PALETTE = [
 
 export const DEFAULT_NOTE_COLOR: string = NOTE_COLOR_PALETTE[0].value;
 
-interface AnchorRect {
+export interface AnchorRect {
   left: number;
   top: number;
   bottom: number;
 }
 
-interface ViewportSize {
+export interface ViewportSize {
   width: number;
   height: number;
 }
 
-export interface DayMenuPosition {
+export interface OverlayPosition {
   left: number;
   edge: 'top' | 'bottom';
   offset: number;
   maxHeight: number;
 }
 
-export function positionDayMenu(
+/** @deprecated kept as an alias — the day menu was the first consumer of this shape. */
+export type DayMenuPosition = OverlayPosition;
+
+function defaultViewport(): ViewportSize {
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+/**
+ * Shared viewport-aware placement for every popup anchored to a rect (a day cell, or the
+ * bounding box of a drag selection): clamp horizontally within the viewport, flip above/below
+ * the anchor toward whichever side has more room, and cap the popup height to the space
+ * available on that side so a short viewport can scroll the content instead of overflowing it.
+ */
+function positionOverlay(
   anchor: AnchorRect,
-  viewport: ViewportSize = { width: window.innerWidth, height: window.innerHeight },
-): DayMenuPosition {
-  const menuWidth = Math.min(DAY_MENU_WIDTH, Math.max(0, viewport.width - VIEWPORT_MARGIN * 2));
-  const maxLeft = Math.max(VIEWPORT_MARGIN, viewport.width - VIEWPORT_MARGIN - menuWidth);
+  viewport: ViewportSize,
+  width: number,
+): OverlayPosition {
+  const popupWidth = Math.min(width, Math.max(0, viewport.width - VIEWPORT_MARGIN * 2));
+  const maxLeft = Math.max(VIEWPORT_MARGIN, viewport.width - VIEWPORT_MARGIN - popupWidth);
   const left = Math.min(Math.max(anchor.left, VIEWPORT_MARGIN), maxLeft);
   const spaceBelow = Math.max(0, viewport.height - VIEWPORT_MARGIN - anchor.bottom - POPUP_GAP);
   const spaceAbove = Math.max(0, anchor.top - POPUP_GAP - VIEWPORT_MARGIN);
@@ -58,16 +74,65 @@ export function positionDayMenu(
   };
 }
 
+export function positionDayMenu(
+  anchor: AnchorRect,
+  viewport: ViewportSize = defaultViewport(),
+): OverlayPosition {
+  return positionOverlay(anchor, viewport, DAY_MENU_WIDTH);
+}
+
+/**
+ * Position the range toolbar from the union bounding box of the selected cells, using the exact
+ * same clamp/flip/scroll rules as the day menu so both popups behave identically at every edge.
+ */
+export function positionRangeToolbar(
+  anchor: AnchorRect,
+  viewport: ViewportSize = defaultViewport(),
+): OverlayPosition {
+  return positionOverlay(anchor, viewport, RANGE_TOOLBAR_WIDTH);
+}
+
+export interface SelectionRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Reduce the selected cells' client rects to a single anchor, centered horizontally on the
+ * selection, for `positionRangeToolbar`. Returns null when nothing is selected yet.
+ */
+export function rangeToolbarAnchor(rects: readonly SelectionRect[]): AnchorRect | null {
+  if (rects.length === 0) return null;
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const rect of rects) {
+    left = Math.min(left, rect.left);
+    top = Math.min(top, rect.top);
+    right = Math.max(right, rect.right);
+    bottom = Math.max(bottom, rect.bottom);
+  }
+  return { left: (left + right) / 2 - RANGE_TOOLBAR_WIDTH / 2, top, bottom };
+}
+
 export class ViewportOverlayHost {
   private host: HTMLDivElement | null = null;
+  private autofocusKey: string | null = null;
 
-  show(content: TemplateResult): void {
+  show(content: TemplateResult, autofocusKey: string): void {
     if (!this.host) {
       this.host = document.createElement('div');
       this.host.className = 'calendar-overlay-host';
       document.body.append(this.host);
     }
+    const shouldFocus = this.autofocusKey !== autofocusKey;
+    this.autofocusKey = autofocusKey;
     render(content, this.host);
+    if (shouldFocus)
+      this.host.querySelector<HTMLElement>('[autofocus]')?.focus({ preventScroll: true });
   }
 
   clear(): void {
@@ -75,6 +140,7 @@ export class ViewportOverlayHost {
     render(nothing, this.host);
     this.host.remove();
     this.host = null;
+    this.autofocusKey = null;
   }
 }
 
@@ -87,11 +153,20 @@ export function rangeDates(start: string | null, end: string | null): string[] {
 }
 
 interface DayMenuOptions {
-  position: DayMenuPosition;
+  position: OverlayPosition;
   onPick: (status: PickableStatus) => void;
   onReset: () => void;
   onNote: () => void;
   onDismiss: () => void;
+}
+
+function onEscape(onDismiss: () => void) {
+  return (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onDismiss();
+    }
+  };
 }
 
 export function dayMenu(options: DayMenuOptions): TemplateResult {
@@ -103,30 +178,33 @@ export function dayMenu(options: DayMenuOptions): TemplateResult {
     <div class="menu-backdrop" @pointerdown=${options.onDismiss}></div>
     <div
       class="day-menu badgy-card"
+      role="menu"
+      aria-label="Set status"
+      tabindex="-1"
+      autofocus
       style=${`left:${options.position.left}px;${verticalPosition}max-height:${options.position.maxHeight}px`}
+      @keydown=${onEscape(options.onDismiss)}
     >
       ${STATUS_ORDER.map(
         (status) => html`
-          <button class="day-menu-item" @click=${() => options.onPick(status)}>
-            <span class="dmi-dot ${statusClass(status)}">${STATUS_ICON[status]}</span>
-            ${STATUS_LABEL[status]}
+          <button type="button" role="menuitem" class="day-menu-item" @click=${() => options.onPick(status)}>
+            <span class="status-swatch ${statusClass(status)}" aria-hidden="true"></span>
+            <span class="day-menu-item-label">${STATUS_LABEL[status]}</span>
           </button>
         `,
       )}
-      <button class="day-menu-item day-menu-note" @click=${options.onNote}>
-        <span class="dmi-dot dmi-note" aria-hidden="true">✎</span>
+      <button type="button" role="menuitem" class="day-menu-item day-menu-note" @click=${options.onNote}>
         Add note
       </button>
-      <button class="day-menu-item day-menu-reset" @click=${options.onReset}>
-        ↺ Reset to default
+      <button type="button" role="menuitem" class="day-menu-item day-menu-reset" @click=${options.onReset}>
+        Reset to default
       </button>
     </div>
   `;
 }
 
 interface RangeToolbarOptions {
-  x: number;
-  y: number;
+  position: OverlayPosition;
   count: number;
   onPick: (status: PickableStatus) => void;
   onReset: () => void;
@@ -135,46 +213,52 @@ interface RangeToolbarOptions {
 }
 
 export function rangeToolbar(options: RangeToolbarOptions): TemplateResult {
+  const verticalPosition =
+    options.position.edge === 'top'
+      ? `top:${options.position.offset}px;`
+      : `bottom:${options.position.offset}px;`;
   return html`
     <div class="menu-backdrop" @pointerdown=${options.onDismiss}></div>
-    <div class="range-toolbar badgy-card" style="left:${options.x}px;top:${options.y}px">
+    <div
+      class="range-toolbar badgy-card"
+      role="toolbar"
+      aria-label=${`Set status for ${options.count} selected day${options.count === 1 ? '' : 's'}`}
+      tabindex="-1"
+      autofocus
+      style=${`left:${options.position.left}px;${verticalPosition}max-height:${options.position.maxHeight}px;overflow-y:auto`}
+      @keydown=${onEscape(options.onDismiss)}
+    >
       <span class="rt-count">${options.count} day${options.count === 1 ? '' : 's'}</span>
       <div class="rt-statuses">
         ${STATUS_ORDER.map(
           (status) => html`
             <button
+              type="button"
               class="rt-chip ${statusClass(status)}"
-              title=${STATUS_LABEL[status]}
-              @pointerdown=${(event: Event) => {
-                event.preventDefault();
-                options.onPick(status);
-              }}
+              aria-label=${STATUS_LABEL[status]}
+              @click=${() => options.onPick(status)}
             >
-              ${STATUS_ICON[status]}
+              <span class="status-swatch ${statusClass(status)}" aria-hidden="true"></span>
+              <span class="rt-chip-label">${STATUS_SHORT[status]}</span>
             </button>
           `,
         )}
       </div>
       <button
+        type="button"
         class="rt-note"
-        title="Add note"
         aria-label="Add note to selected range"
-        @pointerdown=${(event: Event) => {
-          event.preventDefault();
-          options.onNote();
-        }}
+        @click=${options.onNote}
       >
-        ✎
+        Note
       </button>
       <button
+        type="button"
         class="rt-reset"
-        title="Reset to default"
-        @pointerdown=${(event: Event) => {
-          event.preventDefault();
-          options.onReset();
-        }}
+        aria-label="Reset selected range to default"
+        @click=${options.onReset}
       >
-        ↺
+        Reset
       </button>
     </div>
   `;

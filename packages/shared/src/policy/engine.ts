@@ -331,10 +331,12 @@ export function evaluate(
   const currentStart = periodBoundsOf(today, unit).start;
   const horizonPeriods = options.horizonPeriods ?? defaultHorizon(unit);
   const trailPeriods = options.trailPeriods ?? defaultTrail(unit);
-  const projectedStart = shiftPeriodStart(currentStart, unit, horizonPeriods);
   const currentBucket = scoredBucket(doc, currentStart, unit, scheme, today);
   const current = periodScoreAt(doc, currentStart, unit, scheme, today);
-  const projected = periodScoreAt(doc, projectedStart, unit, scheme, today);
+  const futureSeries = Array.from({ length: horizonPeriods }, (_, index) =>
+    scoredBucket(doc, shiftPeriodStart(currentStart, unit, index + 1), unit, scheme, today),
+  );
+  const projected = futureSeries.at(-1)?.score ?? current;
   return {
     current,
     projected,
@@ -344,6 +346,7 @@ export function evaluate(
     series: periodStartsEndingAt(currentStart, unit, trailPeriods).map((start) =>
       scoredBucket(doc, start, unit, scheme, today),
     ),
+    futureSeries,
     headline: headline(currentBucket, unit, scheme),
   };
 }

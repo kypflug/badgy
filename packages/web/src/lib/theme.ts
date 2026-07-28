@@ -32,7 +32,7 @@ function updateThemeColor(theme: Theme): void {
   const color = getComputedStyle(document.documentElement)
     .getPropertyValue('--badgy-surface-page')
     .trim();
-  meta.content = color || (theme === 'dark' ? '#1f2431' : '#ffffff');
+  meta.content = color || (theme === 'dark' ? '#15120f' : '#f6f4f0');
 }
 
 export function applyMode(mode: ThemeMode): void {

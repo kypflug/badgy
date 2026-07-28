@@ -161,9 +161,9 @@ export class HelpDialog extends BadgyElement {
               touch, use a fast vertical flick; slower dragging continues to select dates.
             </li>
             <li>Your usual week supplies defaults; a specific date always overrides its default.</li>
-            <li>Past and current days use solid fills. Future plans use dashed outlines.</li>
+            <li>Past and current days use filled status bars. Future plans use hollow bars.</li>
             <li>The target controls on-track status. The planner estimates office days per week.</li>
-            <li>Use undo/redo for edits, zoom for calendar density, and Settings to tune your
+            <li>Use undo/redo (⌘Z / Ctrl+Z, shift to redo) for edits, and Settings to tune your
               policy, target, holidays and meetup weeks.</li>
             <li>Meetup weeks are highlighted for planning context and never affect your score.</li>
             <li>

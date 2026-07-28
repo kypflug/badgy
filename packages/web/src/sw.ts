@@ -1,14 +1,19 @@
 /// <reference lib="webworker" />
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const VERSION = 'badgy-v11';
+const VERSION = 'badgy-v13';
 const SHELL = [
   '/',
   '/index.html',
   '/main.js',
   '/main.css',
   '/favicon.svg',
+  '/favicon-48.png',
+  '/apple-touch-icon.png',
   '/icon-192.png',
+  '/icon-512.png',
   '/manifest.webmanifest',
+  '/fonts/instrument-sans-latin-wght-normal.woff2',
+  '/fonts/instrument-sans-latin-ext-wght-normal.woff2',
 ];
 
 sw.addEventListener('install', (e) => {
