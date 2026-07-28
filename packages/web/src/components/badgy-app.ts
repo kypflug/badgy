@@ -75,9 +75,7 @@ export class BadgyApp extends BadgyElement {
     if (k !== 'z' && k !== 'y') return;
     const el = e.target as HTMLElement | null;
     if (el && (/^(input|select|textarea)$/i.test(el.tagName) || el.isContentEditable)) return;
-    const settings = this.settingsOpen
-      ? this.querySelector<SettingsPage>('settings-page')
-      : null;
+    const settings = this.settingsOpen ? this.querySelector<SettingsPage>('settings-page') : null;
     if (settings?.hasActivePolicyDraft()) return;
     e.preventDefault();
     if (k === 'y' || e.shiftKey) this.doRedo();
