@@ -86,11 +86,12 @@ caps custom domains at 5 with no wildcard**, so sub-domains don't scale without 
 TypeScript, ESM, `verbatimModuleSyntax` (`import type`), `.js` on relative imports — except
 `packages/api`, which is CommonJS with extensionless imports. Lit without decorators; Biome +
 stylelint; Playwright + vitest; LF everywhere. Style **only** with Badgy tokens from
-`styles/tokens.css` (`var(--badgy-…)`) — never hardcode a colour in a component; warm-paper light
-and warm-charcoal dark palettes, 8–14px radii (no `corner-shape`), a full-bleed pane, and one
-structural shadow on the inset rail/sign-in sheet — interior separation is hairlines and value
-steps. In Windows Controls Overlay mode, the rail brand shares the titlebar and the pane header
-becomes the interactive command bar with explicit drag/no-drag regions. Band classes are
+`styles/tokens.css` (`var(--badgy-…)`) — never hardcode a colour in a component; Slate Blueprint's
+cool drafting-paper light and slate-charcoal dark palettes on a steel-blue accent, 8–14px radii
+(no `corner-shape`), a full-bleed pane, and one structural shadow on the inset rail/sign-in sheet —
+interior separation is hairlines and value steps. In Windows Controls Overlay mode, the rail brand
+shares the titlebar and the pane header becomes the interactive command bar with explicit
+drag/no-drag regions. Band classes are
 `.score-danger` / `.score-warning` / `.score-success`.
 
 ## Holidays
