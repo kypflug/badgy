@@ -190,9 +190,15 @@ and its 2026/2027 output is pinned by a parity test — don't change those rules
   or transports directly.
 - Style exclusively with Badgy tokens from `packages/web/src/styles/tokens.css`
   (`var(--badgy-…)`) in the global `app.css` — never hardcode a colour in a component. Warm-paper
-  light and warm-charcoal dark palettes, 8–14px radii (no `corner-shape`), and a single major
-  shadow on the Workbench frame only: interior separation is hairlines and value steps.
+  light and warm-charcoal dark palettes, 8–14px radii (no `corner-shape`), a full-bleed pane, and
+  one structural shadow on the inset rail/sign-in sheet: interior separation is hairlines and value
+  steps. In Windows Controls Overlay mode, the rail brand occupies the titlebar and the existing
+  pane header becomes the interactive WCO command bar; preserve native-control clearance and
+  explicit drag/no-drag regions.
   Status bars, dots and swatches use the `s-<status>` classes produced by `lib/status.ts`.
+- Settings is one continuous scrolling document: its inset rail nav scrolls to section headings and
+  a scroll spy updates the active item/WCO title. Keep all sections mounted so policy drafts survive
+  navigation; unsaved policy changes guard only leaving Settings.
 - Adding or renaming a status means touching `STATUSES`, `STATUS_LABEL`, `STATUS_SHORT`,
   `countStatuses` (shared) and the `.s-*` rules in `app.css`. The `STATUSES`
   array *is* the UI display order.

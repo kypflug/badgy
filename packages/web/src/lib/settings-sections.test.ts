@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS_SECTION,
   SETTINGS_SECTIONS,
-  settingsPaneVisibility,
+  settingsSectionForScroll,
 } from './settings-sections.js';
 
 describe('SETTINGS_SECTIONS', () => {
@@ -23,17 +23,24 @@ describe('SETTINGS_SECTIONS', () => {
   });
 });
 
-describe('settingsPaneVisibility', () => {
-  it('always shows both on wide viewports', () => {
-    expect(settingsPaneVisibility(false, null)).toEqual({ showNav: true, showDetail: true });
-    expect(settingsPaneVisibility(false, 'target')).toEqual({ showNav: true, showDetail: true });
+describe('settingsSectionForScroll', () => {
+  const positions = [
+    { id: 'usual-week' as const, top: 100 },
+    { id: 'workplace-policy' as const, top: 300 },
+    { id: 'target' as const, top: 600 },
+  ];
+
+  it('keeps the first section active before another heading crosses the threshold', () => {
+    expect(settingsSectionForScroll(positions, 250)).toBe('usual-week');
   });
 
-  it('shows only the section list on narrow viewports until a section is picked', () => {
-    expect(settingsPaneVisibility(true, null)).toEqual({ showNav: true, showDetail: false });
+  it('uses the last heading that crossed the threshold', () => {
+    expect(settingsSectionForScroll(positions, 300)).toBe('workplace-policy');
+    expect(settingsSectionForScroll(positions, 800)).toBe('target');
   });
 
-  it('shows only the full-width detail once a section is picked on narrow viewports', () => {
-    expect(settingsPaneVisibility(true, 'target')).toEqual({ showNav: false, showDetail: true });
+  it('pins the final section at the bottom and defaults safely when empty', () => {
+    expect(settingsSectionForScroll(positions, 0, true)).toBe('target');
+    expect(settingsSectionForScroll([], 0)).toBe(DEFAULT_SETTINGS_SECTION);
   });
 });

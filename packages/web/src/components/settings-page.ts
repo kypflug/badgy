@@ -12,7 +12,7 @@ import {
   type Weekday,
   weekStartsOfYear,
 } from '@badgy/shared';
-import { html, nothing, type PropertyValues, type TemplateResult } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
 import { type InteractiveAuthFlow, providerMeta, switchAccount } from '../auth/provider.js';
 import { getSession, type Session } from '../auth/session.js';
 import { formatPct, formatWeekLabel } from '../lib/format.js';
@@ -27,7 +27,8 @@ import {
   DEFAULT_SETTINGS_SECTION,
   SETTINGS_SECTIONS,
   type SettingsSectionId,
-  settingsPaneVisibility,
+  type SettingsSectionMeta,
+  settingsSectionForScroll,
 } from '../lib/settings-sections.js';
 import { STATUS_ORDER, statusClass } from '../lib/status.js';
 import { applyMode, getMode, type ThemeMode } from '../lib/theme.js';
@@ -44,9 +45,6 @@ const THEME_MODES: { id: ThemeMode; label: string }[] = [
 
 const MAX_ICS_BYTES = 2_000_000;
 
-/** Must track the width `.workbench` itself collapses to a single column at (see app.css). */
-const MOBILE_BREAKPOINT = 680;
-
 const formatHolidayDate = (iso: string): string =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString(undefined, {
     timeZone: 'UTC',
@@ -56,16 +54,14 @@ const formatHolidayDate = (iso: string): string =>
 
 /**
  * Settings as an in-frame Workbench destination — not a modal. While active it replaces the score
- * rail with a section nav + current-value summaries, and the calendar pane with the selected
- * section's detail (`settingsPaneVisibility` decides which of those show at the current width).
- * `badgy-app.ts` owns entry/exit (the score-rail gear button, Escape, browser history); this
- * component only ever asks to close via the bubbling `close` event, the same contract
- * `help-dialog.ts` uses.
+ * rail with section navigation and the calendar pane with one continuous settings document. The
+ * rail stays mounted while its buttons scroll the pane to section headings; a scroll spy keeps the
+ * active nav item and WCO title in sync. `badgy-app.ts` owns entry/exit (the score-rail gear button,
+ * Escape, browser history); this component only asks to close via the bubbling `close` event.
  */
 export class SettingsPage extends BadgyElement {
   static override properties = {
     activeSection: { state: true },
-    isNarrow: { state: true },
     mode: { state: true },
     holidayYear: { state: true },
     holidayMsg: { state: true },
@@ -77,8 +73,7 @@ export class SettingsPage extends BadgyElement {
     policyBaselineResult: { state: true },
   };
 
-  activeSection: SettingsSectionId | null = null;
-  isNarrow = typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT;
+  activeSection: SettingsSectionId = DEFAULT_SETTINGS_SECTION;
   mode: ThemeMode = getMode();
   holidayYear = new Date().getFullYear();
   holidayMsg = '';
@@ -100,45 +95,37 @@ export class SettingsPage extends BadgyElement {
    * via `history.back()` doesn't prompt a second time.
    */
   private suppressCloseGuardOnce = false;
+  private scrollFrame: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   private readonly onKeydown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') this.close();
   };
-  private readonly onResize = (): void => {
-    this.isNarrow = window.innerWidth <= MOBILE_BREAKPOINT;
+  private readonly onSettingsStoreChange = (): void => {
+    this.refreshPolicyFromStore();
   };
 
   override connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener('keydown', this.onKeydown);
-    window.addEventListener('resize', this.onResize);
-    // Desktop always shows a detail; narrow viewports start on the section list instead.
-    if (!this.isNarrow) this.activeSection ??= DEFAULT_SETTINGS_SECTION;
+    if (!this.policyDraft) this.initPolicyDraft();
+    store.addEventListener('change', this.onSettingsStoreChange);
   }
   override disconnectedCallback(): void {
     document.removeEventListener('keydown', this.onKeydown);
-    window.removeEventListener('resize', this.onResize);
+    store.removeEventListener('change', this.onSettingsStoreChange);
+    if (this.scrollFrame !== null) cancelAnimationFrame(this.scrollFrame);
+    this.resizeObserver?.disconnect();
     super.disconnectedCallback();
   }
   override firstUpdated(): void {
-    const target =
-      this.querySelector<HTMLElement>('.settings-back') ??
-      this.querySelector<HTMLElement>('.settings-detail-title');
-    target?.focus();
-  }
-  override updated(changed: PropertyValues<this>): void {
-    if (
-      changed.has('activeSection') &&
-      this.activeSection === 'workplace-policy' &&
-      !this.policyDraft
-    ) {
-      this.initPolicyDraft();
-    }
-    if (!changed.has('activeSection') || !this.isNarrow) return;
-    const target = this.activeSection
-      ? this.querySelector<HTMLElement>('.settings-detail-title')
-      : this.querySelector<HTMLElement>('.settings-nav-item');
-    target?.focus();
+    this.querySelector<HTMLElement>('.settings-back')?.focus();
+    this.resizeObserver = new ResizeObserver(() => this.scheduleActiveSectionSync());
+    const pane = this.querySelector<HTMLElement>('.settings-pane');
+    const body = this.querySelector<HTMLElement>('.settings-detail-body');
+    if (pane) this.resizeObserver.observe(pane);
+    if (body) this.resizeObserver.observe(body);
+    this.syncActiveSection();
   }
 
   /** True while there's an open, uncommitted workplace policy edit. */
@@ -168,7 +155,9 @@ export class SettingsPage extends BadgyElement {
 
   /** Whether local policy editing should own undo/redo keyboard shortcuts. */
   hasActivePolicyDraft(): boolean {
-    return this.activeSection === 'workplace-policy' && this.policyDraft !== null;
+    return (
+      this.policyDraft !== null && (this.activeSection === 'workplace-policy' || this.policyDirty())
+    );
   }
 
   private close(): void {
@@ -177,39 +166,82 @@ export class SettingsPage extends BadgyElement {
     this.dispatchEvent(new CustomEvent('close', { bubbles: true }));
   }
   private selectSection(id: SettingsSectionId): void {
-    if (id === this.activeSection) return;
-    if (!this.confirmLeavePolicyIfDirty()) return;
-    if (this.policyDirty()) this.clearPolicyDraft();
-    if (id === 'workplace-policy') this.initPolicyDraft();
     this.activeSection = id;
-  }
-  private backToList(): void {
-    if (!this.confirmLeavePolicyIfDirty()) return;
-    if (this.policyDirty()) this.clearPolicyDraft();
-    this.activeSection = null;
+    const heading = this.querySelector<HTMLElement>(`#settings-heading-${id}`);
+    heading?.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
+    heading?.focus({ preventScroll: true });
   }
 
   // --- workplace policy draft/effect ---
 
-  private clearPolicyDraft(): void {
-    this.policyDraft = null;
-    this.policyBaseline = null;
-    this.policyDraftResult = null;
-    this.policyBaselineResult = null;
+  private scheduleActiveSectionSync(): void {
+    if (this.scrollFrame !== null) return;
+    this.scrollFrame = requestAnimationFrame(() => {
+      this.scrollFrame = null;
+      this.syncActiveSection();
+    });
+  }
+  private readonly onSettingsScroll = (): void => {
+    this.scheduleActiveSectionSync();
+  };
+  private syncActiveSection(): void {
+    const pane = this.querySelector<HTMLElement>('.settings-pane');
+    if (!pane) return;
+    const positions = [...this.querySelectorAll<HTMLElement>('[data-settings-section]')]
+      .map((section) => {
+        const id = section.dataset.settingsSection as SettingsSectionId | undefined;
+        return id ? { id, top: section.getBoundingClientRect().top } : null;
+      })
+      .filter((position): position is { id: SettingsSectionId; top: number } => position !== null);
+    const titlebar = this.querySelector<HTMLElement>('.settings-detail-head');
+    const threshold =
+      titlebar && getComputedStyle(titlebar).position === 'fixed'
+        ? titlebar.getBoundingClientRect().bottom + 12
+        : pane.getBoundingClientRect().top + 24;
+    const atEnd = pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 2;
+    const active = settingsSectionForScroll(positions, threshold, atEnd);
+    if (active !== this.activeSection) this.activeSection = active;
   }
 
   /** Seed the draft from the currently *committed* org/scheme/target/holiday region. */
-  private initPolicyDraft(): void {
-    const baseline: PolicyDraftValue = {
+  private committedPolicyValue(): PolicyDraftValue {
+    return {
       orgId: store.org.id,
       scheme: store.scheme,
       target: store.target,
       holidayRegion: store.holidayRegion,
     };
+  }
+  private initPolicyDraft(): void {
+    const baseline = this.committedPolicyValue();
     this.policyBaseline = baseline;
     this.policyDraft = { ...baseline };
     this.policyBaselineResult = store.compliance();
     this.policyDraftResult = this.policyBaselineResult;
+  }
+  private refreshPolicyFromStore(): void {
+    if (!this.policyBaseline || !this.policyDraft) {
+      this.initPolicyDraft();
+      return;
+    }
+    const committed = this.committedPolicyValue();
+    const wasDirty = this.policyDirty();
+    const targetChanged = this.policyBaseline.target !== committed.target;
+    const holidayRegionChanged = this.policyBaseline.holidayRegion !== committed.holidayRegion;
+    this.policyBaseline = committed;
+    this.policyDraft = wasDirty
+      ? {
+          ...this.policyDraft,
+          ...(targetChanged ? { target: committed.target } : {}),
+          ...(holidayRegionChanged ? { holidayRegion: committed.holidayRegion } : {}),
+        }
+      : { ...committed };
+    this.policyBaselineResult = store.compliance();
+    this.policyDraftResult = store.evaluateDraft(this.policyDraft);
+    this.scheduleActiveSectionSync();
   }
   private updatePolicyDraft(next: PolicyDraftValue): void {
     this.policyDraft = next;
@@ -244,6 +276,9 @@ export class SettingsPage extends BadgyElement {
   private setTheme(m: ThemeMode): void {
     applyMode(m);
     this.mode = m;
+  }
+  private setTarget(target: number): void {
+    store.setTarget(target);
   }
   private setRegion(region: HolidayRegionId): void {
     store.setHolidayRegion(region);
@@ -288,6 +323,7 @@ export class SettingsPage extends BadgyElement {
     }
   }
   private beginAccountSwitch(): void {
+    if (!this.confirmLeavePolicyIfDirty()) return;
     this.accountMessage = '';
     if (this.accountFlow?.snapshot.stage === 'blocked') {
       this.accountFlow.openProvider();
@@ -308,6 +344,7 @@ export class SettingsPage extends BadgyElement {
       });
   }
   private async endSession(): Promise<void> {
+    if (!this.confirmLeavePolicyIfDirty()) return;
     const session = getSession();
     if (!session) return;
     this.accountMessage = 'Signing out…';
@@ -324,8 +361,11 @@ export class SettingsPage extends BadgyElement {
     return 'Use another account';
   }
 
-  private renderNav(session: Session | null, activeId: SettingsSectionId): TemplateResult {
-    const sections = SETTINGS_SECTIONS.filter((s) => s.id !== 'account' || !!session);
+  private renderNav(
+    session: Session | null,
+    sections: readonly SettingsSectionMeta[],
+    activeId: SettingsSectionId,
+  ): TemplateResult {
     const storageLabel = session
       ? providerMeta(session.provider).label === 'Google'
         ? 'Google Drive'
@@ -349,12 +389,13 @@ export class SettingsPage extends BadgyElement {
         </div>
         <nav class="settings-nav-list" aria-label="Settings sections">
           ${sections.map((s) => {
-            const isActive = !this.isNarrow && s.id === activeId;
+            const isActive = s.id === activeId;
             return html`
               <button
                 type="button"
                 class="settings-nav-item ${isActive ? 'is-active' : ''}"
                 aria-current=${isActive ? 'page' : nothing}
+                aria-controls=${`settings-section-${s.id}`}
                 @click=${() => this.selectSection(s.id)}
               >
                 <span class="settings-nav-label">${s.label}</span>
@@ -370,26 +411,46 @@ export class SettingsPage extends BadgyElement {
     `;
   }
 
-  private renderDetail(session: Session | null, activeId: SettingsSectionId): TemplateResult {
+  private renderDetail(
+    session: Session | null,
+    sections: readonly SettingsSectionMeta[],
+    activeId: SettingsSectionId,
+  ): TemplateResult {
     const label = SETTINGS_SECTIONS.find((s) => s.id === activeId)?.label ?? '';
     return html`
-      <div class="pane settings-pane">
+      <div class="pane settings-pane" @scroll=${this.onSettingsScroll}>
         <div class="view-bar settings-detail-head">
-          ${
-            this.isNarrow
-              ? html`<button
-                  class="badgy-button badgy-button--icon"
-                  aria-label="Back to sections"
-                  @click=${() => this.backToList()}
-                >
-                  ‹
-                </button>`
-              : nothing
-          }
           <h1 class="view-title settings-detail-title" tabindex="-1">${label}</h1>
         </div>
-        <div class="settings-detail-body">${this.renderSection(activeId, session)}</div>
+        <div class="settings-detail-body">
+          ${sections.map((section) => this.renderSettingsSection(section, session))}
+        </div>
       </div>
+    `;
+  }
+
+  private renderSettingsSection(
+    section: SettingsSectionMeta,
+    session: Session | null,
+  ): TemplateResult | typeof nothing {
+    const content = this.renderSection(section.id, session);
+    if (content === nothing) return nothing;
+    return html`
+      <section
+        class="settings-section"
+        id=${`settings-section-${section.id}`}
+        aria-labelledby=${`settings-heading-${section.id}`}
+      >
+        <h2
+          class="settings-section-title"
+          id=${`settings-heading-${section.id}`}
+          data-settings-section=${section.id}
+          tabindex="-1"
+        >
+          ${section.label}
+        </h2>
+        ${content}
+      </section>
     `;
   }
 
@@ -418,7 +479,7 @@ export class SettingsPage extends BadgyElement {
   private renderUsualWeek(): TemplateResult {
     const pattern = store.pattern;
     return html`
-      <section class="setting">
+      <div class="setting">
         <p class="setting-help">
           Default for any day you haven't set. Specific dates override this.
         </p>
@@ -458,7 +519,7 @@ export class SettingsPage extends BadgyElement {
               </label>`;
           })}
         </div>
-      </section>
+      </div>
     `;
   }
 
@@ -476,7 +537,7 @@ export class SettingsPage extends BadgyElement {
     const baselineResult = this.policyBaselineResult;
     const org = orgOrDefault(draft.orgId);
     return html`
-      <section class="setting policy-setting">
+      <div class="setting policy-setting">
         <settings-policy-section
           .org=${org}
           .scheme=${draft.scheme}
@@ -494,13 +555,13 @@ export class SettingsPage extends BadgyElement {
           .onKeep=${() => this.keepPolicy()}
           .onRevert=${() => this.revertPolicy()}
         ></policy-effect-panel>
-      </section>
+      </div>
     `;
   }
 
   private renderTarget(): TemplateResult {
     return html`
-      <section class="setting">
+      <div class="setting">
         <p class="setting-help">Drives the "on track?" indicator and the planner.</p>
         <div class="field field--inline">
           <span class="field-label">Target</span>
@@ -511,17 +572,17 @@ export class SettingsPage extends BadgyElement {
             max="1"
             step="0.05"
             .value=${String(store.target)}
-            @input=${(e: Event) => store.setTarget(Number((e.target as HTMLInputElement).value))}
+            @input=${(e: Event) => this.setTarget(Number((e.target as HTMLInputElement).value))}
           />
           <span class="setting-value">${formatPct(store.target)}</span>
         </div>
-      </section>
+      </div>
     `;
   }
 
   private renderAppearance(): TemplateResult {
     return html`
-      <section class="setting">
+      <div class="setting">
         <div class="segmented" role="group" aria-label="Theme">
           ${THEME_MODES.map(
             (t) => html`<button
@@ -532,7 +593,7 @@ export class SettingsPage extends BadgyElement {
             </button>`,
           )}
         </div>
-      </section>
+      </div>
     `;
   }
 
@@ -542,7 +603,7 @@ export class SettingsPage extends BadgyElement {
     const meetups = weekStarts.filter((w) => store.isMeetupWeek(w));
     const nonMeetups = weekStarts.filter((w) => !store.isMeetupWeek(w));
     return html`
-      <section class="setting">
+      <div class="setting">
         <p class="setting-help">
           Highlighted on the calendar for ${year}; they never affect your score.
         </p>
@@ -574,7 +635,7 @@ export class SettingsPage extends BadgyElement {
             ${nonMeetups.map((m) => html`<option value=${m}>${formatWeekLabel(m)}</option>`)}
           </select>
         </label>
-      </section>
+      </div>
     `;
   }
 
@@ -583,7 +644,7 @@ export class SettingsPage extends BadgyElement {
     const regionNote = HOLIDAY_REGIONS.find((r) => r.id === region)?.note;
     const holidays = store.holidaysInYear(this.holidayYear);
     return html`
-      <section class="setting">
+      <div class="setting">
         <p class="setting-help">
           Holidays fill in automatically and never count toward your score. Pick the set that
           matches your organization, then add or remove individual days.
@@ -670,13 +731,13 @@ export class SettingsPage extends BadgyElement {
           </button>
         </div>
         ${this.holidayMsg ? html`<p class="setting-help">${this.holidayMsg}</p>` : nothing}
-      </section>
+      </div>
     `;
   }
 
   private renderAccount(session: Session): TemplateResult {
     return html`
-      <section class="setting">
+      <div class="setting">
         <p class="setting-help">
           Signed in as <strong>${session.name}</strong>. Your data lives in your
           ${providerMeta(session.provider).label === 'Google' ? 'Google Drive' : 'OneDrive'}.
@@ -696,17 +757,16 @@ export class SettingsPage extends BadgyElement {
             ? html`<p class="setting-help" role="status">${this.accountMessage}</p>`
             : nothing
         }
-      </section>
+      </div>
     `;
   }
 
   override render() {
     const session = getSession();
-    const activeId = this.activeSection ?? DEFAULT_SETTINGS_SECTION;
-    const { showNav, showDetail } = settingsPaneVisibility(this.isNarrow, this.activeSection);
+    const sections = SETTINGS_SECTIONS.filter((section) => section.id !== 'account' || !!session);
     return html`
-      ${showNav ? this.renderNav(session, activeId) : nothing}
-      ${showDetail ? this.renderDetail(session, activeId) : nothing}
+      ${this.renderNav(session, sections, this.activeSection)}
+      ${this.renderDetail(session, sections, this.activeSection)}
     `;
   }
 }

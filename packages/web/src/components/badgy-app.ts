@@ -193,6 +193,9 @@ export class BadgyApp extends BadgyElement {
   override render() {
     const isYear = this.view === 'year';
     const periodTitle = isYear ? String(this.year) : `${MONTHS[this.month0]} ${this.year}`;
+    const compactPeriodTitle = isYear
+      ? periodTitle
+      : `${MONTHS[this.month0].slice(0, 3)} ${this.year}`;
     return html`
       <div class="app" data-view=${this.view}>
         <div class="titlebar" aria-hidden="true"></div>
@@ -221,9 +224,15 @@ export class BadgyApp extends BadgyElement {
                   ></score-rail>
 
                   <div class="pane">
-                    <div class="view-bar">
+                    <div class="view-bar calendar-view-bar">
                       <h1 class="view-title">${periodTitle}</h1>
-                      <div class="step-group" role="group" aria-label=${isYear ? 'Year' : 'Month'}>
+                      <div
+                        class="step-group"
+                        role="group"
+                        aria-label=${isYear ? 'Year' : 'Month'}
+                        data-period-title=${periodTitle}
+                        data-compact-period-title=${compactPeriodTitle}
+                      >
                         <button
                           class="step-btn"
                           @click=${() => this.nav(-1)}
@@ -239,30 +248,32 @@ export class BadgyApp extends BadgyElement {
                           ›
                         </button>
                       </div>
-                      <button class="badgy-button today-btn" @click=${() => this.goToday()}>
-                        Today
-                      </button>
-                      <div class="segmented view-switch" role="group" aria-label="Calendar view">
-                        <button
-                          type="button"
-                          class="segmented-option ${isYear ? '' : 'is-active'}"
-                          aria-label="Month"
-                          aria-pressed=${isYear ? 'false' : 'true'}
-                          @click=${() => this.setView('month')}
-                        >
-                          <span class="view-label-long">Month</span>
-                          <span class="view-label-short" aria-hidden="true">M</span>
+                      <div class="view-actions">
+                        <button class="badgy-button today-btn" @click=${() => this.goToday()}>
+                          Today
                         </button>
-                        <button
-                          type="button"
-                          class="segmented-option ${isYear ? 'is-active' : ''}"
-                          aria-label="Year"
-                          aria-pressed=${isYear ? 'true' : 'false'}
-                          @click=${() => this.setView('year')}
-                        >
-                          <span class="view-label-long">Year</span>
-                          <span class="view-label-short" aria-hidden="true">Y</span>
-                        </button>
+                        <div class="segmented view-switch" role="group" aria-label="Calendar view">
+                          <button
+                            type="button"
+                            class="segmented-option ${isYear ? '' : 'is-active'}"
+                            aria-label="Month"
+                            aria-pressed=${isYear ? 'false' : 'true'}
+                            @click=${() => this.setView('month')}
+                          >
+                            <span class="view-label-long">Month</span>
+                            <span class="view-label-short" aria-hidden="true">M</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="segmented-option ${isYear ? 'is-active' : ''}"
+                            aria-label="Year"
+                            aria-pressed=${isYear ? 'true' : 'false'}
+                            @click=${() => this.setView('year')}
+                          >
+                            <span class="view-label-long">Year</span>
+                            <span class="view-label-short" aria-hidden="true">Y</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
