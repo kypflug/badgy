@@ -97,7 +97,7 @@
   --badgy-shadow-sheet: 0 18px 50px rgb(20 30 44 / 13%);
   --badgy-shadow-popup: 0 12px 32px rgb(20 30 44 / 18%);
 
-  /* status families: a solid line colour plus a 12% tint of it */
+  /* status families: a solid line colour plus a soft tint (typically 12%) */
   --badgy-status-office: #1f6b4a;
   --badgy-status-office-soft: rgb(31 107 74 / 12%);
   --badgy-status-remote: #a5652a;
