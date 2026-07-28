@@ -214,7 +214,12 @@ score-rail, settings-page { display: contents; }
 .rail-forecast-svg { width: 100%; height: auto; display: block; overflow: visible; }
 .rail-forecast-plot { fill: var(--badgy-wash); }
 .rail-forecast-away { fill: var(--badgy-status-vacation-soft); }
-.rail-forecast-away-label { font-size: 9.5px; font-weight: 600; fill: var(--badgy-status-vacation); }
+.rail-forecast-annotation {
+  fill: color-mix(in srgb, var(--annotation-color) 10%, transparent);
+}
+.rail-forecast-annotation-label {
+  font-size: 9.5px; font-weight: 600; fill: var(--annotation-color);
+}
 .rail-forecast-target { stroke: var(--badgy-text-primary); stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; }
 .rail-forecast-line {
   fill: none; stroke: var(--badgy-accent); stroke-width: 2.25;
@@ -222,9 +227,6 @@ score-rail, settings-page { display: contents; }
 }
 .rail-forecast-line--future { stroke-width: 2; stroke-dasharray: 4 3.5; opacity: .62; }
 .rail-forecast-now { fill: var(--badgy-surface-card); stroke: var(--badgy-accent); stroke-width: 2.25; }
-.rail-forecast-footer { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--badgy-text-secondary); }
-.rail-forecast-footer strong { font-weight: 650; color: var(--badgy-text-primary); }
-.rail-forecast-low { color: var(--badgy-band-danger); }
 
 .rail-totals { margin-top: auto; display: flex; flex-direction: column; gap: 7px; }
 .rail-totals-eyebrow {
@@ -624,10 +626,38 @@ button.annotation-label:focus-visible { outline: 2px solid var(--badgy-accent); 
   font-size: var(--badgy-text-sm); font-weight: 650; font-variant-numeric: tabular-nums;
   min-width: 4ch; text-align: center;
 }
-.pattern-grid { min-width: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.pattern-day { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.pattern-dow { font-size: 11px; font-weight: 650; color: var(--badgy-text-secondary); }
-.pattern-day .select { width: 100%; min-width: 0; padding: 0 8px; }
+.pattern-calendar {
+  min-width: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
+}
+.pattern-calendar-day {
+  position: relative; min-width: 0; min-height: 96px; padding: 8px 9px 12px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  border: 1px solid var(--badgy-stroke); border-radius: var(--badgy-radius-cell);
+  background: var(--badgy-surface-card); cursor: pointer;
+  transition: background var(--badgy-dur) linear, border-color var(--badgy-dur) linear;
+}
+.pattern-calendar-day:hover { background: var(--badgy-surface-ctrl-hover); }
+.pattern-calendar-day:focus-within {
+  outline: 2px solid var(--badgy-accent); outline-offset: 1px;
+}
+.pattern-calendar-day--untracked { background: var(--badgy-wash); }
+.pattern-calendar-dow { font-size: 14px; font-weight: 550; color: var(--badgy-text-primary); }
+.pattern-calendar-day--untracked .pattern-calendar-dow {
+  font-weight: 400; color: var(--badgy-text-faint);
+}
+.pattern-calendar-status {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 10.5px; font-weight: 600; color: var(--d-line);
+}
+.pattern-calendar-day--untracked .pattern-calendar-status { color: var(--badgy-text-faint); }
+.pattern-calendar-bar {
+  position: absolute; left: 9px; right: 9px; bottom: 7px; height: 3px; border-radius: 2px;
+  background: transparent; box-shadow: inset 0 0 0 1.25px var(--d-line);
+}
+.pattern-calendar-select {
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+}
+.pattern-calendar-select:focus-visible { outline: none; }
 .field--inline .select { flex: 1 1 180px; }
 
 /* Workplace policy: a full-width policy card over a two-column body whose right column is the
@@ -833,7 +863,7 @@ policy-effect-panel { display: block; min-width: 0; }
   }
   .rail-brand { flex: 1 1 100%; }
   .rail-score { flex: 1 1 200px; }
-  .rail-forecast { flex: 2 1 260px; min-width: 200px; }
+  .rail-forecast { display: none; }
   .rail-totals { margin-top: 0; flex: 1 1 200px; min-width: 180px; }
   .rail-footer { flex: 1 1 100%; border-top: none; padding-top: 0; }
   .settings-rail { flex-flow: column nowrap; align-items: stretch; gap: 12px; }
@@ -853,7 +883,6 @@ policy-effect-panel { display: block; min-width: 0; }
   .month-row > .annotation-layer { right: 0; }
   .view-hint { order: 5; width: 100%; margin-left: 0; }
   .today-btn { margin-left: auto; }
-  .pattern-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* Phones (the 390px reference): ground + padded card, number-and-bar cells, 44px touch controls. */
 @media (max-width: 560px) {
@@ -881,8 +910,6 @@ policy-effect-panel { display: block; min-width: 0; }
   .rail-mobile-actions .rail-avatar { width: 30px; height: 30px; }
   .rail-score { flex: 1 1 100%; }
   .rail-score-value { font-size: 42px; }
-  .rail-forecast { flex: 1 1 100%; }
-  .rail-forecast-svg { height: 74px; }
   .rail-totals { display: none; }
   .rail-footer--quiet { display: none; }
   .rail-footer { flex-flow: row wrap; align-items: center; gap: 8px; }
@@ -913,10 +940,10 @@ policy-effect-panel { display: block; min-width: 0; }
     width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px);
     padding: 16px; gap: 16px;
   }
-  .pattern-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-  .pattern-day { flex-direction: row; align-items: center; gap: 10px; }
-  .pattern-dow { flex: none; width: 3.5ch; }
-  .pattern-day .select { flex: 1; }
+  .pattern-calendar { gap: 5px; }
+  .pattern-calendar-day { min-height: 64px; padding: 7px 4px 10px; align-items: center; }
+  .pattern-calendar-status { display: none; }
+  .pattern-calendar-bar { left: 6px; right: 6px; bottom: 5px; }
   .range-toolbar { right: 12px; left: 12px !important; justify-content: center; gap: 6px; width: auto; }
   .rt-count { width: 100%; text-align: center; }
   .rt-statuses { justify-content: center; }
