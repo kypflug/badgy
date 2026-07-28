@@ -1,6 +1,11 @@
 import type { CalendarNote } from '@badgy/shared';
 import { describe, expect, it } from 'vitest';
-import { layoutWeekAnnotations, meetupAnnotation, noteAnnotation } from './annotation-layout.js';
+import {
+  layoutWeekAnnotations,
+  meetupAnnotation,
+  noteAnnotation,
+  segmentOutlines,
+} from './annotation-layout.js';
 
 const note = (id: string, start: string, end: string, color: string, label = id): CalendarNote => ({
   id,
@@ -48,5 +53,27 @@ describe('layoutWeekAnnotations', () => {
     ]);
     expect(segments[2].annotations.map((item) => item.label)).toEqual(['26-C4', 'Zebra', 'Alpha']);
     expect(segments[2].colors).toEqual(['var(--badgy-meetup)', '#ff0000', '#00ff00']);
+  });
+});
+
+describe('segmentOutlines', () => {
+  it('draws a single colour as a plain solid outline', () => {
+    expect(segmentOutlines(['#ff0000'])).toEqual([{ color: '#ff0000', style: 'solid' }]);
+  });
+
+  it('alternates the styles so two colours read as a dashed edge', () => {
+    expect(segmentOutlines(['#ff0000', '#00ff00'])).toEqual([
+      { color: '#ff0000', style: 'solid' },
+      { color: '#00ff00', style: 'dashed' },
+    ]);
+  });
+
+  /* Every layer sits at identical geometry, so a fourth would completely cover the third. */
+  it('stops at the three styles that stay visible when stacked', () => {
+    expect(segmentOutlines(['#a', '#b', '#c', '#d', '#e'])).toEqual([
+      { color: '#a', style: 'solid' },
+      { color: '#b', style: 'dashed' },
+      { color: '#c', style: 'dotted' },
+    ]);
   });
 });

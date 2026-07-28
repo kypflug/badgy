@@ -424,10 +424,12 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
   border: 1.5px solid var(--annotation-color);
   border-radius: calc(var(--badgy-radius-cell) + var(--annotation-inset, 4px));
 }
-/* A span covered by several notes stacks one outline per colour at identical geometry: the
-   dashed layers paint over the solid one, so the edge alternates between the colours. */
-.annotation-outline[data-outline="1"] { border-style: dashed; }
-.annotation-outline[data-outline="2"] { border-style: dotted; }
+/* A span covered by several notes stacks one outline per colour at identical geometry: the dashed
+   and dotted layers paint over the solid one, so the edge alternates between the colours. Only
+   three styles exist, and a fourth layer would sit exactly on the third and hide it, so
+   `segmentOutlines` stops at three — the labels carry any notes beyond that. */
+.annotation-outline[data-outline="dashed"] { border-style: dashed; }
+.annotation-outline[data-outline="dotted"] { border-style: dotted; }
 .year-week .annotation-outline { border-width: 1px; border-radius: 6px; inset: -2px -1.5px; }
 .annotation-labels {
   position: absolute; z-index: 1; top: 2px; right: 3px; left: 3px;
@@ -446,8 +448,8 @@ button.annotation-label { cursor: pointer; pointer-events: auto; }
 button.annotation-label:hover { filter: brightness(1.12); }
 button.annotation-label:focus-visible { outline: 2px solid var(--badgy-accent); outline-offset: 1px; }
 /* A year week row is one dot tall, so stacked labels would spill out of the month card. Keep one
-   right-aligned chip per segment — the outline colours already say how many notes overlap, and
-   the full list is in the segment's aria-label and in the month view. */
+   right-aligned chip per segment — the outlines hint that more than one note overlaps, and the
+   authoritative list is the segment's aria-label and the month view. */
 .year-week .annotation-labels {
   top: 0; right: 0; left: 0;
   flex-direction: row; justify-content: flex-end; align-items: flex-start;

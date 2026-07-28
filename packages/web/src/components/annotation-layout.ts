@@ -99,16 +99,34 @@ export function layoutWeekAnnotations(
   return segments;
 }
 
+/** Border styles available for stacked outlines, in paint order. */
+const OUTLINE_STYLES = ['solid', 'dashed', 'dotted'] as const;
+
+export type OutlineStyle = (typeof OUTLINE_STYLES)[number];
+
+export interface SegmentOutline {
+  color: string;
+  style: OutlineStyle;
+}
+
 /**
- * One outline per distinct colour, stacked at identical geometry. The first is solid and the
- * rest are dashed/dotted on top, so a span covered by two notes reads as an edge alternating
- * between their colours — uniform at any segment aspect ratio, unlike a stretched SVG.
+ * The outlines to stack for a segment — at most one per available border style. Layers sit at
+ * identical geometry, so a fourth would land exactly on the third and hide it completely; drawing
+ * only what stays visible keeps a busy segment honest instead of showing whichever colour happened
+ * to be painted last. Any further notes stay readable through the labels and the segment's
+ * `aria-label`, which remain the authoritative list.
  */
+export function segmentOutlines(colors: readonly string[]): SegmentOutline[] {
+  return colors
+    .slice(0, OUTLINE_STYLES.length)
+    .map((color, index) => ({ color, style: OUTLINE_STYLES[index] }));
+}
+
 function outlines(segment: AnnotationSegment): TemplateResult[] {
-  return segment.colors.map(
-    (color, index) => html`<span
+  return segmentOutlines(segment.colors).map(
+    ({ color, style }) => html`<span
       class="annotation-outline"
-      data-outline=${String(Math.min(index, 2))}
+      data-outline=${style}
       style=${`--annotation-color:${color}`}
     ></span>`,
   );
