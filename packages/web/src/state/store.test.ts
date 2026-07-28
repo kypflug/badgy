@@ -1,6 +1,7 @@
 import {
   CFG_ORG,
   type ComplianceScheme,
+  DEFAULT_HOLIDAY_REGION,
   defaultSchemeFor,
   emptyDoc,
   findOrg,
@@ -169,6 +170,58 @@ describe('Store workplace seeding', () => {
     expect(store.schemeIsCustom).toBe(true);
     store.resetScheme();
     expect(store.schemeIsCustom).toBe(false);
+  });
+
+  it('evaluates a policy draft without mutation or side effects', () => {
+    const store = new Store();
+    const change = vi.fn();
+    const timeout = vi.spyOn(globalThis, 'setTimeout');
+    const save = vi.spyOn(localStorage, 'setItem');
+    store.addEventListener('change', change);
+    const scheme: ComplianceScheme = {
+      kind: 'none',
+      bands: store.scheme.bands,
+      absence: store.scheme.absence,
+    };
+
+    const result = store.evaluateDraft(scheme, 0.65);
+
+    expect(result.current).toBe(1);
+    expect(result.target).toBe(0.65);
+    expect(store.scheme).not.toEqual(scheme);
+    expect(store.canUndo).toBe(false);
+    expect(change).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(timeout).not.toHaveBeenCalled();
+  });
+
+  it('commits and undoes a customized policy draft atomically', () => {
+    const store = new Store();
+    const custom = {
+      ...defaultSchemeFor('weekly-quota', store.scheme),
+      daysPerWeek: 4,
+      averagingWeeks: 2,
+    };
+
+    expect(
+      store.commitPolicyDraft({
+        orgId: 'amazon',
+        scheme: custom,
+        target: 0.7,
+        holidayRegion: 'us-federal',
+      }),
+    ).toBe(true);
+    expect(store.org.id).toBe('amazon');
+    expect(store.scheme).toEqual(custom);
+    expect(store.schemeIsCustom).toBe(true);
+    expect(store.target).toBe(0.7);
+    expect(store.holidayRegion).toBe('us-federal');
+
+    expect(store.undo()).toBe(true);
+    expect(store.undo()).toBe(false);
+    expect(store.org.id).toBe('generic');
+    expect(store.target).toBe(0.8);
+    expect(store.holidayRegion).toBe(DEFAULT_HOLIDAY_REGION);
   });
 });
 

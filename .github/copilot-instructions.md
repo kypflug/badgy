@@ -189,18 +189,20 @@ and its 2026/2027 output is pinned by a parity test — don't change those rules
 - Components read and write **only** through the `store` singleton; they never touch the doc, HLC,
   or transports directly.
 - Style exclusively with Badgy tokens from `packages/web/src/styles/tokens.css`
-  (`var(--badgy-…)`) in the global `app.css` — never hardcode a colour in a component. Large
-  squircle radii; the brand ramp is reserved for the brand mark, focus rings and the today marker.
-  Status fills use the `s-<status>` classes produced by `lib/status.ts`.
+  (`var(--badgy-…)`) in the global `app.css` — never hardcode a colour in a component. Warm-paper
+  light and warm-charcoal dark palettes, 8–14px radii (no `corner-shape`), and a single major
+  shadow on the Workbench frame only: interior separation is hairlines and value steps.
+  Status bars, dots and swatches use the `s-<status>` classes produced by `lib/status.ts`.
 - Adding or renaming a status means touching `STATUSES`, `STATUS_LABEL`, `STATUS_SHORT`,
-  `countStatuses` (shared), `STATUS_ICON` (web), and the `.s-*` rules in `app.css`. The `STATUSES`
+  `countStatuses` (shared) and the `.s-*` rules in `app.css`. The `STATUSES`
   array *is* the UI display order.
 - Compliance band classes are `.score-danger` / `.score-warning` / `.score-success` (they were
   `.belt-*` before the engine was generalised).
 - Adding a scheme kind means touching `SchemeParams`, `SCHEME_KINDS`, `SCHEME_LABEL`,
   `isSchemeParams`, `defaultSchemeFor`, `schemePeriod` (shared `policy/types.ts`), the evaluator and
-  `headline` in `policy/engine.ts`, `schemeFields` in `settings-dialog.ts`, `schemeExplainer` in
-  `help-dialog.ts`, and the `scheme` `oneOf` in `data/schema/org.schema.json`.
+  `headline` in `policy/engine.ts`, `schemeFields` in `settings-policy-section.ts`,
+  `schemeExplainer` in `help-dialog.ts`, and the `scheme` `oneOf` in
+  `data/schema/org.schema.json`.
 - Dates are UTC ISO `YYYY-MM-DD` strings end to end; use the helpers in `calendar.ts` rather than
   `Date` arithmetic. Weeks always start on Sunday.
 - Formatting/linting is Biome (single quotes, 100 columns, 2 spaces, organize-imports on) plus

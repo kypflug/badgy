@@ -1,15 +1,16 @@
 import {
   addDays,
   type CalendarNote,
-  countStatuses,
   meetupCycleLabel,
   type PickableStatus,
   type ResolvedDay,
-  STATUS_LABEL,
   toISO,
 } from '@badgy/shared';
 import { html } from 'lit';
-import { STATUS_ICON, STATUS_ORDER, statusClass } from '../lib/status.js';
+import { rangeEditMessage } from '../lib/format.js';
+import { undoShortcutLabel } from '../lib/platform.js';
+import { statusClass } from '../lib/status.js';
+import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
 import {
   annotationOverlay,
@@ -24,25 +25,19 @@ import {
   dayMenu,
   noteEditor,
   positionDayMenu,
+  positionRangeToolbar,
   rangeDates,
   rangeToolbar,
+  rangeToolbarAnchor,
   ViewportOverlayHost,
 } from './calendar-overlays.js';
+import {
+  YEAR_MONTHS,
+  yearDayLabel,
+  yearDayState,
+  yearMonthMetadata,
+} from './year-planner-model.js';
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export class YearPlanner extends BadgyElement {
@@ -72,10 +67,15 @@ export class YearPlanner extends BadgyElement {
     offset: 12,
     maxHeight: 1,
   };
-  private toolbarX = 0;
-  private toolbarY = 0;
+  private toolbarPosition: DayMenuPosition = {
+    left: 12,
+    edge: 'top',
+    offset: 12,
+    maxHeight: 1,
+  };
   private dragging = false;
   private moved = false;
+  private lastFocused: HTMLElement | null = null;
   private readonly overlay = new ViewportOverlayHost();
 
   override disconnectedCallback(): void {
@@ -92,6 +92,7 @@ export class YearPlanner extends BadgyElement {
     this.editingNote = null;
     this.noteStart = '';
     this.noteEnd = '';
+    this.lastFocused = null;
     this.clearSelection();
     this.overlay.clear();
   }
@@ -109,6 +110,7 @@ export class YearPlanner extends BadgyElement {
   private readonly onDown = (event: PointerEvent, date: string): void => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     event.preventDefault();
+    this.lastFocused = this.querySelector<HTMLElement>(`.year-day[data-date="${date}"]`);
     this.menuDate = null;
     this.toolbar = false;
     this.selStart = date;
@@ -131,16 +133,12 @@ export class YearPlanner extends BadgyElement {
     }
   };
 
-  private readonly onUp = (event: PointerEvent): void => {
+  private readonly onUp = (): void => {
     this.dragging = false;
     document.removeEventListener('pointermove', this.onMove);
     document.removeEventListener('pointerup', this.onUp);
     if (this.moved) {
-      this.toolbarX = Math.min(
-        Math.max(event.clientX - 180, 12),
-        Math.max(12, window.innerWidth - 372),
-      );
-      this.toolbarY = Math.min(event.clientY + 12, Math.max(12, window.innerHeight - 96));
+      this.toolbarPosition = positionRangeToolbar(this.toolbarAnchor());
       this.toolbar = true;
     } else if (this.selStart) {
       this.openMenu(this.selStart);
@@ -149,35 +147,68 @@ export class YearPlanner extends BadgyElement {
     }
   };
 
+  /** Bounding box of the selected cells, centered for the range toolbar's placement math. */
+  private toolbarAnchor() {
+    const rects = [...this.selectedSet()]
+      .map((date) => this.querySelector<HTMLElement>(`.year-day[data-date="${date}"]`))
+      .filter((cell): cell is HTMLElement => cell !== null)
+      .map((cell) => cell.getBoundingClientRect());
+    return rangeToolbarAnchor(rects) ?? { left: 12, top: 12, bottom: 12 };
+  }
+
   private openMenu(date: string): void {
     const cell = this.querySelector<HTMLElement>(`.year-day[data-date="${date}"]`);
     if (!cell) return;
+    this.lastFocused ??= cell;
     this.menuPosition = positionDayMenu(cell.getBoundingClientRect());
     this.menuDate = date;
   }
 
+  private restoreFocus(): void {
+    const element = this.lastFocused;
+    this.lastFocused = null;
+    if (element?.isConnected) element.focus();
+  }
+
+  private closeMenu(): void {
+    this.menuDate = null;
+    this.restoreFocus();
+  }
+
   private pick(status: PickableStatus): void {
     if (this.menuDate) store.setStatus(this.menuDate, status);
-    this.menuDate = null;
+    this.closeMenu();
   }
 
   private resetDay(): void {
     if (this.menuDate) store.clearDate(this.menuDate);
-    this.menuDate = null;
+    this.closeMenu();
+  }
+
+  private closeToolbar(): void {
+    this.clearSelection();
+    this.restoreFocus();
   }
 
   private applyRange(status: PickableStatus): void {
     const dates = rangeDates(this.selStart, this.selEnd);
-    if (dates.length > 0) store.setRange(dates, status);
-    this.clearSelection();
+    if (dates.length > 0) {
+      store.setRange(dates, status);
+      if (dates.length > 1) toast(rangeEditMessage(dates.length, 'set', undoShortcutLabel()));
+    }
+    this.closeToolbar();
   }
 
   private resetRange(): void {
     const dates = rangeDates(this.selStart, this.selEnd);
-    if (dates.length > 0) store.clearRange(dates);
-    this.clearSelection();
+    if (dates.length > 0) {
+      store.clearRange(dates);
+      if (dates.length > 1) toast(rangeEditMessage(dates.length, 'cleared', undoShortcutLabel()));
+    }
+    this.closeToolbar();
   }
   private openNoteEditor(start: string, end: string): void {
+    this.lastFocused ??= this.querySelector<HTMLElement>(`.year-day[data-date="${start}"]`);
     [this.noteStart, this.noteEnd] = start <= end ? [start, end] : [end, start];
     this.selStart = this.noteStart;
     this.selEnd = this.noteEnd;
@@ -190,6 +221,7 @@ export class YearPlanner extends BadgyElement {
   }
 
   private editNote(note: CalendarNote): void {
+    this.lastFocused = document.activeElement as HTMLElement | null;
     this.clearSelection();
     this.menuDate = null;
     this.editingNote = note;
@@ -205,6 +237,7 @@ export class YearPlanner extends BadgyElement {
     this.noteStart = '';
     this.noteEnd = '';
     this.clearSelection();
+    this.restoreFocus();
     this.requestUpdate();
   }
 
@@ -233,22 +266,21 @@ export class YearPlanner extends BadgyElement {
         if (this.menuDate) this.openNoteEditor(this.menuDate, this.menuDate);
       },
       onDismiss: () => {
-        this.menuDate = null;
+        this.closeMenu();
       },
     });
   }
 
   private renderToolbar() {
     return rangeToolbar({
-      x: this.toolbarX,
-      y: this.toolbarY,
+      position: this.toolbarPosition,
       count: this.selectedSet().size,
       onPick: (status) => this.applyRange(status),
       onReset: () => this.resetRange(),
       onNote: () => {
         if (this.selStart && this.selEnd) this.openNoteEditor(this.selStart, this.selEnd);
       },
-      onDismiss: () => this.clearSelection(),
+      onDismiss: () => this.closeToolbar(),
     });
   }
 
@@ -273,18 +305,20 @@ export class YearPlanner extends BadgyElement {
   }
 
   protected override updated(): void {
-    if (this.noteStart) this.overlay.show(this.renderNoteEditor());
-    else if (this.menuDate) this.overlay.show(this.renderMenu());
-    else if (this.toolbar) this.overlay.show(this.renderToolbar());
+    if (this.noteStart) this.overlay.show(this.renderNoteEditor(), 'note');
+    else if (this.menuDate) this.overlay.show(this.renderMenu(), 'menu');
+    else if (this.toolbar) this.overlay.show(this.renderToolbar(), 'toolbar');
     else this.overlay.clear();
   }
 
   private dayCell(day: ResolvedDay, selected: Set<string>) {
+    const state = yearDayState(day);
     const classes = [
       'year-day',
+      'year-dot-button',
       statusClass(day.status),
       day.isToday ? 'year-day--today' : '',
-      day.isFuture ? 'year-day--future' : 'year-day--past',
+      `year-day--${state}`,
       day.isWeekend ? 'year-day--weekend' : '',
       this.menuDate === day.date ? 'year-day--active' : '',
       selected.has(day.date) ? 'year-day--selected' : '',
@@ -292,14 +326,18 @@ export class YearPlanner extends BadgyElement {
       .filter(Boolean)
       .join(' ');
     const holidayName = day.isHoliday ? store.holidayName(day.date) : null;
-    const label = `${day.date} · ${STATUS_LABEL[day.status]}${holidayName ? ` · ${holidayName}` : ''}`;
+    const label = yearDayLabel(day, holidayName);
     return html`
       <button
         type="button"
         class=${classes}
         data-date=${day.date}
+        data-status=${day.status}
+        data-state=${state}
+        data-today=${day.isToday ? 'true' : 'false'}
         title=${label}
         aria-label=${label}
+        aria-pressed=${selected.has(day.date) ? 'true' : 'false'}
         @pointerdown=${(event: PointerEvent) => this.onDown(event, day.date)}
         @pointerenter=${() => {
           if (this.dragging) {
@@ -310,11 +348,12 @@ export class YearPlanner extends BadgyElement {
         @keydown=${(event: KeyboardEvent) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
+            this.lastFocused = event.currentTarget as HTMLElement;
             this.openMenu(day.date);
           }
         }}
       >
-        <span class="year-day-num">${Number(day.date.slice(8, 10))}</span>
+        <span class="year-day-dot" aria-hidden="true"></span>
       </button>
     `;
   }
@@ -337,10 +376,22 @@ export class YearPlanner extends BadgyElement {
     while (cells.length % 7 !== 0) cells.push(null);
     const weeks: (ResolvedDay | null)[][] = [];
     for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    const monthDays = cells.filter((day): day is ResolvedDay => day !== null);
+    const month = YEAR_MONTHS[month0];
 
     return html`
-      <section class="year-month badgy-card" aria-label=${`${MONTHS[month0]} ${this.year}`}>
-        <h2 class="year-month-title">${MONTHS[month0]}</h2>
+      <section
+        class="year-month"
+        role="listitem"
+        data-month=${String(month0 + 1)}
+        aria-label=${`${month.long} ${this.year}`}
+      >
+        <header class="year-month-header">
+          <h2 class="year-month-title" aria-label=${`${month.long} ${this.year}`}>
+            <span aria-hidden="true">${month.short}</span>
+          </h2>
+          <span class="year-month-meta">${yearMonthMetadata(monthDays)}</span>
+        </header>
         <div class="year-month-grid year-month-head" aria-hidden="true">
           ${DOW.map((label) => html`<span class="year-dow">${label}</span>`)}
         </div>
@@ -361,7 +412,13 @@ export class YearPlanner extends BadgyElement {
                 ${week.map((day) =>
                   day
                     ? this.dayCell(day, selected)
-                    : html`<span class="year-day-spacer" aria-hidden="true"></span>`,
+                    : html`
+                        <span
+                          class="year-day-spacer year-dot-spacer"
+                          data-spacer="true"
+                          aria-hidden="true"
+                        ></span>
+                      `,
                 )}
               </div>
             `;
@@ -375,35 +432,19 @@ export class YearPlanner extends BadgyElement {
     const days = store.yearDays(this.year);
     const daysByDate = new Map(days.map((day) => [day.date, day]));
     const selected = this.selectedSet();
-    const counts = countStatuses(days);
     const notes = store.notesInRange(`${this.year}-01-01`, `${this.year}-12-31`);
 
     return html`
-      <section class="year-planner" aria-label=${`${this.year} yearly planner`}>
-        <div class="year-months">
-          ${MONTHS.map((_, month0) => this.monthCard(month0, daysByDate, selected, notes))}
+      <section
+        class="year-planner"
+        data-layout="4x3"
+        aria-label=${`${this.year} yearly planner`}
+      >
+        <div class="year-months" role="list">
+          ${YEAR_MONTHS.map((_, month0) =>
+            this.monthCard(month0, daysByDate, selected, notes),
+          )}
         </div>
-        <aside class="year-summary badgy-card" aria-label=${`${this.year} status totals`}>
-          <div class="year-summary-head">
-            <span class="year-summary-eyebrow">Year totals</span>
-            <strong>${this.year}</strong>
-          </div>
-          <div class="year-summary-list">
-            ${STATUS_ORDER.map(
-              (status) => html`
-                <div class="year-summary-row">
-                  <span class="year-summary-status">
-                    <span class="year-summary-icon ${statusClass(status)}" aria-hidden="true">
-                      ${STATUS_ICON[status]}
-                    </span>
-                    <span>${STATUS_LABEL[status]}</span>
-                  </span>
-                  <strong class="year-summary-count">${counts[status]}</strong>
-                </div>
-              `,
-            )}
-          </div>
-        </aside>
       </section>
     `;
   }

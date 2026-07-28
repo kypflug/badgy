@@ -33,6 +33,7 @@ import {
   isCalendarNote,
   isComplianceScheme,
   isHolidayOverride,
+  isHolidayRegionId,
   isMeetupWeek as isMeetupBuiltin,
   isMeetupOverride,
   isWeekend,
@@ -41,6 +42,7 @@ import {
   migrate,
   monthGrid,
   noteKey,
+  officeDaysForWeek,
   type OrgPreset,
   orgOrDefault,
   type ProjectionResult,
@@ -73,11 +75,22 @@ function normalizeHolidayName(name: string | undefined): string {
   return name.replace(CONTROL_CHARS, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_HOLIDAY_NAME);
 }
 
+function clampTarget(target: number): number {
+  return Math.min(1, Math.max(0, target));
+}
+
 /** A reversible edit: the changed keys mapped to their value (undefined = key was absent). */
 type Patch = Record<string, CellValue | undefined>;
 interface HistoryEntry {
   undo: Patch;
   redo: Patch;
+}
+
+export interface PolicyDraft {
+  orgId: string;
+  scheme: ComplianceScheme;
+  target: number;
+  holidayRegion: HolidayRegionId;
 }
 
 function docEqual(a: Doc, b: Doc): boolean {
@@ -188,6 +201,10 @@ export class Store extends EventTarget {
   weekDays(weekStart: string): ResolvedDay[] {
     return resolveRange(this.doc, weekStart, addDays(weekStart, 6));
   }
+  /** Resolved days for an arbitrary inclusive range — the rail's forecast away-band source. */
+  rangeDays(start: string, end: string): ResolvedDay[] {
+    return resolveRange(this.doc, start, end);
+  }
   /** The org preset backing the current defaults. */
   get org(): OrgPreset {
     return orgOrDefault(getOrgId(this.doc) ?? this.entryOrg.id);
@@ -208,8 +225,17 @@ export class Store extends EventTarget {
   weekScore(weekStart: string): number | null {
     return weekScore(this.doc, weekStart, this.scheme, todayISO());
   }
+  /** Office days credited within a Sunday–Saturday week, for the calendar's week summary column. */
+  weekOfficeDays(weekStart: string): number {
+    return officeDaysForWeek(this.doc, weekStart, this.scheme, todayISO());
+  }
   compliance(): ComplianceResult {
     return evaluate(this.doc, this.scheme, this.target, todayISO());
+  }
+  /** Evaluate an uncommitted policy without changing the document or sync state. */
+  evaluateDraft(scheme: ComplianceScheme, target: number): ComplianceResult {
+    if (!isComplianceScheme(scheme)) throw new Error('Invalid compliance scheme.');
+    return evaluate(this.doc, scheme, clampTarget(target), todayISO());
   }
   plan(horizon: number, hold: boolean): ProjectionResult {
     return planOfficeDays(this.doc, this.scheme, todayISO(), horizon, this.target, hold);
@@ -270,7 +296,7 @@ export class Store extends EventTarget {
     this.apply((d) => setCell(d, patternKey(weekday), status, this.hlc.tick()));
   }
   setTarget(target: number): void {
-    const t = Math.min(1, Math.max(0, target));
+    const t = clampTarget(target);
     this.apply((d) => setCell(d, CFG_TARGET, t, this.hlc.tick()));
   }
   toggleMeetup(weekStart: string): void {
@@ -289,6 +315,19 @@ export class Store extends EventTarget {
       setCell(d, CFG_TARGET, org.target, this.hlc.tick());
       setCell(d, CFG_HOLIDAY_REGION, org.holidaySet, this.hlc.tick());
     });
+  }
+  /** Keep a workplace policy draft as one reversible CRDT edit. */
+  commitPolicyDraft(draft: PolicyDraft): boolean {
+    if (!isComplianceScheme(draft.scheme) || !isHolidayRegionId(draft.holidayRegion)) return false;
+    const org = orgOrDefault(draft.orgId);
+    const target = clampTarget(draft.target);
+    this.apply((d) => {
+      setCell(d, CFG_ORG, org.id, this.hlc.tick());
+      setCell(d, CFG_SCHEME, JSON.stringify(draft.scheme), this.hlc.tick());
+      setCell(d, CFG_TARGET, target, this.hlc.tick());
+      setCell(d, CFG_HOLIDAY_REGION, draft.holidayRegion, this.hlc.tick());
+    });
+    return true;
   }
   setScheme(scheme: ComplianceScheme): void {
     if (!isComplianceScheme(scheme)) return;

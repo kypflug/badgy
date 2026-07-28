@@ -1,23 +1,27 @@
 // Generate PWA/favicon PNGs from the Badgy mark. Run: node scripts/gen-icons.mjs
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { Resvg } from '@resvg/resvg-js';
 
 const OUT = new URL('../public/', import.meta.url);
+const SOURCE = new URL('../public/favicon.svg', import.meta.url);
+const svg = readFileSync(SOURCE, 'utf8');
+const match = svg.match(/viewBox="0 0 ([0-9.]+) ([0-9.]+)"/);
 
-const grad = `<defs><linearGradient id="g" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-  <stop offset="0" stop-color="#2563eb"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#db2777"/>
-</linearGradient></defs>`;
+if (!match) throw new Error('favicon.svg needs a 0 0 width height viewBox');
 
-const svg = (rx) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${grad}
-  <rect width="512" height="512" rx="${rx}" fill="url(#g)"/>
-  <path d="M168 266l62 62L348 196" fill="none" stroke="#fff" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
+const size = Number(match[1]);
+const inner = svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+const safeInset = size * 0.09375;
+const safeScale = (size - safeInset * 2) / size;
 
-const png = (markup, size) =>
-  new Resvg(markup, { fitTo: { mode: 'width', value: size } }).render().asPng();
+const wrap = (pad = 0) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}"><g transform="translate(${pad} ${pad}) scale(${pad ? safeScale : 1})">${inner}</g></svg>`;
 
-writeFileSync(new URL('icon-512.png', OUT), png(svg(0), 512));
-writeFileSync(new URL('icon-192.png', OUT), png(svg(0), 192));
-writeFileSync(new URL('apple-touch-icon.png', OUT), png(svg(96), 180));
-writeFileSync(new URL('favicon-48.png', OUT), png(svg(96), 48));
-console.log('generated icon-512, icon-192, apple-touch-icon, favicon-48');
+const png = (markup, outputSize) =>
+  new Resvg(markup, { fitTo: { mode: 'width', value: outputSize } }).render().asPng();
+
+writeFileSync(new URL('favicon-48.png', OUT), png(wrap(), 48));
+writeFileSync(new URL('apple-touch-icon.png', OUT), png(wrap(), 180));
+writeFileSync(new URL('icon-192.png', OUT), png(wrap(safeInset), 192));
+writeFileSync(new URL('icon-512.png', OUT), png(wrap(safeInset), 512));
+console.log('generated favicon-48, apple-touch-icon, icon-192, icon-512');

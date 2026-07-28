@@ -83,6 +83,45 @@ describe('policy engine BELT parity', () => {
 });
 
 describe('policy engine weekly schemes', () => {
+  it.each([
+    BELT_SCHEME,
+    {
+      kind: 'qualifying-weeks',
+      windowWeeks: 4,
+      minQualifying: 3,
+      daysPerWeek: 3,
+      bands: DEFAULT_BANDS,
+      absence: DEFAULT_ABSENCE,
+    },
+    quotaScheme(),
+  ] satisfies ComplianceScheme[])('forecasts resolved weekly plans for $kind', (scheme) => {
+    const result = evaluate(emptyDoc(), scheme, 0.8, TODAY, {
+      horizonPeriods: 2,
+      trailPeriods: 1,
+    });
+
+    expect(result.series).toHaveLength(1);
+    expect(result.series[0].start).toBe('2026-03-01');
+    expect(result.futureSeries.map(({ start, end }) => ({ start, end }))).toEqual([
+      { start: '2026-03-08', end: '2026-03-14' },
+      { start: '2026-03-15', end: '2026-03-21' },
+    ]);
+    expect(result.futureSeries.every((point) => point.score === 1)).toBe(true);
+    expect(result.projected).toBe(result.futureSeries.at(-1)?.score);
+  });
+
+  it('uses planned future statuses instead of extending the trailing series', () => {
+    const doc = allRemoteDoc();
+    setWeekdays(doc, '2026-03-08', ['office', 'office', 'office', 'remote', 'remote']);
+    const result = evaluate(doc, quotaScheme(), 0.8, TODAY, {
+      horizonPeriods: 2,
+      trailPeriods: 1,
+    });
+
+    expect(result.series.at(-1)?.start).toBe('2026-03-01');
+    expect(result.futureSeries.map((point) => point.score)).toEqual([1, 0]);
+  });
+
   it('scores a strict weekly quota', () => {
     const three = allRemoteDoc();
     setWeekdays(three, WEEK, ['office', 'office', 'office', 'remote', 'remote']);
@@ -145,6 +184,43 @@ describe('policy engine weekly schemes', () => {
 });
 
 describe('policy engine fixed periods', () => {
+  it('forecasts monthly and quarterly buckets after the current bucket', () => {
+    const monthly: ComplianceScheme = {
+      kind: 'period-quota',
+      period: 'month',
+      days: 10,
+      bands: DEFAULT_BANDS,
+      absence: DEFAULT_ABSENCE,
+    };
+    const quarterly: ComplianceScheme = {
+      kind: 'period-percentage',
+      period: 'quarter',
+      percent: 0.5,
+      bands: DEFAULT_BANDS,
+      absence: DEFAULT_ABSENCE,
+    };
+
+    const monthResult = evaluate(emptyDoc(), monthly, 0.8, TODAY, {
+      horizonPeriods: 2,
+      trailPeriods: 1,
+    });
+    expect(
+      monthResult.futureSeries.map(({ start, end, score }) => ({ start, end, score })),
+    ).toEqual([
+      { start: '2026-04-01', end: '2026-04-30', score: 1 },
+      { start: '2026-05-01', end: '2026-05-31', score: 1 },
+    ]);
+
+    const quarterResult = evaluate(emptyDoc(), quarterly, 0.8, TODAY, {
+      horizonPeriods: 1,
+      trailPeriods: 1,
+    });
+    expect(quarterResult.series.at(-1)?.end).toBe('2026-03-31');
+    expect(quarterResult.futureSeries).toMatchObject([
+      { start: '2026-04-01', end: '2026-06-30', score: 1 },
+    ]);
+  });
+
   it('uses calendar quarter boundaries for period quotas', () => {
     const scheme: ComplianceScheme = {
       kind: 'period-quota',
@@ -192,9 +268,16 @@ describe('policy engine fixed periods', () => {
       bands: DEFAULT_BANDS,
       absence: DEFAULT_ABSENCE,
     };
-    const result = evaluate(emptyDoc(), scheme, 0.8, '2026-03-31');
+    const result = evaluate(emptyDoc(), scheme, 0.8, '2026-03-31', { horizonPeriods: 1 });
     expect(result.current).toBe(1);
     expect(result.band).toBe('success');
+    expect(result.futureSeries).toHaveLength(1);
+    expect(result.futureSeries[0]).toMatchObject({
+      start: '2026-04-05',
+      end: '2026-04-11',
+      attainment: 1,
+      score: 1,
+    });
     expect(() => weekScore(emptyDoc(), '2026-03-29', scheme, '2026-03-31')).not.toThrow();
   });
 });

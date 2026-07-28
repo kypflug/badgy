@@ -33,7 +33,7 @@ export function meetupAnnotation(weekStart: string, label: string): CalendarAnno
     start: weekStart,
     end: addDays(weekStart, 6),
     label,
-    color: 'var(--badgy-brand-1)',
+    color: 'var(--badgy-meetup)',
   };
 }
 

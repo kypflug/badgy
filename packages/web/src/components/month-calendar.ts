@@ -7,8 +7,10 @@ import {
   STATUS_SHORT,
 } from '@badgy/shared';
 import { html, nothing } from 'lit';
-import { formatPct } from '../lib/format.js';
-import { STATUS_ICON, statusClass } from '../lib/status.js';
+import { formatPct, rangeEditMessage } from '../lib/format.js';
+import { undoShortcutLabel } from '../lib/platform.js';
+import { statusClass } from '../lib/status.js';
+import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
 import {
   annotationOverlay,
@@ -18,17 +20,21 @@ import {
 } from './annotation-layout.js';
 import { BadgyElement } from './base.js';
 import {
-  type DayMenuPosition,
   DEFAULT_NOTE_COLOR,
   dayMenu,
   noteEditor,
+  type OverlayPosition,
   positionDayMenu,
+  positionRangeToolbar,
   rangeDates,
   rangeToolbar,
+  rangeToolbarAnchor,
   ViewportOverlayHost,
 } from './calendar-overlays.js';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** A week's score reads as behind-pace below this ratio, independent of the compliance bands. */
+const WEEK_SCORE_ALERT_THRESHOLD = 0.6;
 
 export class MonthCalendar extends BadgyElement {
   static override properties = {
@@ -51,16 +57,22 @@ export class MonthCalendar extends BadgyElement {
   private noteEnd = '';
   private noteLabel = '';
   private noteColor = DEFAULT_NOTE_COLOR;
-  private menuPosition: DayMenuPosition = {
+  private menuPosition: OverlayPosition = {
     left: 12,
     edge: 'top',
     offset: 12,
     maxHeight: 1,
   };
-  private tbX = 0;
-  private tbY = 0;
+  private toolbarPosition: OverlayPosition = {
+    left: 12,
+    edge: 'top',
+    offset: 12,
+    maxHeight: 1,
+  };
   private dragging = false;
   private moved = false;
+  /** The element focused when a menu/toolbar opened, restored once it closes. */
+  private lastFocused: HTMLElement | null = null;
   private readonly overlay = new ViewportOverlayHost();
 
   override disconnectedCallback(): void {
@@ -81,6 +93,7 @@ export class MonthCalendar extends BadgyElement {
     this.editingNote = null;
     this.noteStart = '';
     this.noteEnd = '';
+    this.lastFocused = null;
     this.clearSel();
     this.overlay.clear();
   }
@@ -94,9 +107,17 @@ export class MonthCalendar extends BadgyElement {
     this.toolbar = false;
   }
 
+  /** Restore focus to whatever triggered the popup, if it's still in the document. */
+  private restoreFocus(): void {
+    const el = this.lastFocused;
+    this.lastFocused = null;
+    if (el?.isConnected) el.focus();
+  }
+
   private readonly onDown = (e: PointerEvent, date: string): void => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
+    this.lastFocused = this.querySelector<HTMLElement>(`.month-day[data-date="${date}"]`);
     this.menuDate = null;
     this.toolbar = false;
     this.selStart = date;
@@ -109,7 +130,7 @@ export class MonthCalendar extends BadgyElement {
   private readonly onMove = (e: PointerEvent): void => {
     if (!this.dragging) return;
     const el = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest(
-      '.day',
+      '.month-day',
     );
     const date = (el as HTMLElement | null)?.dataset.date;
     if (date && date !== this.selEnd) {
@@ -117,13 +138,12 @@ export class MonthCalendar extends BadgyElement {
       if (date !== this.selStart) this.moved = true;
     }
   };
-  private readonly onUp = (e: PointerEvent): void => {
+  private readonly onUp = (): void => {
     this.dragging = false;
     document.removeEventListener('pointermove', this.onMove);
     document.removeEventListener('pointerup', this.onUp);
     if (this.moved) {
-      this.tbX = Math.min(Math.max(e.clientX - 180, 12), Math.max(12, window.innerWidth - 372));
-      this.tbY = Math.min(e.clientY + 12, Math.max(12, window.innerHeight - 96));
+      this.toolbarPosition = positionRangeToolbar(this.toolbarAnchor());
       this.toolbar = true;
     } else if (this.selStart) {
       this.openMenu(this.selStart);
@@ -132,31 +152,56 @@ export class MonthCalendar extends BadgyElement {
     }
   };
 
+  /** Bounding box of the selected cells, centered for the range toolbar's placement math. */
+  private toolbarAnchor() {
+    const rects = [...this.selectedSet()]
+      .map((date) => this.querySelector<HTMLElement>(`.month-day[data-date="${date}"]`))
+      .filter((cell): cell is HTMLElement => cell !== null)
+      .map((cell) => cell.getBoundingClientRect());
+    return rangeToolbarAnchor(rects) ?? { left: 12, top: 12, bottom: 12 };
+  }
+
   private openMenu(date: string): void {
-    const cell = this.querySelector<HTMLElement>(`.day[data-date="${date}"]`);
+    const cell = this.querySelector<HTMLElement>(`.month-day[data-date="${date}"]`);
     if (!cell) return;
+    this.lastFocused ??= document.activeElement as HTMLElement | null;
     this.menuPosition = positionDayMenu(cell.getBoundingClientRect());
     this.menuDate = date;
   }
+  private closeMenu(): void {
+    this.menuDate = null;
+    this.restoreFocus();
+  }
   private pick(status: PickableStatus): void {
     if (this.menuDate) store.setStatus(this.menuDate, status);
-    this.menuDate = null;
+    this.closeMenu();
   }
   private resetDay(): void {
     if (this.menuDate) store.clearDate(this.menuDate);
-    this.menuDate = null;
+    this.closeMenu();
+  }
+  private closeToolbar(): void {
+    this.clearSel();
+    this.restoreFocus();
   }
   private applyRange(status: PickableStatus): void {
     const dates = [...this.selectedSet()];
-    if (dates.length) store.setRange(dates, status);
-    this.clearSel();
+    if (dates.length) {
+      store.setRange(dates, status);
+      if (dates.length > 1) toast(rangeEditMessage(dates.length, 'set', undoShortcutLabel()));
+    }
+    this.closeToolbar();
   }
   private resetRange(): void {
     const dates = [...this.selectedSet()];
-    if (dates.length) store.clearRange(dates);
-    this.clearSel();
+    if (dates.length) {
+      store.clearRange(dates);
+      if (dates.length > 1) toast(rangeEditMessage(dates.length, 'cleared', undoShortcutLabel()));
+    }
+    this.closeToolbar();
   }
   private openNoteEditor(start: string, end: string): void {
+    this.lastFocused ??= document.activeElement as HTMLElement | null;
     [this.noteStart, this.noteEnd] = start <= end ? [start, end] : [end, start];
     this.selStart = this.noteStart;
     this.selEnd = this.noteEnd;
@@ -168,6 +213,7 @@ export class MonthCalendar extends BadgyElement {
     this.requestUpdate();
   }
   private editNote(note: CalendarNote): void {
+    this.lastFocused = document.activeElement as HTMLElement | null;
     this.clearSel();
     this.menuDate = null;
     this.editingNote = note;
@@ -182,6 +228,7 @@ export class MonthCalendar extends BadgyElement {
     this.noteStart = '';
     this.noteEnd = '';
     this.clearSel();
+    this.restoreFocus();
     this.requestUpdate();
   }
   private saveNote(): void {
@@ -201,22 +248,28 @@ export class MonthCalendar extends BadgyElement {
 
   private dayCell(d: ResolvedDay, selected: Set<string>) {
     const inMonth = Number(d.date.slice(5, 7)) - 1 === this.month0;
+    const holidayName = d.isHoliday ? store.holidayName(d.date) : null;
+    const noteText = holidayName ?? (d.isToday ? 'Today' : null);
+    const tracked = d.status !== 'none';
     const cls = [
-      'day',
+      'month-day',
       statusClass(d.status),
-      inMonth ? '' : 'day--outside',
-      d.isToday ? 'day--today' : '',
-      d.isFuture ? 'day--future' : 'day--past',
-      d.isWeekend ? 'day--weekend' : '',
-      this.menuDate === d.date ? 'day--active' : '',
-      selected.has(d.date) ? 'day--selected' : '',
+      inMonth ? '' : 'month-day--outside',
+      d.isToday ? 'month-day--today' : '',
+      d.isFuture ? 'month-day--planned' : 'month-day--recorded',
+      d.isWeekend ? 'month-day--weekend' : '',
+      this.menuDate === d.date ? 'month-day--active' : '',
+      selected.has(d.date) ? 'month-day--selected' : '',
     ]
       .filter(Boolean)
       .join(' ');
+    const label = `${d.date} · ${STATUS_LABEL[d.status]}${holidayName ? ` · ${holidayName}` : ''}`;
     return html`<button
+      type="button"
       class=${cls}
       data-date=${d.date}
-      title=${`${d.date} · ${STATUS_LABEL[d.status]}${d.isHoliday ? ` · ${store.holidayName(d.date) ?? 'Holiday'}` : ''}`}
+      title=${label}
+      aria-label=${label}
       @pointerdown=${(e: PointerEvent) => this.onDown(e, d.date)}
       @pointerenter=${() => {
         if (this.dragging) {
@@ -227,19 +280,27 @@ export class MonthCalendar extends BadgyElement {
       @keydown=${(e: KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
+          this.lastFocused = e.currentTarget as HTMLElement;
           this.openMenu(d.date);
         }
       }}
     >
-      <span class="day-head">
-        <span class="day-num">${Number(d.date.slice(8, 10))}</span>
-        ${
-          d.status !== 'none'
-            ? html`<span class="day-emoji" aria-hidden="true">${STATUS_ICON[d.status]}</span>`
-            : nothing
-        }
+      <span class="month-day-head">
+        <span class="month-day-date">${Number(d.date.slice(8, 10))}</span>
+        ${noteText ? html`<span class="month-day-note">${noteText}</span>` : nothing}
       </span>
-      ${d.status !== 'none' ? html`<span class="day-tag">${STATUS_SHORT[d.status]}</span>` : nothing}
+      <span class="month-day-status ${tracked ? statusClass(d.status) : 'month-day-status--empty'}">
+        ${tracked ? STATUS_SHORT[d.status] : ''}
+      </span>
+      ${
+        tracked
+          ? html`<span
+              class="month-day-bar ${statusClass(d.status)} ${d.isFuture
+                ? 'month-day-bar--planned'
+                : 'month-day-bar--recorded'}"
+            ></span>`
+          : nothing
+      }
     </button>`;
   }
 
@@ -251,23 +312,20 @@ export class MonthCalendar extends BadgyElement {
       onNote: () => {
         if (this.menuDate) this.openNoteEditor(this.menuDate, this.menuDate);
       },
-      onDismiss: () => {
-        this.menuDate = null;
-      },
+      onDismiss: () => this.closeMenu(),
     });
   }
 
   private renderToolbar() {
     return rangeToolbar({
-      x: this.tbX,
-      y: this.tbY,
+      position: this.toolbarPosition,
       count: this.selectedSet().size,
       onPick: (status) => this.applyRange(status),
       onReset: () => this.resetRange(),
       onNote: () => {
         if (this.selStart && this.selEnd) this.openNoteEditor(this.selStart, this.selEnd);
       },
-      onDismiss: () => this.clearSel(),
+      onDismiss: () => this.closeToolbar(),
     });
   }
 
@@ -292,9 +350,9 @@ export class MonthCalendar extends BadgyElement {
   }
 
   protected override updated(): void {
-    if (this.noteStart) this.overlay.show(this.renderNoteEditor());
-    else if (this.menuDate) this.overlay.show(this.renderMenu());
-    else if (this.toolbar) this.overlay.show(this.renderToolbar());
+    if (this.noteStart) this.overlay.show(this.renderNoteEditor(), 'note');
+    else if (this.menuDate) this.overlay.show(this.renderMenu(), 'menu');
+    else if (this.toolbar) this.overlay.show(this.renderToolbar(), 'toolbar');
     else this.overlay.clear();
   }
 
@@ -309,25 +367,38 @@ export class MonthCalendar extends BadgyElement {
     const scoreTitle = `${store.org.label} — ${store.org.summary}`;
 
     return html`
-      <div class="cal">
-        <div class="cal-grid cal-head">
-          ${DOW.map((l) => html`<div class="cal-dow">${l}</div>`)}
-          <div class="cal-dow cal-dow--score">Score</div>
+      <div class="month">
+        <div class="month-row month-row--head">
+          ${DOW.map(
+            (l, i) =>
+              html`<div class="month-dow ${i === 0 || i === 6 ? 'month-dow--weekend' : ''}">${l}</div>`,
+          )}
+          <div class="month-dow month-dow--score">Week</div>
         </div>
         ${weeks.map((week, wi) => {
           const weekStart = weekStarts[wi];
           const score = store.weekScore(weekStart);
-          const scoreCls = score == null ? '' : `score-${store.band(score)}`;
+          const officeDays = store.weekOfficeDays(weekStart);
+          const isCurrentWeek = week.some((d) => d.isToday);
+          const behindPace = score != null && score < WEEK_SCORE_ALERT_THRESHOLD;
           const meetupLabel = store.isMeetupWeek(weekStart)
             ? (meetupCycleLabel(weekStart) ?? 'Meetup')
             : null;
           const annotations = notes.map(noteAnnotation);
           if (meetupLabel) annotations.push(meetupAnnotation(weekStart, meetupLabel));
           const segments = layoutWeekAnnotations(weekStart, annotations);
-          return html`<div class="cal-grid cal-row">
+          return html`<div class="month-row ${isCurrentWeek ? 'month-row--current' : ''}">
             ${annotationOverlay(segments, (note) => this.editNote(note))}
             ${week.map((d) => this.dayCell(d, selected))}
-            <div class="cal-score ${scoreCls}" title=${scoreTitle}>${formatPct(score)}</div>
+            <div
+              class="month-week-score ${behindPace ? 'month-week-score--under' : ''}"
+              title=${scoreTitle}
+            >
+              <span class="month-week-score-pct">${formatPct(score)}</span>
+              <span class="month-week-score-days"
+                >${officeDays} office day${officeDays === 1 ? '' : 's'}</span
+              >
+            </div>
           </div>`;
         })}
       </div>
