@@ -41,16 +41,12 @@ describe('computeAwayBands', () => {
       day('2026-07-14', 'holiday', true),
       day('2026-07-15', 'office', true),
     ];
-    expect(computeAwayBands(days)).toEqual([
-      { startDate: '2026-07-12', endDate: '2026-07-14' },
-    ]);
+    expect(computeAwayBands(days)).toEqual([{ startDate: '2026-07-12', endDate: '2026-07-14' }]);
   });
 
   it('ignores past away days even when adjacent to future ones', () => {
     const days: Day[] = [day('2026-07-10', 'vacation', false), day('2026-07-11', 'vacation', true)];
-    expect(computeAwayBands(days)).toEqual([
-      { startDate: '2026-07-11', endDate: '2026-07-11' },
-    ]);
+    expect(computeAwayBands(days)).toEqual([{ startDate: '2026-07-11', endDate: '2026-07-11' }]);
   });
 
   it('splits two vacation runs separated by an office day into two bands', () => {
@@ -73,9 +69,7 @@ describe('computeAwayBands', () => {
       day('2026-09-07', 'vacation', true),
     ];
 
-    expect(computeAwayBands(days)).toEqual([
-      { startDate: '2026-09-04', endDate: '2026-09-07' },
-    ]);
+    expect(computeAwayBands(days)).toEqual([{ startDate: '2026-09-04', endDate: '2026-09-07' }]);
   });
 });
 
@@ -85,10 +79,7 @@ describe('computeForecastAnnotations', () => {
       note('2026-07-13', '2026-07-17', 'Cabin week'),
       note('2026-07-15', '2026-07-16', 'Conference'),
     ];
-    const days = [
-      day('2026-07-13', 'vacation', true),
-      day('2026-07-15', 'remote', true),
-    ];
+    const days = [day('2026-07-13', 'vacation', true), day('2026-07-15', 'remote', true)];
 
     expect(computeForecastAnnotations(notes, days, '2026-07-01', '2026-07-31')).toEqual([
       {
@@ -114,10 +105,7 @@ describe('computeForecastAnnotations', () => {
       note('2026-07-29', '2026-08-04', 'Ends late'),
       note('2026-08-10', '2026-08-12', 'Not visible'),
     ];
-    const days = [
-      day('2026-07-01', 'sick', true),
-      day('2026-07-31', 'holiday', true),
-    ];
+    const days = [day('2026-07-01', 'sick', true), day('2026-07-31', 'holiday', true)];
 
     expect(computeForecastAnnotations(notes, days, '2026-07-01', '2026-07-31')).toEqual([
       {
@@ -154,9 +142,7 @@ describe('computeForecastAnnotations', () => {
     ];
 
     expect(
-      computeForecastAnnotations(notes, days, '2026-07-01', '2026-07-31').map(
-        ({ label }) => label,
-      ),
+      computeForecastAnnotations(notes, days, '2026-07-01', '2026-07-31').map(({ label }) => label),
     ).toEqual(['Remote plan']);
   });
 
@@ -209,12 +195,7 @@ describe('layoutForecastAnnotations', () => {
       annotation('2026-07-01', '2026-07-01', 'Long label at the start'),
       annotation('2026-07-31', '2026-07-31', 'Long label at the end'),
     ];
-    const layouts = layoutForecastAnnotations(
-      annotations,
-      '2026-07-01',
-      '2026-07-31',
-      236,
-    );
+    const layouts = layoutForecastAnnotations(annotations, '2026-07-01', '2026-07-31', 236);
 
     expect(layouts[0].labelX).toBeGreaterThan(0);
     expect(layouts[1].labelX).toBeLessThan(236);

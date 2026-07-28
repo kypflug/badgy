@@ -40,9 +40,7 @@ export function computeAwayBands(
     if (day.isFuture && AWAY_STATUSES.has(day.status)) {
       start ??= day.date;
       end = day.date;
-    } else if (start !== null && day.isFuture && day.status === 'none') {
-      continue;
-    } else {
+    } else if (start === null || !day.isFuture || day.status !== 'none') {
       flush();
     }
   }

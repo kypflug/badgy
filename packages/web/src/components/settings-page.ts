@@ -438,10 +438,9 @@ export class SettingsPage extends BadgyElement {
           Default for any day you haven't set. Specific dates override this.
         </p>
         <div class="pattern-calendar" role="group" aria-label="Usual week defaults">
-          ${WEEK_DAYS.map(
-            (w) => {
-              const current = pattern[w.idx] ?? (isWeekend(w.idx) ? 'none' : 'office');
-              return html`<label
+          ${WEEK_DAYS.map((w) => {
+            const current = pattern[w.idx] ?? (isWeekend(w.idx) ? 'none' : 'office');
+            return html`<label
                 class="pattern-calendar-day ${statusClass(current)} ${
                   current === 'none' ? 'pattern-calendar-day--untracked' : ''
                 }"
@@ -472,8 +471,7 @@ export class SettingsPage extends BadgyElement {
                   )}
                 </select>
               </label>`;
-            },
-          )}
+          })}
         </div>
       </section>
     `;
