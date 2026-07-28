@@ -71,6 +71,7 @@ describe('Store workplace seeding', () => {
     vi.stubGlobal('setInterval', vi.fn());
   });
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -184,7 +185,11 @@ describe('Store workplace seeding', () => {
       absence: store.scheme.absence,
     };
 
-    const result = store.evaluateDraft(scheme, 0.65);
+    const result = store.evaluateDraft({
+      scheme,
+      target: 0.65,
+      holidayRegion: store.holidayRegion,
+    });
 
     expect(result.current).toBe(1);
     expect(result.target).toBe(0.65);
@@ -193,6 +198,31 @@ describe('Store workplace seeding', () => {
     expect(change).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
     expect(timeout).not.toHaveBeenCalled();
+  });
+
+  it('previews the drafted holiday region exactly as it will be committed', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-19T12:00:00Z'));
+    const store = new Store();
+    const scheme = {
+      ...defaultSchemeFor('weekly-quota', store.scheme),
+      daysPerWeek: 5,
+      averagingWeeks: 1,
+    };
+    store.setPattern(5, 'remote');
+    const draft = {
+      orgId: 'amazon',
+      scheme,
+      target: 0.8,
+      holidayRegion: 'us-federal',
+    };
+    const before = store.evaluateDraft({ ...draft, holidayRegion: store.holidayRegion });
+
+    const preview = store.evaluateDraft(draft);
+    store.commitPolicyDraft(draft);
+
+    expect(preview).toEqual(store.compliance());
+    expect(preview.current).not.toBe(before.current);
   });
 
   it('commits and undoes a customized policy draft atomically', () => {

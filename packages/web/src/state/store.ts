@@ -233,9 +233,20 @@ export class Store extends EventTarget {
     return evaluate(this.doc, this.scheme, this.target, todayISO());
   }
   /** Evaluate an uncommitted policy without changing the document or sync state. */
-  evaluateDraft(scheme: ComplianceScheme, target: number): ComplianceResult {
-    if (!isComplianceScheme(scheme)) throw new Error('Invalid compliance scheme.');
-    return evaluate(this.doc, scheme, clampTarget(target), todayISO());
+  evaluateDraft(draft: Pick<PolicyDraft, 'scheme' | 'target' | 'holidayRegion'>): ComplianceResult {
+    if (!isComplianceScheme(draft.scheme) || !isHolidayRegionId(draft.holidayRegion))
+      throw new Error('Invalid policy draft.');
+    const doc: Doc =
+      draft.holidayRegion === this.holidayRegion
+        ? this.doc
+        : {
+            ...this.doc,
+            cells: {
+              ...this.doc.cells,
+              [CFG_HOLIDAY_REGION]: { v: draft.holidayRegion, t: [0, 0] },
+            },
+          };
+    return evaluate(doc, draft.scheme, clampTarget(draft.target), todayISO());
   }
   plan(horizon: number, hold: boolean): ProjectionResult {
     return planOfficeDays(this.doc, this.scheme, todayISO(), horizon, this.target, hold);

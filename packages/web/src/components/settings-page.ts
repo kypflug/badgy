@@ -128,6 +128,13 @@ export class SettingsPage extends BadgyElement {
     target?.focus();
   }
   override updated(changed: PropertyValues<this>): void {
+    if (
+      changed.has('activeSection') &&
+      this.activeSection === 'workplace-policy' &&
+      !this.policyDraft
+    ) {
+      this.initPolicyDraft();
+    }
     if (!changed.has('activeSection') || !this.isNarrow) return;
     const target = this.activeSection
       ? this.querySelector<HTMLElement>('.settings-detail-title')
@@ -158,6 +165,11 @@ export class SettingsPage extends BadgyElement {
       return true;
     }
     return this.confirmLeavePolicyIfDirty();
+  }
+
+  /** Whether local policy editing should own undo/redo keyboard shortcuts. */
+  hasActivePolicyDraft(): boolean {
+    return this.activeSection === 'workplace-policy' && this.policyDraft !== null;
   }
 
   private close(): void {
@@ -200,16 +212,9 @@ export class SettingsPage extends BadgyElement {
     this.policyBaselineResult = store.compliance();
     this.policyDraftResult = this.policyBaselineResult;
   }
-  /**
-   * `store.evaluateDraft` only takes `scheme`/`target` — it previews against the *currently
-   * committed* calendar and holiday overrides. So switching to a workplace with a different
-   * holiday set changes what gets written on Keep, but the live preview here won't reflect that
-   * new holiday set until after it's committed. That's a limitation of the given API surface, not
-   * this component; it only matters for the (rare) org switch that also changes holiday region.
-   */
   private updatePolicyDraft(next: PolicyDraftValue): void {
     this.policyDraft = next;
-    this.policyDraftResult = store.evaluateDraft(next.scheme, next.target);
+    this.policyDraftResult = store.evaluateDraft(next);
   }
   private onPolicyOrgChange(id: string): void {
     this.updatePolicyDraft(draftFromOrg(orgOrDefault(id)));
@@ -459,20 +464,18 @@ export class SettingsPage extends BadgyElement {
     `;
   }
 
-  private renderWorkplacePolicy(): TemplateResult {
-    // selectSection() always initializes the draft before switching to this section; this is a
-    // defensive fallback (e.g. a future entry path) rather than the normal way in.
+  private renderWorkplacePolicy(): TemplateResult | typeof nothing {
     if (
       !this.policyDraft ||
       !this.policyBaseline ||
       !this.policyDraftResult ||
       !this.policyBaselineResult
     ) {
-      this.initPolicyDraft();
+      return nothing;
     }
-    const draft = this.policyDraft as PolicyDraftValue;
-    const draftResult = this.policyDraftResult as ComplianceResult;
-    const baselineResult = this.policyBaselineResult as ComplianceResult;
+    const draft = this.policyDraft;
+    const draftResult = this.policyDraftResult;
+    const baselineResult = this.policyBaselineResult;
     const org = orgOrDefault(draft.orgId);
     return html`
       <section class="setting policy-setting">
