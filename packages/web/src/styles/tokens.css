@@ -3,8 +3,8 @@
    and seven muted status inks. Dark is the matching warm charcoal: brown-black ground, lifted
    charcoal surfaces, warm off-white ink and a brighter teal. Both sets are semantic — components
    style themselves from these names and never hardcode a colour.
-   Separation is done with hairlines and the ground/surface value step: the only real shadow in the
-   app is `--badgy-shadow-frame` on the outer Workbench frame (popups float outside it). */
+   Separation is done with hairlines and the ground/surface value step: the only structural shadow
+   is `--badgy-shadow-sheet` on the inset rail and sign-in sheet (popups float outside them). */
 
 /* Instrument Sans, variable (wght 400–700), self-hosted so an installed Badgy keeps its
    typography offline. The woff2 files are vendored verbatim from
@@ -56,7 +56,6 @@
   --badgy-ctrl-pad-x: 12px;
   --badgy-icon-size: 28px;
   --badgy-rail-width: 272px;
-  --badgy-page-max: 1160px;
 
   /* motion */
   --badgy-ease: cubic-bezier(0.33, 0, 0.67, 1);
@@ -93,8 +92,8 @@
   --badgy-on-meetup: #fffdfa;
   --badgy-on-annotation: #fffdfa;
 
-  /* elevation — the frame is the only thing inside the page that casts a shadow */
-  --badgy-shadow-frame: 0 18px 50px rgb(28 26 23 / 14%);
+  /* elevation — reserved for the inset rail, sign-in sheet and transient popups */
+  --badgy-shadow-sheet: 0 18px 50px rgb(28 26 23 / 14%);
   --badgy-shadow-popup: 0 12px 32px rgb(28 26 23 / 18%);
 
   /* status families: a solid line colour plus a 12% tint of it */
@@ -164,7 +163,7 @@
   --badgy-meetup: #43bda8;
   --badgy-on-meetup: #08201d;
 
-  --badgy-shadow-frame: 0 18px 50px rgb(0 0 0 / 55%);
+  --badgy-shadow-sheet: 0 18px 50px rgb(0 0 0 / 55%);
   --badgy-shadow-popup: 0 12px 32px rgb(0 0 0 / 55%);
 
   --badgy-status-office: #56bd8b;

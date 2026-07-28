@@ -1,8 +1,4 @@
-/**
- * Settings-as-a-destination: the section taxonomy and the pure desktop/mobile visibility rule.
- * Pure and store-free so it's testable without mounting any component — `settings-page.ts`
- * supplies the live data.
- */
+/** Settings-as-a-destination: section taxonomy and scroll-spy helpers. */
 export type SettingsSectionId =
   | 'usual-week'
   | 'workplace-policy'
@@ -30,22 +26,26 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionMeta[] = [
 
 export const DEFAULT_SETTINGS_SECTION: SettingsSectionId = SETTINGS_SECTIONS[0].id;
 
-export interface SettingsPaneVisibility {
-  showNav: boolean;
-  showDetail: boolean;
+export interface SettingsSectionPosition {
+  id: SettingsSectionId;
+  top: number;
 }
 
 /**
- * Desktop always shows the section nav and the selected section's detail side by side — "rail nav
- * selects detail pane". Narrow viewports show one full-width step at a time: the section list, or
- * — once a section is picked — its detail with its own back control (the confirmed mobile
- * drill-down). `isNarrow` should track the same breakpoint the Workbench frame itself collapses at
- * (see the `.workbench` media query in `app.css`) so Settings never disagrees with the shell.
+ * Return the last heading that has crossed the pane's active threshold. At the bottom of the pane,
+ * pin the final section so a short Account section can still become active.
  */
-export function settingsPaneVisibility(
-  isNarrow: boolean,
-  activeSection: SettingsSectionId | null,
-): SettingsPaneVisibility {
-  if (!isNarrow) return { showNav: true, showDetail: true };
-  return { showNav: activeSection === null, showDetail: activeSection !== null };
+export function settingsSectionForScroll(
+  positions: readonly SettingsSectionPosition[],
+  threshold: number,
+  atEnd = false,
+): SettingsSectionId {
+  if (positions.length === 0) return DEFAULT_SETTINGS_SECTION;
+  if (atEnd) return positions[positions.length - 1].id;
+  let active = positions[0].id;
+  for (const position of positions) {
+    if (position.top > threshold) break;
+    active = position.id;
+  }
+  return active;
 }
