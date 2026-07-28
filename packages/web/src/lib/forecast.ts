@@ -3,6 +3,7 @@
  * shared date axis, so the recorded/projected line and the away-time shading always agree.
  */
 import {
+  addDays,
   type CalendarNote,
   type PeriodScore,
   parseISO,
@@ -14,27 +15,23 @@ import {
 export interface AwayBand {
   startDate: string;
   endDate: string;
-  /** A calendar note's label when one overlaps the span, else unlabeled. */
-  label: string | null;
 }
 
 const AWAY_STATUSES: ReadonlySet<Status> = new Set(['vacation', 'holiday']);
 
 /**
- * Group contiguous *future* vacation/holiday days into shaded bands. A band picks up the label of
- * any calendar note overlapping its span; otherwise it renders unlabeled. Past away days are never
- * banded — the forecast only shades time away that hasn't happened yet.
+ * Group future vacation/holiday days into shaded bands, bridging untracked gaps such as weekends.
+ * Past away days are never banded — the forecast only shades time away that hasn't happened yet.
  */
 export function computeAwayBands(
   days: readonly Pick<ResolvedDay, 'date' | 'status' | 'isFuture'>[],
-  notes: readonly CalendarNote[],
 ): AwayBand[] {
   const bands: AwayBand[] = [];
   let start: string | null = null;
   let end: string | null = null;
   const flush = (): void => {
     if (start !== null && end !== null) {
-      bands.push({ startDate: start, endDate: end, label: labelFor(start, end, notes) });
+      bands.push({ startDate: start, endDate: end });
     }
     start = null;
     end = null;
@@ -43,6 +40,8 @@ export function computeAwayBands(
     if (day.isFuture && AWAY_STATUSES.has(day.status)) {
       start ??= day.date;
       end = day.date;
+    } else if (start !== null && day.isFuture && day.status === 'none') {
+      continue;
     } else {
       flush();
     }
@@ -51,9 +50,88 @@ export function computeAwayBands(
   return bands;
 }
 
-function labelFor(start: string, end: string, notes: readonly CalendarNote[]): string | null {
-  const hit = notes.find((note) => note.label.trim() && note.start <= end && note.end >= start);
-  return hit ? hit.label.trim() : null;
+export interface ForecastAnnotation {
+  id: string;
+  startDate: string;
+  endDate: string;
+  label: string;
+  color: string;
+}
+
+export interface ForecastAnnotationLayout extends ForecastAnnotation {
+  startX: number;
+  endX: number;
+  labelX: number;
+  lane: number;
+}
+
+/**
+ * Clip each risk-relevant calendar note to the visible forecast domain. A note is relevant when
+ * its visible range contains a tracked non-office day, and appears once even across multiple runs.
+ */
+export function computeForecastAnnotations(
+  notes: readonly CalendarNote[],
+  days: readonly Pick<ResolvedDay, 'date' | 'status'>[],
+  domainStart: string,
+  domainEnd: string,
+): ForecastAnnotation[] {
+  const trackedNonOfficeDates = days
+    .filter((day) => day.status !== 'office' && day.status !== 'none')
+    .map((day) => day.date);
+  return notes
+    .filter(
+      (note) =>
+        note.label.trim() &&
+        note.start <= domainEnd &&
+        note.end >= domainStart &&
+        trackedNonOfficeDates.some((date) => note.start <= date && note.end >= date),
+    )
+    .map((note) => ({
+      id: note.id,
+      startDate: note.start < domainStart ? domainStart : note.start,
+      endDate: note.end > domainEnd ? domainEnd : note.end,
+      label: note.label.trim(),
+      color: note.color,
+    }))
+    .sort(
+      (a, b) =>
+        a.startDate.localeCompare(b.startDate) ||
+        a.endDate.localeCompare(b.endDate) ||
+        a.label.localeCompare(b.label) ||
+        a.id.localeCompare(b.id),
+    );
+}
+
+const FORECAST_LABEL_CHAR_WIDTH = 5.4;
+const FORECAST_LABEL_GAP = 4;
+
+/**
+ * Place annotation labels into the first lane where their estimated text boxes do not overlap.
+ * The chart is intentionally small, so nearby notes stack upward rather than obscuring each other.
+ */
+export function layoutForecastAnnotations(
+  annotations: readonly ForecastAnnotation[],
+  domainStart: string,
+  domainEnd: string,
+  width: number,
+): ForecastAnnotationLayout[] {
+  const laneEnds: number[] = [];
+  return annotations.map((annotation) => {
+    const startX = xFraction(annotation.startDate, domainStart, domainEnd) * width;
+    const endX = Math.max(
+      startX + 2,
+      xFraction(addDays(annotation.endDate, 1), domainStart, domainEnd) * width,
+    );
+    const labelWidth = Math.min(width, annotation.label.length * FORECAST_LABEL_CHAR_WIDTH);
+    const halfLabel = labelWidth / 2;
+    const labelX = Math.min(width - halfLabel, Math.max(halfLabel, (startX + endX) / 2));
+    const labelLeft = labelX - halfLabel;
+    const labelRight = labelX + halfLabel;
+    let lane = laneEnds.findIndex((end) => labelLeft >= end + FORECAST_LABEL_GAP);
+    if (lane === -1) lane = laneEnds.length;
+    laneEnds[lane] = labelRight;
+    return { ...annotation, startX, endX, labelX, lane };
+  });
 }
 
 /** Fraction (0..1) of `date` along the inclusive `[domainStart, domainEnd]` axis, clamped. */

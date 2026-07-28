@@ -6,6 +6,7 @@ import {
   isWeekend,
   orgOrDefault,
   STATUS_LABEL,
+  STATUS_SHORT,
   type Status,
   WEEK_DAYS,
   type Weekday,
@@ -30,7 +31,7 @@ import {
   settingsPaneVisibility,
   summarizeSettingsSection,
 } from '../lib/settings-sections.js';
-import { STATUS_ORDER } from '../lib/status.js';
+import { STATUS_ORDER, statusClass } from '../lib/status.js';
 import { applyMode, getMode, type ThemeMode } from '../lib/theme.js';
 import { store } from '../state/store.js';
 import { BadgyElement } from './base.js';
@@ -436,28 +437,42 @@ export class SettingsPage extends BadgyElement {
         <p class="setting-help">
           Default for any day you haven't set. Specific dates override this.
         </p>
-        <div class="pattern-grid">
+        <div class="pattern-calendar" role="group" aria-label="Usual week defaults">
           ${WEEK_DAYS.map(
-            (w) => html`<label class="pattern-day">
-              <span class="pattern-dow">${w.short}</span>
-              <select
-                class="select"
-                @change=${(e: Event) =>
-                  store.setPattern(
-                    w.idx as Weekday,
-                    (e.target as HTMLSelectElement).value as Status,
-                  )}
+            (w) => {
+              const current = pattern[w.idx] ?? (isWeekend(w.idx) ? 'none' : 'office');
+              return html`<label
+                class="pattern-calendar-day ${statusClass(current)} ${
+                  current === 'none' ? 'pattern-calendar-day--untracked' : ''
+                }"
               >
-                ${(isWeekend(w.idx) ? [...STATUS_ORDER, 'none' as const] : STATUS_ORDER).map(
-                  (s) => html`<option
-                    value=${s}
-                    ?selected=${(pattern[w.idx] ?? (isWeekend(w.idx) ? 'none' : 'office')) === s}
-                  >
-                    ${STATUS_LABEL[s]}
-                  </option>`,
-                )}
-              </select>
-            </label>`,
+                <span class="pattern-calendar-dow">${w.short}</span>
+                <span class="pattern-calendar-status">
+                  ${current === 'none' ? STATUS_LABEL.none : STATUS_SHORT[current]}
+                </span>
+                ${
+                  current === 'none'
+                    ? nothing
+                    : html`<span class="pattern-calendar-bar" aria-hidden="true"></span>`
+                }
+                <select
+                  class="pattern-calendar-select"
+                  aria-label=${`${w.label} default: ${STATUS_LABEL[current]}`}
+                  title=${`${w.label}: ${STATUS_LABEL[current]}`}
+                  @change=${(e: Event) =>
+                    store.setPattern(
+                      w.idx as Weekday,
+                      (e.target as HTMLSelectElement).value as Status,
+                    )}
+                >
+                  ${(isWeekend(w.idx) ? [...STATUS_ORDER, 'none' as const] : STATUS_ORDER).map(
+                    (s) => html`<option value=${s} ?selected=${current === s}>
+                      ${STATUS_LABEL[s]}
+                    </option>`,
+                  )}
+                </select>
+              </label>`;
+            },
           )}
         </div>
       </section>

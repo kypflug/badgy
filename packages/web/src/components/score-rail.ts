@@ -8,7 +8,13 @@ import {
 } from '@badgy/shared';
 import { html, nothing, svg } from 'lit';
 import { getSession } from '../auth/session.js';
-import { computeAwayBands, seriesPoints, xFraction } from '../lib/forecast.js';
+import {
+  computeAwayBands,
+  computeForecastAnnotations,
+  layoutForecastAnnotations,
+  seriesPoints,
+  xFraction,
+} from '../lib/forecast.js';
 import { formatPct, initialsFor } from '../lib/format.js';
 import { STATUS_ORDER, statusClass } from '../lib/status.js';
 import { store } from '../state/store.js';
@@ -30,6 +36,7 @@ const MONTHS = [
 ];
 const PLOT_W = 236;
 const PLOT_H = 104;
+const FORECAST_LABEL_LANE_HEIGHT = 13;
 
 export type RailView = 'month' | 'year';
 
@@ -97,19 +104,19 @@ export class ScoreRail extends BadgyElement {
 
     const days = store.rangeDays(domainStart, domainEnd);
     const notes = store.notesInRange(domainStart, domainEnd);
-    const awayBands = computeAwayBands(days, notes);
+    const awayBands = computeAwayBands(days);
+    const annotations = computeForecastAnnotations(notes, days, domainStart, domainEnd);
+    const annotationLayouts = layoutForecastAnnotations(
+      annotations,
+      domainStart,
+      domainEnd,
+      PLOT_W,
+    );
 
     const targetY = PLOT_H * (1 - Math.min(1, c.target));
     const nowX = xFraction(currentEnd, domainStart, domainEnd) * PLOT_W;
     const nowY = c.current == null ? PLOT_H : PLOT_H * (1 - Math.min(1, c.current));
 
-    const withScore = [...c.series, ...c.futureSeries].filter(
-      (p): p is PeriodScore & { score: number } => p.score != null,
-    );
-    const low = withScore.reduce<PeriodScore | null>(
-      (min, p) => (min == null || (p.score ?? 1) < (min.score ?? 1) ? p : min),
-      null,
-    );
     const end = c.futureSeries.at(-1) ?? c.series.at(-1) ?? null;
     const horizonLabel = end?.label ?? '';
 
@@ -129,11 +136,23 @@ export class ScoreRail extends BadgyElement {
             );
             return svg`<g>
               <rect x=${x1} y="0" width=${x2 - x1} height=${PLOT_H} class="rail-forecast-away" />
-              ${
-                b.label
-                  ? svg`<text x=${(x1 + x2) / 2} y=${PLOT_H - 6} class="rail-forecast-away-label" text-anchor="middle">${b.label}</text>`
-                  : nothing
-              }
+            </g>`;
+          })}
+          ${annotationLayouts.map((annotation) => {
+            return svg`<g style=${`--annotation-color:${annotation.color}`}>
+              <rect
+                x=${annotation.startX}
+                y="0"
+                width=${annotation.endX - annotation.startX}
+                height=${PLOT_H}
+                class="rail-forecast-annotation"
+              />
+              <text
+                x=${annotation.labelX}
+                y=${PLOT_H - 6 - annotation.lane * FORECAST_LABEL_LANE_HEIGHT}
+                class="rail-forecast-annotation-label"
+                text-anchor="middle"
+              >${annotation.label}</text>
             </g>`;
           })}
           <line
@@ -156,19 +175,6 @@ export class ScoreRail extends BadgyElement {
               : nothing
           }
         </svg>
-        <div class="rail-forecast-footer">
-          ${
-            low
-              ? html`<span
-                  >Low point <strong class="rail-forecast-low">${formatPct(low.score)}</strong> ·
-                  ${low.label}</span
-                >`
-              : html`<span></span>`
-          }
-          ${
-            end ? html`<span>${end.label} <strong>${formatPct(end.score)}</strong></span>` : nothing
-          }
-        </div>
       </div>
     `;
   }
