@@ -13,7 +13,7 @@
     <title>Badgy</title>
     <meta name="description" content="Plan office attendance against your workplace policy." />
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
-    <meta name="theme-color" content="#f6f4f0" />
+    <meta name="theme-color" content="#e9edf2" />
     <script>
       // Apply the persisted/system theme before CSS loads so dark-mode launches do not flash paper.
       try {
@@ -22,7 +22,7 @@
           mode === 'dark' ||
           (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        document.querySelector('meta[name="theme-color"]').content = dark ? '#15120f' : '#f6f4f0';
+        document.querySelector('meta[name="theme-color"]').content = dark ? '#101419' : '#e9edf2';
       } catch {
         // Storage can be unavailable in hardened browsing modes; the light HTML default is safe.
       }

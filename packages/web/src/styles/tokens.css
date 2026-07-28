@@ -1,8 +1,9 @@
-/* Badgy design tokens — the "Workbench" visual system.
-   Light is warm paper: a #f6f4f0 ground, a #fffdfa surface, warm near-black ink, one teal accent
-   and seven muted status inks. Dark is the matching warm charcoal: brown-black ground, lifted
-   charcoal surfaces, warm off-white ink and a brighter teal. Both sets are semantic — components
-   style themselves from these names and never hardcode a colour.
+/* Badgy design tokens — the "Workbench" visual system, in the Slate Blueprint palette.
+   Light is drafting paper: a cool #e9edf2 ground, a #fbfcfe surface, blue-black ink, one steel-blue
+   accent and seven muted status inks. Dark is the matching cool charcoal: slate-black ground,
+   lifted slate surfaces, off-white-blue ink and a brighter steel blue. Every hairline and wash is
+   keyed to the same 20 30 44 / 214 228 245 axis as the ground, so tints sit flat on it. Both sets
+   are semantic — components style themselves from these names and never hardcode a colour.
    Separation is done with hairlines and the ground/surface value step: the only structural shadow
    is `--badgy-shadow-sheet` on the inset rail and sign-in sheet (popups float outside them). */
 
@@ -62,41 +63,41 @@
   --badgy-dur: 120ms;
 
   /* surfaces */
-  --badgy-surface-page: #f6f4f0;
-  --badgy-surface-card: #fffdfa;
-  --badgy-surface-ctrl: #fffdfa;
-  --badgy-surface-ctrl-hover: #f2efe9;
-  --badgy-surface-scrim: rgb(28 26 23 / 42%);
-  --badgy-wash: rgb(28 26 23 / 3%);
-  --badgy-wash-2: rgb(28 26 23 / 6%);
-  --badgy-wash-active: rgb(28 26 23 / 7%);
-  --badgy-wash-3: rgb(28 26 23 / 8%);
-  --badgy-stroke: rgb(28 26 23 / 10%);
-  --badgy-stroke-strong: rgb(28 26 23 / 12%);
-  --badgy-stroke-control: rgb(28 26 23 / 16%);
+  --badgy-surface-page: #e9edf2;
+  --badgy-surface-card: #fbfcfe;
+  --badgy-surface-ctrl: #fbfcfe;
+  --badgy-surface-ctrl-hover: #eef1f6;
+  --badgy-surface-scrim: rgb(20 30 44 / 46%);
+  --badgy-wash: rgb(20 30 44 / 3%);
+  --badgy-wash-2: rgb(20 30 44 / 6%);
+  --badgy-wash-active: rgb(20 30 44 / 7%);
+  --badgy-wash-3: rgb(20 30 44 / 8%);
+  --badgy-stroke: rgb(20 30 44 / 10%);
+  --badgy-stroke-strong: rgb(20 30 44 / 12%);
+  --badgy-stroke-control: rgb(20 30 44 / 16%);
 
   /* ink */
-  --badgy-text-primary: #1c1a17;
-  --badgy-text-secondary: #6f6a61;
-  --badgy-text-faint: #a09a90;
-  --badgy-fill-ink: #1c1a17;
-  --badgy-on-fill-ink: #fdfcfa;
-  --badgy-text-on-accent: #fdfcfa;
+  --badgy-text-primary: #141a22;
+  --badgy-text-secondary: #5f6a78;
+  --badgy-text-faint: #98a2b0;
+  --badgy-fill-ink: #16202b;
+  --badgy-on-fill-ink: #f8fafc;
+  --badgy-text-on-accent: #f4f9fc;
 
   /* accent — today, focus, links, avatar, the forecast line */
-  --badgy-accent: #12645a;
-  --badgy-accent-hover: #0e5049;
-  --badgy-accent-ink: #0e5049;
-  --badgy-accent-soft: rgb(18 100 90 / 8%);
-  --badgy-meetup: #12645a;
-  --badgy-on-meetup: #fffdfa;
-  --badgy-on-annotation: #fffdfa;
+  --badgy-accent: #1f5f8b;
+  --badgy-accent-hover: #185175;
+  --badgy-accent-ink: #185175;
+  --badgy-accent-soft: rgb(31 95 139 / 9%);
+  --badgy-meetup: #1f5f8b;
+  --badgy-on-meetup: #fbfcfe;
+  --badgy-on-annotation: #fbfcfe;
 
   /* elevation — reserved for the inset rail, sign-in sheet and transient popups */
-  --badgy-shadow-sheet: 0 18px 50px rgb(28 26 23 / 14%);
-  --badgy-shadow-popup: 0 12px 32px rgb(28 26 23 / 18%);
+  --badgy-shadow-sheet: 0 18px 50px rgb(20 30 44 / 13%);
+  --badgy-shadow-popup: 0 12px 32px rgb(20 30 44 / 18%);
 
-  /* status families: a solid line colour plus a 12% tint of it */
+  /* status families: a solid line colour plus a soft tint (typically 12%) */
   --badgy-status-office: #1f6b4a;
   --badgy-status-office-soft: rgb(31 107 74 / 12%);
   --badgy-status-remote: #a5652a;
@@ -109,9 +110,10 @@
   --badgy-status-vacation-soft: rgb(122 63 143 / 12%);
   --badgy-status-sick: #a53a2c;
   --badgy-status-sick-soft: rgb(165 58 44 / 12%);
-  --badgy-status-oof: #6f6a61;
-  --badgy-status-oof-soft: rgb(111 106 97 / 10%);
-  --badgy-status-none: rgb(28 26 23 / 14%);
+  /* "oof" and "none" are the ink axis rather than a hue, so they move with the ground */
+  --badgy-status-oof: #5f6a78;
+  --badgy-status-oof-soft: rgb(20 30 44 / 10%);
+  --badgy-status-none: rgb(20 30 44 / 14%);
 
   /* compliance bands — thresholds are unchanged: <80% danger, 80–90% warning, >=90% success */
   --badgy-band-success: #1f6b4a;
@@ -123,11 +125,11 @@
   --badgy-band-danger-soft: rgb(165 58 44 / 12%);
 
   /* the policy effect panel is a dark inset in both themes */
-  --badgy-effect-bg: #1c1a17;
-  --badgy-effect-ink: #fdfcfa;
-  --badgy-effect-muted: rgb(253 252 250 / 64%);
-  --badgy-effect-line: rgb(253 252 250 / 30%);
-  --badgy-effect-hover: rgb(253 252 250 / 12%);
+  --badgy-effect-bg: #16202b;
+  --badgy-effect-ink: #f4f7fb;
+  --badgy-effect-muted: rgb(244 247 251 / 64%);
+  --badgy-effect-line: rgb(244 247 251 / 30%);
+  --badgy-effect-hover: rgb(244 247 251 / 12%);
   --badgy-effect-positive: #7fd6a8;
   --badgy-effect-caution: #e8c46a;
   --badgy-effect-negative: #f0917f;
@@ -136,32 +138,33 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --badgy-surface-page: #15120f;
-  --badgy-surface-card: #211d18;
-  --badgy-surface-ctrl: #211d18;
-  --badgy-surface-ctrl-hover: #2c2720;
-  --badgy-surface-scrim: rgb(8 6 4 / 62%);
-  --badgy-wash: rgb(255 251 244 / 4%);
-  --badgy-wash-2: rgb(255 251 244 / 7%);
-  --badgy-wash-active: rgb(255 251 244 / 9%);
-  --badgy-wash-3: rgb(255 251 244 / 10%);
-  --badgy-stroke: rgb(255 251 244 / 12%);
-  --badgy-stroke-strong: rgb(255 251 244 / 16%);
-  --badgy-stroke-control: rgb(255 251 244 / 20%);
+  --badgy-surface-page: #101419;
+  --badgy-surface-card: #1a2028;
+  --badgy-surface-ctrl: #1a2028;
+  --badgy-surface-ctrl-hover: #242c36;
+  --badgy-surface-scrim: rgb(4 7 11 / 64%);
+  --badgy-wash: rgb(214 228 245 / 4%);
+  --badgy-wash-2: rgb(214 228 245 / 7%);
+  --badgy-wash-active: rgb(214 228 245 / 9%);
+  --badgy-wash-3: rgb(214 228 245 / 10%);
+  --badgy-stroke: rgb(214 228 245 / 12%);
+  --badgy-stroke-strong: rgb(214 228 245 / 16%);
+  --badgy-stroke-control: rgb(214 228 245 / 20%);
 
-  --badgy-text-primary: #f5efe6;
-  --badgy-text-secondary: #b3aa9d;
-  --badgy-text-faint: #948b7c;
-  --badgy-fill-ink: #f2ece3;
-  --badgy-on-fill-ink: #191510;
-  --badgy-text-on-accent: #08201d;
+  --badgy-text-primary: #e7edf4;
+  --badgy-text-secondary: #9ba7b6;
+  --badgy-text-faint: #7d8896;
+  --badgy-fill-ink: #e2e9f2;
+  --badgy-on-fill-ink: #12171e;
+  --badgy-text-on-accent: #07202e;
 
-  --badgy-accent: #43bda8;
-  --badgy-accent-hover: #5ed0bb;
-  --badgy-accent-ink: #8fd9c9;
-  --badgy-accent-soft: rgb(67 189 168 / 14%);
-  --badgy-meetup: #43bda8;
-  --badgy-on-meetup: #08201d;
+  --badgy-accent: #4d9ecb;
+  --badgy-accent-hover: #6bb3da;
+  --badgy-accent-ink: #93c8e4;
+  --badgy-accent-soft: rgb(77 158 203 / 14%);
+  --badgy-meetup: #4d9ecb;
+  --badgy-on-meetup: #07202e;
+  --badgy-on-annotation: #07202e;
 
   --badgy-shadow-sheet: 0 18px 50px rgb(0 0 0 / 55%);
   --badgy-shadow-popup: 0 12px 32px rgb(0 0 0 / 55%);
@@ -178,9 +181,9 @@
   --badgy-status-vacation-soft: rgb(196 138 217 / 16%);
   --badgy-status-sick: #e5806f;
   --badgy-status-sick-soft: rgb(229 128 111 / 16%);
-  --badgy-status-oof: #a89e91;
-  --badgy-status-oof-soft: rgb(168 158 145 / 14%);
-  --badgy-status-none: rgb(255 251 244 / 16%);
+  --badgy-status-oof: #98a3b2;
+  --badgy-status-oof-soft: rgb(214 228 245 / 14%);
+  --badgy-status-none: rgb(214 228 245 / 16%);
 
   --badgy-band-success: #56bd8b;
   --badgy-band-success-soft: rgb(86 189 139 / 16%);
@@ -190,10 +193,10 @@
   --badgy-band-danger: #e5806f;
   --badgy-band-danger-soft: rgb(229 128 111 / 16%);
 
-  --badgy-effect-bg: #2a241d;
-  --badgy-effect-ink: #f7f1e8;
-  --badgy-effect-muted: rgb(247 241 232 / 66%);
-  --badgy-effect-line: rgb(247 241 232 / 28%);
-  --badgy-effect-hover: rgb(247 241 232 / 12%);
+  --badgy-effect-bg: #212934;
+  --badgy-effect-ink: #eff4fa;
+  --badgy-effect-muted: rgb(239 244 250 / 66%);
+  --badgy-effect-line: rgb(239 244 250 / 28%);
+  --badgy-effect-hover: rgb(239 244 250 / 12%);
   --badgy-effect-positive: #7fd6a8;
 }
