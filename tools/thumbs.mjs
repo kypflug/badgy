@@ -133,12 +133,12 @@ async function capture(theme, path) {
   );
 
   await page.goto(ORIGIN, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.day', { timeout: 20_000 });
+  await page.waitForSelector('.month-day', { timeout: 20_000 });
   await page.waitForTimeout(900);
 
   // The dev bootstrap labels the session "Dev (local)"; use a neutral name for the shot.
   await page.evaluate(() => {
-    const chip = document.querySelector('.user-chip');
+    const chip = document.querySelector('.rail-account-name');
     if (chip) chip.textContent = 'Ada Lovelace';
   });
   await page.waitForTimeout(300);
