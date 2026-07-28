@@ -1076,7 +1076,7 @@ policy-effect-panel { display: block; min-width: 0; }
   .pane {
     padding-top: calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px) + 12px);
   }
-  .settings-pane {
+  .pane.settings-pane {
     scroll-padding-top:
       calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px) + 12px);
   }
