@@ -137,9 +137,14 @@ async function capture(theme, path) {
   await page.waitForTimeout(900);
 
   // The dev bootstrap labels the session "Dev (local)"; use a neutral name for the shot.
+  // The avatar derives its own initials from the session, so rename both or the card
+  // ships "DL" next to "Ada Lovelace".
+  // Both selectors match twice — the rail renders a mobile copy that is hidden at this
+  // width — so rewrite every match rather than the first one.
   await page.evaluate(() => {
-    const chip = document.querySelector('.rail-account-name');
-    if (chip) chip.textContent = 'Ada Lovelace';
+    for (const chip of document.querySelectorAll('.rail-account-name'))
+      chip.textContent = 'Ada Lovelace';
+    for (const avatar of document.querySelectorAll('.rail-avatar')) avatar.textContent = 'AL';
   });
   await page.waitForTimeout(300);
 
