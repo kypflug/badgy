@@ -185,9 +185,10 @@ export class SettingsPolicySection extends BadgyElement {
   }
 
   /** Bounded +/- stepper: clamps to the field's taxonomy-derived min/max before applying. */
-  private stepField(field: SchemeField, scheme: ComplianceScheme, delta: number): void {
+  private stepField(fieldIndex: number, delta: number): void {
+    const field = schemeFields(this.scheme)[fieldIndex];
     const value = Math.min(field.max, Math.max(field.min, field.value + delta));
-    this.onSchemeChange(field.apply(scheme, value));
+    this.onSchemeChange(field.apply(this.scheme, value));
   }
 
   override render() {
@@ -283,7 +284,7 @@ export class SettingsPolicySection extends BadgyElement {
             : nothing
         }
         ${fields.map(
-          (f) => html`<div class="field field--inline policy-stepper">
+          (f, i) => html`<div class="field field--inline policy-stepper">
             <span class="policy-stepper-text">
               <span class="field-label">${f.label}</span>
               ${f.help ? html`<span class="setting-help">${f.help}</span>` : nothing}
@@ -294,7 +295,7 @@ export class SettingsPolicySection extends BadgyElement {
                 class="badgy-button badgy-button--icon stepper-btn"
                 aria-label="Decrease ${f.label}"
                 ?disabled=${f.value <= f.min}
-                @click=${() => this.stepField(f, scheme, -f.step)}
+                @click=${() => this.stepField(i, -f.step)}
               >
                 −
               </button>
@@ -308,7 +309,7 @@ export class SettingsPolicySection extends BadgyElement {
                 class="badgy-button badgy-button--icon stepper-btn"
                 aria-label="Increase ${f.label}"
                 ?disabled=${f.value >= f.max}
-                @click=${() => this.stepField(f, scheme, f.step)}
+                @click=${() => this.stepField(i, f.step)}
               >
                 +
               </button>
