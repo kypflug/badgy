@@ -2,7 +2,13 @@
  * Pure helpers for the rail's forecast chart: mapping period scores and future away days onto a
  * shared date axis, so the recorded/projected line and the away-time shading always agree.
  */
-import { type CalendarNote, parseISO, type PeriodScore, type ResolvedDay, type Status } from '@badgy/shared';
+import {
+  type CalendarNote,
+  type PeriodScore,
+  parseISO,
+  type ResolvedDay,
+  type Status,
+} from '@badgy/shared';
 
 /** A contiguous shaded span on the forecast chart — a run of future vacation/holiday days. */
 export interface AwayBand {

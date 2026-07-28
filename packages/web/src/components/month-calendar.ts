@@ -295,9 +295,9 @@ export class MonthCalendar extends BadgyElement {
       ${
         tracked
           ? html`<span
-              class="month-day-bar ${statusClass(d.status)} ${d.isFuture
-                ? 'month-day-bar--planned'
-                : 'month-day-bar--recorded'}"
+              class="month-day-bar ${statusClass(d.status)} ${
+                d.isFuture ? 'month-day-bar--planned' : 'month-day-bar--recorded'
+              }"
             ></span>`
           : nothing
       }

@@ -51,7 +51,11 @@ function defaultViewport(): ViewportSize {
  * the anchor toward whichever side has more room, and cap the popup height to the space
  * available on that side so a short viewport can scroll the content instead of overflowing it.
  */
-function positionOverlay(anchor: AnchorRect, viewport: ViewportSize, width: number): OverlayPosition {
+function positionOverlay(
+  anchor: AnchorRect,
+  viewport: ViewportSize,
+  width: number,
+): OverlayPosition {
   const popupWidth = Math.min(width, Math.max(0, viewport.width - VIEWPORT_MARGIN * 2));
   const maxLeft = Math.max(VIEWPORT_MARGIN, viewport.width - VIEWPORT_MARGIN - popupWidth);
   const left = Math.min(Math.max(anchor.left, VIEWPORT_MARGIN), maxLeft);
@@ -70,7 +74,10 @@ function positionOverlay(anchor: AnchorRect, viewport: ViewportSize, width: numb
   };
 }
 
-export function positionDayMenu(anchor: AnchorRect, viewport: ViewportSize = defaultViewport()): OverlayPosition {
+export function positionDayMenu(
+  anchor: AnchorRect,
+  viewport: ViewportSize = defaultViewport(),
+): OverlayPosition {
   return positionOverlay(anchor, viewport, DAY_MENU_WIDTH);
 }
 

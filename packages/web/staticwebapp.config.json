@@ -4,10 +4,7 @@
   },
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": [
-      "/*.{js,css,map,svg,png,ico,json,txt,webmanifest,woff,woff2}",
-      "/fonts/*"
-    ]
+    "exclude": ["/*.{js,css,map,svg,png,ico,json,txt,webmanifest,woff,woff2}", "/fonts/*"]
   },
   "mimeTypes": {
     ".json": "application/json",

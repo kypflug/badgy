@@ -123,7 +123,10 @@ export class ScoreRail extends BadgyElement {
           <rect x="0" y="0" width=${PLOT_W} height=${PLOT_H} rx="6" class="rail-forecast-plot" />
           ${awayBands.map((b) => {
             const x1 = xFraction(b.startDate, domainStart, domainEnd) * PLOT_W;
-            const x2 = Math.max(x1 + 2, xFraction(addDays(b.endDate, 1), domainStart, domainEnd) * PLOT_W);
+            const x2 = Math.max(
+              x1 + 2,
+              xFraction(addDays(b.endDate, 1), domainStart, domainEnd) * PLOT_W,
+            );
             return svg`<g>
               <rect x=${x1} y="0" width=${x2 - x1} height=${PLOT_H} class="rail-forecast-away" />
               ${
@@ -163,9 +166,7 @@ export class ScoreRail extends BadgyElement {
               : html`<span></span>`
           }
           ${
-            end
-              ? html`<span>${end.label} <strong>${formatPct(end.score)}</strong></span>`
-              : nothing
+            end ? html`<span>${end.label} <strong>${formatPct(end.score)}</strong></span>` : nothing
           }
         </div>
       </div>

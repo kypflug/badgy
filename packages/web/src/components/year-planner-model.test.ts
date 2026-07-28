@@ -4,11 +4,7 @@ import { yearDayLabel, yearDayState, yearMonthMetadata } from './year-planner-mo
 describe('yearMonthMetadata', () => {
   it('shows away days when a month contains vacation or holiday time', () => {
     expect(
-      yearMonthMetadata([
-        { status: 'office' },
-        { status: 'vacation' },
-        { status: 'holiday' },
-      ]),
+      yearMonthMetadata([{ status: 'office' }, { status: 'vacation' }, { status: 'holiday' }]),
     ).toBe('2 away');
   });
 

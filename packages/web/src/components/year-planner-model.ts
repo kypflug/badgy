@@ -1,4 +1,4 @@
-import { STATUS_LABEL, type ResolvedDay } from '@badgy/shared';
+import { type ResolvedDay, STATUS_LABEL } from '@badgy/shared';
 
 export const YEAR_MONTHS = [
   { long: 'January', short: 'Jan' },

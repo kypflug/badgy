@@ -117,9 +117,7 @@ describe('describeScheme', () => {
   });
   it('describes qualifying-weeks', () => {
     const scheme = defaultSchemeFor('qualifying-weeks');
-    expect(describeScheme(scheme)).toBe(
-      'Needs 8 of the last 12 weeks to each hit 3 office days.',
-    );
+    expect(describeScheme(scheme)).toBe('Needs 8 of the last 12 weeks to each hit 3 office days.');
   });
   it('describes weekly-quota with no averaging', () => {
     const scheme = defaultSchemeFor('weekly-quota');

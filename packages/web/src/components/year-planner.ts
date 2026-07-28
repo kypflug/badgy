@@ -441,9 +441,7 @@ export class YearPlanner extends BadgyElement {
         aria-label=${`${this.year} yearly planner`}
       >
         <div class="year-months" role="list">
-          ${YEAR_MONTHS.map((_, month0) =>
-            this.monthCard(month0, daysByDate, selected, notes),
-          )}
+          ${YEAR_MONTHS.map((_, month0) => this.monthCard(month0, daysByDate, selected, notes))}
         </div>
       </section>
     `;

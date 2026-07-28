@@ -214,12 +214,16 @@ export class SettingsPolicySection extends BadgyElement {
           <span class="org-confidence org-confidence--${org.confidence}"
             >${CONFIDENCE_LABEL[org.confidence]}</span
           >
-          ${org.effectiveDate
-            ? html`<span class="policy-provenance-meta">Effective ${org.effectiveDate}</span>`
-            : nothing}
-          ${org.geographicScope
-            ? html`<span class="policy-provenance-meta">${org.geographicScope}</span>`
-            : nothing}
+          ${
+            org.effectiveDate
+              ? html`<span class="policy-provenance-meta">Effective ${org.effectiveDate}</span>`
+              : nothing
+          }
+          ${
+            org.geographicScope
+              ? html`<span class="policy-provenance-meta">${org.geographicScope}</span>`
+              : nothing
+          }
           ${org.sources.map(
             (s) =>
               html`<a class="policy-link" href=${s.url} target="_blank" rel="noreferrer noopener"
@@ -295,9 +299,9 @@ export class SettingsPolicySection extends BadgyElement {
                 −
               </button>
               <span class="stepper-value" aria-live="polite"
-                >${f.value}${f.suffix
-                  ? html` <span class="field-suffix">${f.suffix}</span>`
-                  : nothing}</span
+                >${f.value}${
+                  f.suffix ? html` <span class="field-suffix">${f.suffix}</span>` : nothing
+                }</span
               >
               <button
                 type="button"

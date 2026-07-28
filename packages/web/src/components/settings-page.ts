@@ -26,8 +26,8 @@ import {
   DEFAULT_SETTINGS_SECTION,
   SETTINGS_SECTIONS,
   type SettingsSectionId,
-  settingsPaneVisibility,
   type SettingsSummaryContext,
+  settingsPaneVisibility,
   summarizeSettingsSection,
 } from '../lib/settings-sections.js';
 import { STATUS_ORDER } from '../lib/status.js';
@@ -462,7 +462,12 @@ export class SettingsPage extends BadgyElement {
   private renderWorkplacePolicy(): TemplateResult {
     // selectSection() always initializes the draft before switching to this section; this is a
     // defensive fallback (e.g. a future entry path) rather than the normal way in.
-    if (!this.policyDraft || !this.policyBaseline || !this.policyDraftResult || !this.policyBaselineResult) {
+    if (
+      !this.policyDraft ||
+      !this.policyBaseline ||
+      !this.policyDraftResult ||
+      !this.policyBaselineResult
+    ) {
       this.initPolicyDraft();
     }
     const draft = this.policyDraft as PolicyDraftValue;

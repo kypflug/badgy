@@ -4,12 +4,7 @@
  * and explanation. Store-free and DOM-free so it's fully unit-testable — `settings-page.ts` and
  * `settings-policy-section.ts` supply the live `store`/`ComplianceResult` data.
  */
-import type {
-  ComplianceResult,
-  ComplianceScheme,
-  HolidayRegionId,
-  OrgPreset,
-} from '@badgy/shared';
+import type { ComplianceResult, ComplianceScheme, HolidayRegionId, OrgPreset } from '@badgy/shared';
 import { seriesPoints } from './forecast.js';
 
 /** The uncommitted workplace policy edit — mirrors `store.PolicyDraft`, kept local until Keep. */
@@ -72,7 +67,7 @@ export function describeScheme(scheme: ComplianceScheme): string {
 /** A concise, scheme-aware read of what the draft would change about the user's score. */
 export function describeEffect(baseline: ComplianceResult, draft: ComplianceResult): string {
   if (baseline.current == null || draft.current == null) {
-    return "Not enough attendance history yet to compare — this fills in as you log office days.";
+    return 'Not enough attendance history yet to compare — this fills in as you log office days.';
   }
   const deltaPts = Math.round((draft.current - baseline.current) * 100);
   if (deltaPts === 0) return `Your score would stay about the same — ${draft.headline}.`;
@@ -107,12 +102,25 @@ export function buildEffectSeries(
   ].filter((s): s is string => !!s);
   const domainStart = starts.sort()[0];
   const domainEnd = ends.sort().at(-1);
-  if (!domainStart || !domainEnd) return { domainStart: '', domainEnd: '', oldPoints: '', newPoints: '' };
+  if (!domainStart || !domainEnd)
+    return { domainStart: '', domainEnd: '', oldPoints: '', newPoints: '' };
   return {
     domainStart,
     domainEnd,
-    oldPoints: seriesPoints([...baseline.series, ...baseline.futureSeries], domainStart, domainEnd, width, height),
-    newPoints: seriesPoints([...draft.series, ...draft.futureSeries], domainStart, domainEnd, width, height),
+    oldPoints: seriesPoints(
+      [...baseline.series, ...baseline.futureSeries],
+      domainStart,
+      domainEnd,
+      width,
+      height,
+    ),
+    newPoints: seriesPoints(
+      [...draft.series, ...draft.futureSeries],
+      domainStart,
+      domainEnd,
+      width,
+      height,
+    ),
   };
 }
 
