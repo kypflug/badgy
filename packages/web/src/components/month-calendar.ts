@@ -379,7 +379,6 @@ export class MonthCalendar extends BadgyElement {
           const weekStart = weekStarts[wi];
           const score = store.weekScore(weekStart);
           const officeDays = store.weekOfficeDays(weekStart);
-          const isCurrentWeek = week.some((d) => d.isToday);
           const behindPace = score != null && score < WEEK_SCORE_ALERT_THRESHOLD;
           const meetupLabel = store.isMeetupWeek(weekStart)
             ? (meetupCycleLabel(weekStart) ?? 'Meetup')
@@ -387,7 +386,7 @@ export class MonthCalendar extends BadgyElement {
           const annotations = notes.map(noteAnnotation);
           if (meetupLabel) annotations.push(meetupAnnotation(weekStart, meetupLabel));
           const segments = layoutWeekAnnotations(weekStart, annotations);
-          return html`<div class="month-row ${isCurrentWeek ? 'month-row--current' : ''}">
+          return html`<div class="month-row">
             ${annotationOverlay(segments, (note) => this.editNote(note))}
             ${week.map((d) => this.dayCell(d, selected))}
             <div

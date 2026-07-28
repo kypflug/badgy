@@ -345,16 +345,6 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
 }
 .month-dow--weekend { color: var(--badgy-text-faint); }
 .month-dow--score { text-align: right; padding-right: 2px; }
-/* The week containing today: a tinted frame drawn behind the (opaque) cells with an ink edge.
-   It stops before the week-score column — that cell has no card of its own, so covering it would
-   read as an unexplained shaded box rather than as part of the frame. */
-.month-row--current::before {
-  content: ''; position: absolute; z-index: 0; pointer-events: none;
-  inset: -4px calc(var(--month-score-col) + var(--month-gap) - 6px) -4px -6px;
-  border-radius: var(--badgy-radius-note);
-  background: var(--badgy-wash);
-  box-shadow: inset 2px 0 0 var(--badgy-text-primary);
-}
 
 .month-day {
   position: relative; z-index: 1;
