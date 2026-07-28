@@ -437,7 +437,7 @@ export class YearPlanner extends BadgyElement {
     return html`
       <section
         class="year-planner"
-        data-layout="4x3"
+        data-layout="3x4"
         aria-label=${`${this.year} yearly planner`}
       >
         <div class="year-months" role="list">

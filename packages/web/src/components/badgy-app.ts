@@ -242,13 +242,6 @@ export class BadgyApp extends BadgyElement {
                       <button class="badgy-button today-btn" @click=${() => this.goToday()}>
                         Today
                       </button>
-                      <span class="view-hint">
-                        ${
-                          isYear
-                            ? 'Click or drag to set days · arrows change year'
-                            : 'Drag any range to set it · wheel or flick to change month'
-                        }
-                      </span>
                       <div class="segmented view-switch" role="group" aria-label="Calendar view">
                         <button
                           type="button"
@@ -293,7 +286,7 @@ export class BadgyApp extends BadgyElement {
                             >${STATUS_LABEL[s]}</span
                           >`,
                       )}
-                      <span class="legend-note">Filled bar = recorded · hollow = planned</span>
+                      <span class="legend-note">Drag to set a range</span>
                     </div>
                   </div>`
           }

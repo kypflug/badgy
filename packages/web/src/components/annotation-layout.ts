@@ -99,37 +99,19 @@ export function layoutWeekAnnotations(
   return segments;
 }
 
-function outline(segment: AnnotationSegment): TemplateResult {
-  if (!segment.collision)
-    return html`<span
+/**
+ * One outline per distinct colour, stacked at identical geometry. The first is solid and the
+ * rest are dashed/dotted on top, so a span covered by two notes reads as an edge alternating
+ * between their colours — uniform at any segment aspect ratio, unlike a stretched SVG.
+ */
+function outlines(segment: AnnotationSegment): TemplateResult[] {
+  return segment.colors.map(
+    (color, index) => html`<span
       class="annotation-outline"
-      style=${`--annotation-color:${segment.colors[0]}`}
-    ></span>`;
-  const dash = 8;
-  const cycle = dash * Math.max(2, segment.colors.length);
-  return html`<svg
-    class="annotation-collision-outline"
-    viewBox="0 0 100 100"
-    preserveAspectRatio="none"
-    aria-hidden="true"
-  >
-    ${segment.colors.map(
-      (color, index) => html`<rect
-        x="1"
-        y="1"
-        width="98"
-        height="98"
-        rx="7"
-        ry="7"
-        fill="none"
-        stroke=${color}
-        stroke-width="2"
-        vector-effect="non-scaling-stroke"
-        stroke-dasharray=${`${dash} ${cycle - dash}`}
-        stroke-dashoffset=${String(-index * dash)}
-      ></rect>`,
-    )}
-  </svg>`;
+      data-outline=${String(Math.min(index, 2))}
+      style=${`--annotation-color:${color}`}
+    ></span>`,
+  );
 }
 
 export function annotationOverlay(
@@ -146,7 +128,7 @@ export function annotationOverlay(
           role="group"
           aria-label=${segment.annotations.map((annotation) => annotation.label).join(', ')}
         >
-          ${outline(segment)}
+          ${outlines(segment)}
           <span class="annotation-labels">
             ${segment.annotations.map((annotation) =>
               annotation.note

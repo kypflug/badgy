@@ -27,9 +27,7 @@ import {
   DEFAULT_SETTINGS_SECTION,
   SETTINGS_SECTIONS,
   type SettingsSectionId,
-  type SettingsSummaryContext,
   settingsPaneVisibility,
-  summarizeSettingsSection,
 } from '../lib/settings-sections.js';
 import { STATUS_ORDER, statusClass } from '../lib/status.js';
 import { applyMode, getMode, type ThemeMode } from '../lib/theme.js';
@@ -327,18 +325,6 @@ export class SettingsPage extends BadgyElement {
   }
 
   private renderNav(session: Session | null, activeId: SettingsSectionId): TemplateResult {
-    const year = new Date().getFullYear();
-    const ctx: SettingsSummaryContext = {
-      pattern: store.pattern,
-      org: store.org,
-      scheme: store.scheme,
-      target: store.target,
-      holidayRegion: store.holidayRegion,
-      holidayCount: store.holidaysInYear(year).length,
-      meetupCount: weekStartsOfYear(year).filter((w) => store.isMeetupWeek(w)).length,
-      theme: this.mode,
-      accountName: session?.name ?? null,
-    };
     const sections = SETTINGS_SECTIONS.filter((s) => s.id !== 'account' || !!session);
     const storageLabel = session
       ? providerMeta(session.provider).label === 'Google'
@@ -372,7 +358,6 @@ export class SettingsPage extends BadgyElement {
                 @click=${() => this.selectSection(s.id)}
               >
                 <span class="settings-nav-label">${s.label}</span>
-                <span class="settings-nav-summary">${summarizeSettingsSection(s.id, ctx)}</span>
               </button>
             `;
           })}

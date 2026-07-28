@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const VERSION = 'badgy-v13';
+const VERSION = 'badgy-v14';
 const SHELL = [
   '/',
   '/index.html',
