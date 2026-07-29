@@ -33,8 +33,6 @@ import {
 } from './calendar-overlays.js';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-/** A week's score reads as behind-pace below this ratio, independent of the compliance bands. */
-const WEEK_SCORE_ALERT_THRESHOLD = 0.6;
 
 export class MonthCalendar extends BadgyElement {
   static override properties = {
@@ -379,7 +377,7 @@ export class MonthCalendar extends BadgyElement {
           const weekStart = weekStarts[wi];
           const score = store.weekScore(weekStart);
           const officeDays = store.weekOfficeDays(weekStart);
-          const behindPace = score != null && score < WEEK_SCORE_ALERT_THRESHOLD;
+          const scoreClass = score == null ? '' : `score-${store.band(score)}`;
           const meetupLabel = store.isMeetupWeek(weekStart)
             ? (meetupCycleLabel(weekStart) ?? 'Meetup')
             : null;
@@ -390,7 +388,7 @@ export class MonthCalendar extends BadgyElement {
             ${annotationOverlay(segments, (note) => this.editNote(note))}
             ${week.map((d) => this.dayCell(d, selected))}
             <div
-              class="month-week-score ${behindPace ? 'month-week-score--under' : ''}"
+              class="month-week-score ${scoreClass}"
               title=${scoreTitle}
             >
               <span class="month-week-score-pct">${formatPct(score)}</span>

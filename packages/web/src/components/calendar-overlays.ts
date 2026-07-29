@@ -1,12 +1,10 @@
-import { addDays, type PickableStatus, STATUS_LABEL, STATUS_SHORT } from '@badgy/shared';
+import { addDays, type PickableStatus, STATUS_LABEL } from '@badgy/shared';
 import { html, nothing, render, type TemplateResult } from 'lit';
 import { STATUS_ORDER, statusClass } from '../lib/status.js';
 
 const VIEWPORT_MARGIN = 12;
 const POPUP_GAP = 4;
-const DAY_MENU_WIDTH = 210;
-/** Estimated width used only for placement math — `.range-toolbar` itself wraps to fit content. */
-export const RANGE_TOOLBAR_WIDTH = 360;
+export const STATUS_MENU_WIDTH = 210;
 
 export const NOTE_COLOR_PALETTE = [
   { label: 'Purple', value: '#7c3aed' },
@@ -78,7 +76,7 @@ export function positionDayMenu(
   anchor: AnchorRect,
   viewport: ViewportSize = defaultViewport(),
 ): OverlayPosition {
-  return positionOverlay(anchor, viewport, DAY_MENU_WIDTH);
+  return positionOverlay(anchor, viewport, STATUS_MENU_WIDTH);
 }
 
 /**
@@ -89,7 +87,7 @@ export function positionRangeToolbar(
   anchor: AnchorRect,
   viewport: ViewportSize = defaultViewport(),
 ): OverlayPosition {
-  return positionOverlay(anchor, viewport, RANGE_TOOLBAR_WIDTH);
+  return positionOverlay(anchor, viewport, STATUS_MENU_WIDTH);
 }
 
 export interface SelectionRect {
@@ -115,7 +113,7 @@ export function rangeToolbarAnchor(rects: readonly SelectionRect[]): AnchorRect 
     right = Math.max(right, rect.right);
     bottom = Math.max(bottom, rect.bottom);
   }
-  return { left: (left + right) / 2 - RANGE_TOOLBAR_WIDTH / 2, top, bottom };
+  return { left: (left + right) / 2 - STATUS_MENU_WIDTH / 2, top, bottom };
 }
 
 export class ViewportOverlayHost {
@@ -220,45 +218,45 @@ export function rangeToolbar(options: RangeToolbarOptions): TemplateResult {
   return html`
     <div class="menu-backdrop" @pointerdown=${options.onDismiss}></div>
     <div
-      class="range-toolbar badgy-card"
-      role="toolbar"
+      class="day-menu day-menu--range badgy-card"
+      role="menu"
       aria-label=${`Set status for ${options.count} selected day${options.count === 1 ? '' : 's'}`}
       tabindex="-1"
       autofocus
-      style=${`left:${options.position.left}px;${verticalPosition}max-height:${options.position.maxHeight}px;overflow-y:auto`}
+      style=${`left:${options.position.left}px;${verticalPosition}max-height:${options.position.maxHeight}px`}
       @keydown=${onEscape(options.onDismiss)}
     >
-      <span class="rt-count">${options.count} day${options.count === 1 ? '' : 's'}</span>
-      <div class="rt-statuses">
-        ${STATUS_ORDER.map(
-          (status) => html`
-            <button
-              type="button"
-              class="rt-chip ${statusClass(status)}"
-              aria-label=${STATUS_LABEL[status]}
-              @click=${() => options.onPick(status)}
-            >
-              <span class="status-swatch ${statusClass(status)}" aria-hidden="true"></span>
-              <span class="rt-chip-label">${STATUS_SHORT[status]}</span>
-            </button>
-          `,
-        )}
-      </div>
+      <span class="day-menu-context"
+        >${options.count} selected day${options.count === 1 ? '' : 's'}</span
+      >
+      ${STATUS_ORDER.map(
+        (status) => html`
+          <button
+            type="button"
+            role="menuitem"
+            class="day-menu-item"
+            @click=${() => options.onPick(status)}
+          >
+            <span class="status-swatch ${statusClass(status)}" aria-hidden="true"></span>
+            <span class="day-menu-item-label">${STATUS_LABEL[status]}</span>
+          </button>
+        `,
+      )}
       <button
         type="button"
-        class="rt-note"
-        aria-label="Add note to selected range"
+        role="menuitem"
+        class="day-menu-item day-menu-note"
         @click=${options.onNote}
       >
-        Note
+        Add note
       </button>
       <button
         type="button"
-        class="rt-reset"
-        aria-label="Reset selected range to default"
+        role="menuitem"
+        class="day-menu-item day-menu-reset"
         @click=${options.onReset}
       >
-        Reset
+        Reset to default
       </button>
     </div>
   `;
