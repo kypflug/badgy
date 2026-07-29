@@ -1049,3 +1049,18 @@ policy-effect-panel { display: block; min-width: 0; }
     -webkit-app-region: drag; app-region: drag; user-select: none;
   }
 }
+
+@media (display-mode: window-controls-overlay) and (pointer: fine) and (min-width: 721px) {
+  .rail {
+    z-index: 32;
+    margin-top:
+      calc(
+        var(--badgy-shell-top) - env(titlebar-area-y, 0) -
+        env(titlebar-area-height, 40px)
+      );
+    -webkit-app-region: drag; app-region: drag; user-select: none;
+  }
+  .rail :is(a, button, input, select, textarea, summary, [tabindex]) {
+    -webkit-app-region: no-drag; app-region: no-drag; user-select: auto;
+  }
+}
