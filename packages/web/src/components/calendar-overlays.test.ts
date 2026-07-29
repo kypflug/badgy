@@ -4,9 +4,9 @@ import {
   NOTE_COLOR_PALETTE,
   positionDayMenu,
   positionRangeToolbar,
-  RANGE_TOOLBAR_WIDTH,
   rangeDates,
   rangeToolbarAnchor,
+  STATUS_MENU_WIDTH,
 } from './calendar-overlays.js';
 
 describe('note colors', () => {
@@ -62,7 +62,7 @@ describe('positionRangeToolbar', () => {
 
   it('clamps to the right edge when the selection is centered near the viewport right', () => {
     const result = positionRangeToolbar({ left: 1150, top: 200, bottom: 240 }, viewport);
-    expect(result.left).toBe(viewport.width - 12 - RANGE_TOOLBAR_WIDTH);
+    expect(result.left).toBe(viewport.width - 12 - STATUS_MENU_WIDTH);
   });
 
   it('opens below (edge "top") when there is more room below than above', () => {
@@ -105,8 +105,8 @@ describe('rangeToolbarAnchor', () => {
     ];
     const anchor = rangeToolbarAnchor(rects);
     expect(anchor).not.toBeNull();
-    // union spans 100..340, center 220, offset by half the toolbar width
-    expect(anchor?.left).toBe(220 - RANGE_TOOLBAR_WIDTH / 2);
+    // union spans 100..340, center 220, offset by half the menu width
+    expect(anchor?.left).toBe(220 - STATUS_MENU_WIDTH / 2);
     expect(anchor?.top).toBe(200);
     expect(anchor?.bottom).toBe(260);
   });

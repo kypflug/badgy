@@ -39,7 +39,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 .badgy-button--primary:hover { background: var(--badgy-fill-ink); opacity: .88; }
 .badgy-button--icon { width: var(--badgy-ctrl-size); min-width: var(--badgy-ctrl-size); padding: 0; font-size: 15px; }
-.today-btn { min-height: var(--badgy-ctrl-size); padding: 0 12px; }
+.today-btn { height: var(--badgy-ctrl-size); min-height: var(--badgy-ctrl-size); padding: 0 12px; }
 
 .badgy-card {
   background: var(--badgy-surface-card);
@@ -406,8 +406,12 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
   font-variant-numeric: tabular-nums; color: var(--badgy-text-primary);
 }
 .month-week-score-days { font-size: 9.5px; font-weight: 600; color: var(--badgy-text-secondary); }
-.month-week-score--under .month-week-score-pct,
-.month-week-score--under .month-week-score-days { color: var(--badgy-band-danger); }
+.month-week-score.score-success .month-week-score-pct,
+.month-week-score.score-success .month-week-score-days { color: var(--badgy-band-success); }
+.month-week-score.score-warning .month-week-score-pct,
+.month-week-score.score-warning .month-week-score-days { color: var(--badgy-band-warning-ink); }
+.month-week-score.score-danger .month-week-score-pct,
+.month-week-score.score-danger .month-week-score-days { color: var(--badgy-band-danger); }
 
 /* ------------------------------------------------------------------ range annotations */
 .annotation-layer { position: absolute; inset: 0; z-index: 4; display: grid; pointer-events: none; }
@@ -540,34 +544,15 @@ button.annotation-label:focus-visible { outline: 2px solid var(--badgy-accent); 
 }
 .day-menu-item:hover { background: var(--badgy-wash-2); }
 .day-menu-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-menu-context {
+  padding: 6px 10px 8px; color: var(--badgy-text-secondary);
+  font-size: var(--badgy-text-xs); font-weight: 650;
+}
 .day-menu-note, .day-menu-reset {
   margin-top: 2px; padding-top: 10px; border-top: 1px solid var(--badgy-stroke);
   border-radius: 0; color: var(--badgy-text-secondary); font-weight: 600;
 }
 .day-menu-note { color: var(--badgy-accent-ink); }
-
-.range-toolbar {
-  position: fixed; z-index: 41; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  max-width: calc(100vw - 24px); padding: 8px 10px; overscroll-behavior: contain;
-  box-shadow: var(--badgy-shadow-popup);
-}
-.rt-count { font-size: var(--badgy-text-xs); font-weight: 650; color: var(--badgy-text-secondary); white-space: nowrap; }
-.rt-statuses { display: flex; flex-wrap: wrap; gap: 4px; }
-.rt-chip {
-  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px;
-  border: 1px solid var(--badgy-stroke); border-radius: var(--badgy-radius-ctrl);
-  background: var(--badgy-surface-ctrl); color: var(--badgy-text-primary);
-  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
-}
-.rt-chip:hover { background: var(--badgy-surface-ctrl-hover); border-color: var(--d-line); }
-.rt-chip-label { min-width: 0; }
-.rt-note, .rt-reset {
-  height: 30px; padding: 0 10px; border-radius: var(--badgy-radius-ctrl);
-  border: 1px solid var(--badgy-stroke); background: transparent;
-  color: var(--badgy-text-secondary); font-size: 12px; font-weight: 600; cursor: pointer;
-}
-.rt-note { color: var(--badgy-accent-ink); border-color: var(--badgy-accent); }
-.rt-note:hover, .rt-reset:hover { background: var(--badgy-wash-2); }
 
 /* ------------------------------------------------------------------ dialogs */
 .dialog-backdrop { position: fixed; inset: 0; z-index: 50; background: var(--badgy-surface-scrim); }
@@ -1019,16 +1004,12 @@ policy-effect-panel { display: block; min-width: 0; }
   .pattern-calendar-day { min-height: 64px; padding: 7px 4px 10px; align-items: center; }
   .pattern-calendar-status { display: none; }
   .pattern-calendar-bar { left: 6px; right: 6px; bottom: 5px; }
-  .range-toolbar { right: 12px; left: 12px !important; justify-content: center; gap: 6px; width: auto; }
-  .rt-count { width: 100%; text-align: center; }
-  .rt-statuses { justify-content: center; }
 }
 /* Touch: every control the design sizes for a mouse grows to a 44px target. Controls with an
    explicit height need it replaced, not just a min-height. */
 @media (pointer: coarse) {
   .badgy-button, .settings-nav-item, .day-menu-item, .chip { min-height: 44px; }
-  .step-btn, .segmented-option, .select, .input, .rt-chip, .rt-note, .rt-reset,
-  .stepper-btn, .stepper-value {
+  .step-btn, .segmented-option, .select, .input, .stepper-btn, .stepper-value {
     height: 44px; min-height: 44px;
   }
   .badgy-button--icon, .step-btn, .stepper-btn { width: 44px; min-width: 44px; }
@@ -1042,7 +1023,7 @@ policy-effect-panel { display: block; min-width: 0; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 @media (forced-colors: active) {
-  .month-day, .rt-chip, .settings-nav-item.is-active { border: 1px solid canvastext; }
+  .month-day, .settings-nav-item.is-active { border: 1px solid canvastext; }
   .month-day-bar--recorded, .rail-total-swatch, .legend-swatch, .status-swatch { forced-color-adjust: none; }
 }
 

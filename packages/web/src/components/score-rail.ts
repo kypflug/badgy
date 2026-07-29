@@ -189,7 +189,7 @@ export class ScoreRail extends BadgyElement {
             .filter((d) => Number(d.date.slice(5, 7)) - 1 === this.month0),
         );
     const max = Math.max(1, ...STATUS_ORDER.map((s) => counts[s]));
-    const eyebrow = isYear ? `${this.year} totals` : `${MONTHS[this.month0]} so far`;
+    const eyebrow = isYear ? `${this.year} totals` : `${MONTHS[this.month0]} totals`;
     return html`
       <div class="rail-totals">
         <span class="rail-totals-eyebrow">${eyebrow}</span>
