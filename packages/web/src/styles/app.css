@@ -1009,7 +1009,7 @@ policy-effect-panel { display: block; min-width: 0; }
    explicit height need it replaced, not just a min-height. */
 @media (pointer: coarse) {
   .badgy-button, .settings-nav-item, .day-menu-item, .chip { min-height: 44px; }
-  .step-btn, .segmented-option, .select, .input, .stepper-btn, .stepper-value {
+  .today-btn, .step-btn, .segmented-option, .select, .input, .stepper-btn, .stepper-value {
     height: 44px; min-height: 44px;
   }
   .badgy-button--icon, .step-btn, .stepper-btn { width: 44px; min-width: 44px; }
