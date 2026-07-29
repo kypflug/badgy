@@ -3,7 +3,8 @@
 /* ------------------------------------------------------------------ base */
 * { box-sizing: border-box; }
 body {
-  margin: 0;
+  min-height: 100vh; min-height: 100dvh; margin: 0;
+  display: grid; place-items: center;
   font-family: var(--badgy-font-body);
   font-size: var(--badgy-text-sm);
   line-height: 1.4;
@@ -12,6 +13,7 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
+badgy-app { display: block; width: 100%; }
 button, input, select, textarea { font-family: inherit; }
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--badgy-accent);
@@ -131,7 +133,8 @@ button, input, select, textarea { font-family: inherit; }
   --badgy-shell-rail-track:
     calc(var(--badgy-shell-left) + var(--badgy-shell-rail-width) + var(--badgy-shell-rail-gap));
   display: flex; flex-direction: column;
-  width: 100%; height: 100vh; height: 100dvh; min-height: 100vh; min-height: 100dvh;
+  width: 100%; max-width: 1600px; height: 100vh; height: 100dvh; max-height: 1100px;
+  margin: auto;
 }
 .brand-mark {
   width: 24px; height: 24px; flex: none;
@@ -1029,10 +1032,14 @@ policy-effect-panel { display: block; min-width: 0; }
 }
 
 /* ------------------------------------------------------------------ PWA / Window Controls Overlay */
-/* The native controls reserve the `titlebar-area-*` rectangle. Badgy uses the available area as a
-   drag lane, then overlays the existing pane header there on desktop-sized installed windows. */
+/* Keep the native titlebar as a dedicated drag lane. The workbench begins below it and retains the
+   same rail margins and pane header used in the browser, rather than crowding controls into it. */
 .titlebar { display: none; }
 @media (display-mode: window-controls-overlay) {
+  .app {
+    max-width: none; max-height: none;
+    padding-top: calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px));
+  }
   .titlebar {
     position: fixed; z-index: 31;
     top: env(titlebar-area-y, 0); left: env(titlebar-area-x, 0);
@@ -1040,114 +1047,5 @@ policy-effect-panel { display: block; min-width: 0; }
     display: block;
     background: var(--badgy-surface-page);
     -webkit-app-region: drag; app-region: drag; user-select: none;
-  }
-}
-
-@media (display-mode: window-controls-overlay) and (pointer: fine) and (min-width: 721px) {
-  .rail {
-    z-index: 32;
-    margin-top: max(8px, env(safe-area-inset-top));
-    padding-top: 12px;
-  }
-  .rail-brand {
-    -webkit-app-region: drag; app-region: drag; user-select: none;
-  }
-  .rail-brand :is(button, .rail-mobile-actions) {
-    -webkit-app-region: no-drag; app-region: no-drag;
-  }
-  .pane {
-    padding-top: calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px) + 12px);
-  }
-  .pane.settings-pane {
-    scroll-padding-top:
-      calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px) + 12px);
-  }
-  .calendar-view-bar,
-  .settings-detail-head {
-    position: fixed; z-index: 33;
-    top: env(titlebar-area-y, 0);
-    left: calc(env(titlebar-area-x, 0) + var(--badgy-shell-rail-track));
-    width: calc(env(titlebar-area-width, 100vw) - var(--badgy-shell-rail-track));
-    height: env(titlebar-area-height, 40px);
-    margin: 0; padding: 0 14px 0 22px;
-    background: var(--badgy-surface-page);
-    -webkit-app-region: drag; app-region: drag; user-select: none;
-  }
-  .calendar-view-bar {
-    display: block;
-  }
-  .calendar-view-bar > .view-title {
-    position: absolute; width: 1px; height: 1px; overflow: hidden;
-    clip-path: inset(50%); white-space: nowrap;
-  }
-  .calendar-view-bar .step-group {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    display: flex; gap: 1px; margin: 0;
-    background: var(--badgy-stroke); border-radius: var(--badgy-radius-ctrl); overflow: hidden;
-    -webkit-app-region: no-drag; app-region: no-drag;
-  }
-  .calendar-view-bar .step-group::before {
-    content: attr(data-period-title); order: 2;
-    display: flex; align-items: center; justify-content: center;
-    min-width: 9.5ch; height: 28px; padding: 0 12px;
-    background: var(--badgy-surface-ctrl); color: var(--badgy-text-primary);
-    font-family: var(--badgy-font-display); font-size: 13px; font-weight: 600;
-    letter-spacing: -0.01em; white-space: nowrap;
-  }
-  .calendar-view-bar .step-btn {
-    width: 28px; min-width: 28px; height: 28px; min-height: 28px;
-  }
-  .calendar-view-bar .step-btn:first-child { order: 1; }
-  .calendar-view-bar .step-btn:last-child { order: 3; }
-  .calendar-view-bar .view-actions {
-    position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
-    gap: 8px;
-    -webkit-app-region: no-drag; app-region: no-drag;
-  }
-  .calendar-view-bar .today-btn { min-height: 28px; height: 28px; }
-  .calendar-view-bar .segmented-option { height: 28px; }
-
-  .settings-detail-head {
-    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-    overflow: visible; clip-path: none; white-space: normal;
-  }
-  .settings-detail-head .settings-detail-title {
-    grid-column: 2; margin: 0; font-size: 15px; white-space: nowrap;
-  }
-  .policy-effect-sticky {
-    top: calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px) + 12px);
-  }
-}
-
-@media (display-mode: window-controls-overlay) and (pointer: fine) and (min-width: 721px) and (max-width: 1080px) {
-  .calendar-view-bar .view-label-long { display: none; }
-  .calendar-view-bar .view-label-short { display: inline; }
-  .calendar-view-bar .view-switch .segmented-option {
-    width: 30px; min-width: 30px; padding: 0;
-  }
-}
-
-@media (display-mode: window-controls-overlay) and (pointer: fine) and (min-width: 721px) and (max-width: 900px) {
-  .calendar-view-bar .today-btn { display: none; }
-}
-
-@media (display-mode: window-controls-overlay) and (pointer: fine) and (min-width: 721px) and (max-width: 760px) {
-  .calendar-view-bar .step-group::before {
-    content: attr(data-compact-period-title);
-  }
-}
-
-/* Once the available titlebar becomes too narrow, keep a simple native drag lane rather than
-   crowding controls over the pane or rail. Coarse-pointer devices use the same fallback so the
-   normal 44px controls remain intact. */
-@media (display-mode: window-controls-overlay) and (max-width: 720px) {
-  .app {
-    padding-top: calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px));
-  }
-}
-
-@media (display-mode: window-controls-overlay) and (pointer: coarse) {
-  .app {
-    padding-top: calc(env(titlebar-area-y, 0) + env(titlebar-area-height, 40px));
   }
 }
