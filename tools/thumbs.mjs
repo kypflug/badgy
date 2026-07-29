@@ -142,9 +142,13 @@ async function capture(theme, path) {
   // Both selectors match twice — the rail renders a mobile copy that is hidden at this
   // width — so rewrite every match rather than the first one.
   await page.evaluate(() => {
-    for (const chip of document.querySelectorAll('.rail-account-name'))
-      chip.textContent = 'Ada Lovelace';
-    for (const avatar of document.querySelectorAll('.rail-avatar')) avatar.textContent = 'AL';
+    const name = 'Ada Lovelace';
+    const initials = name
+      .split(' ')
+      .map((w) => w[0])
+      .join('');
+    for (const chip of document.querySelectorAll('.rail-account-name')) chip.textContent = name;
+    for (const avatar of document.querySelectorAll('.rail-avatar')) avatar.textContent = initials;
   });
   await page.waitForTimeout(300);
 
