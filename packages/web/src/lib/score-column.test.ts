@@ -1,4 +1,4 @@
-import { BELT_SCHEME, defaultSchemeFor, type ComplianceScheme } from '@badgy/shared';
+import { BELT_SCHEME, type ComplianceScheme, defaultSchemeFor } from '@badgy/shared';
 import { describe, expect, it } from 'vitest';
 import { scoreColumnPresentation } from './score-column.js';
 
