@@ -9,6 +9,7 @@ import {
 import { html, nothing } from 'lit';
 import { formatPct, rangeEditMessage } from '../lib/format.js';
 import { undoShortcutLabel } from '../lib/platform.js';
+import { scoreColumnPresentation } from '../lib/score-column.js';
 import { statusClass } from '../lib/status.js';
 import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
@@ -363,6 +364,7 @@ export class MonthCalendar extends BadgyElement {
     const weeks: ResolvedDay[][] = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
     const scoreTitle = `${store.org.label} — ${store.org.summary}`;
+    const scoreColumn = scoreColumnPresentation(store.scheme);
 
     return html`
       <div class="month">
@@ -371,11 +373,11 @@ export class MonthCalendar extends BadgyElement {
             (l, i) =>
               html`<div class="month-dow ${i === 0 || i === 6 ? 'month-dow--weekend' : ''}">${l}</div>`,
           )}
-          <div class="month-dow month-dow--score">Week</div>
+          <div class="month-dow month-dow--score">${scoreColumn.label}</div>
         </div>
         ${weeks.map((week, wi) => {
           const weekStart = weekStarts[wi];
-          const score = store.weekScore(weekStart);
+          const score = scoreColumn.showPercentage ? store.weekScore(weekStart) : null;
           const officeDays = store.weekOfficeDays(weekStart);
           const scoreClass = score == null ? '' : `score-${store.band(score)}`;
           const meetupLabel = store.isMeetupWeek(weekStart)
@@ -388,10 +390,16 @@ export class MonthCalendar extends BadgyElement {
             ${annotationOverlay(segments, (note) => this.editNote(note))}
             ${week.map((d) => this.dayCell(d, selected))}
             <div
-              class="month-week-score ${scoreClass}"
+              class="month-week-score ${scoreClass} ${
+                scoreColumn.showPercentage ? '' : 'month-week-score--days-only'
+              }"
               title=${scoreTitle}
             >
-              <span class="month-week-score-pct">${formatPct(score)}</span>
+              ${
+                scoreColumn.showPercentage
+                  ? html`<span class="month-week-score-pct">${formatPct(score)}</span>`
+                  : nothing
+              }
               <span class="month-week-score-days"
                 >${officeDays} office day${officeDays === 1 ? '' : 's'}</span
               >
