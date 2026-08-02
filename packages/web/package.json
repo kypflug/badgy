@@ -9,7 +9,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@azure/msal-browser": "^5.17.1",
+    "@azure/msal-browser": "^5.17.3",
     "@badgy/shared": "*",
     "dompurify": "^3.4.12",
     "lit": "^3.3.3"
