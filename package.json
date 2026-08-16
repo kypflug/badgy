@@ -29,9 +29,9 @@
     "pretest": "npm run gen:data"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.5",
-    "@types/node": "^26.1.1",
-    "playwright": "^1.62.0",
+    "@biomejs/biome": "^2.5.8",
+    "@types/node": "^26.2.0",
+    "playwright": "^1.62.1",
     "stylelint": "^17.14.1",
     "stylelint-config-standard": "^40.0.0",
     "typescript": "^7.0.2",
