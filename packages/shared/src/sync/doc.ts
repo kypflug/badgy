@@ -4,7 +4,7 @@
  * configured "usual week" pattern, unconfigured weekends → untracked, else `office`.
  * `merge` is a commutative + idempotent CRDT.
  */
-import { addDays, isMeetupWeek, todayISO, weekdayOf, weekStartOf } from '../calendar.js';
+import { addDays, todayISO, weekdayOf } from '../calendar.js';
 import {
   DEFAULT_HOLIDAY_REGION,
   type HolidayRegionId,
@@ -22,7 +22,7 @@ import {
 import { compareStamp, type Stamp } from './hlc.js';
 
 /**
- * Cell payloads by key namespace: `d|` and `pat|` → `Status`, `m|` → boolean,
+ * Cell payloads by key namespace: `d|` and `pat|` → `Status`,
  * `h|` → boolean or a holiday display name, `n|` → `CalendarNote` (`null` = tombstone),
  * `cfg|targetBelt` → number, `cfg|holidayRegion` → `HolidayRegionId`.
  * The union widens to `string` because holiday names are free-form.
@@ -44,7 +44,6 @@ export function emptyDoc(): Doc {
 // --- keys ---
 export const dateKey = (iso: string): string => `d|${iso}`;
 export const patternKey = (weekday: Weekday): string => `pat|${weekday}`;
-export const meetupKey = (weekStartISO: string): string => `m|${weekStartISO}`;
 export const holidayKey = (iso: string): string => `h|${iso}`;
 export const noteKey = (id: string): string => `n|${id}`;
 export const CFG_TARGET = 'cfg|targetBelt';
@@ -124,10 +123,6 @@ export function getPattern(doc: Doc): Partial<Record<Weekday, Status>> {
 export function getTarget(doc: Doc): number {
   return (doc.cells[CFG_TARGET]?.v as number | undefined) ?? 0.8;
 }
-export function isMeetupOverride(doc: Doc, weekStartISO: string): boolean {
-  const cell = doc.cells[meetupKey(weekStartISO)];
-  return cell ? Boolean(cell.v) : isMeetupWeek(weekStartISO);
-}
 export function getHolidayRegion(doc: Doc): HolidayRegionId {
   const value = doc.cells[CFG_HOLIDAY_REGION]?.v;
   return isHolidayRegionId(value) ? value : DEFAULT_HOLIDAY_REGION;
@@ -188,7 +183,6 @@ export interface ResolvedDay {
   isToday: boolean;
   isPast: boolean;
   isFuture: boolean;
-  meetupWeek: boolean;
   explicit: boolean;
 }
 
@@ -216,7 +210,6 @@ export function resolveDay(
     isToday: iso === today,
     isPast: iso < today,
     isFuture: iso > today,
-    meetupWeek: isMeetupOverride(doc, weekStartOf(iso)),
     explicit: override != null,
   };
 }
@@ -236,7 +229,7 @@ export function resolveRange(
 // --- migration from the v1 (weekly-grid) doc format ---
 const LEGACY_DAY_OFFSET: Record<string, number> = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4 };
 
-/** Convert legacy `d|year|weekStart|day` cells → `d|<date>` (+ taxonomy map); drop dropped keys. */
+/** Convert legacy `d|year|weekStart|day` cells → `d|<date>` (+ taxonomy map); drop retired keys. */
 export function migrate(doc: Doc): Doc {
   let changed = false;
   const cells: Record<string, Cell> = { ...doc.cells };
@@ -256,18 +249,8 @@ export function migrate(doc: Doc): Doc {
     } else if ((parts[0] === 'cfg' && parts[1] === 'activeYear') || parts[0] === 'y') {
       delete cells[key]; // concepts removed in v2
       changed = true;
-    } else if (parts[0] === 'm' && parts.length === 2 && weekdayOf(parts[1]) === 1) {
-      const sundayKey = meetupKey(addDays(parts[1], -1));
-      const oldCell = doc.cells[key];
-      const sundayCell = cells[sundayKey];
-      if (
-        !sundayCell ||
-        compareStamp(oldCell.t, sundayCell.t) > 0 ||
-        (compareStamp(oldCell.t, sundayCell.t) === 0 &&
-          tieBreak(oldCell.v) > tieBreak(sundayCell.v))
-      )
-        cells[sundayKey] = oldCell;
-      delete cells[key];
+    } else if (parts[0] === 'm') {
+      delete cells[key]; // retired meetup-week toggles
       changed = true;
     }
   }

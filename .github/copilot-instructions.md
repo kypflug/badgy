@@ -58,7 +58,7 @@ Three packages plus a data directory, one hard boundary:
 | Package | Role |
 |---|---|
 | `data/` | **Community-contributable JSON**: `orgs/*.json` employer policy presets, `holidays/*.json` rule sets, `schema/*.json` JSON Schema. Compiled into shared by `tools/gen-data.mjs`. `data/README.md` is the contributor guide. |
-| `packages/shared` | Source of truth for the domain: `types.ts` (taxonomy), the policy engine (`policy/types.ts`, `policy/engine.ts`, `policy/planner.ts`, `policy/registry.ts`), `belt.ts` (pinned numeric core), `calendar.ts` (UTC/ISO date helpers + meetup registry), `holidays.ts` (rule engine), and the CRDT core in `sync/hlc.ts` + `sync/doc.ts`. Heavily unit-tested. |
+| `packages/shared` | Source of truth for the domain: `types.ts` (taxonomy), the policy engine (`policy/types.ts`, `policy/engine.ts`, `policy/planner.ts`, `policy/registry.ts`), `belt.ts` (pinned numeric core), `calendar.ts` (UTC/ISO date helpers), `holidays.ts` (rule engine), and the CRDT core in `sync/hlc.ts` + `sync/doc.ts`. Heavily unit-tested. |
 | `packages/web` | Lit + esbuild SPA/PWA. `state/store.ts` is the sync engine and the only calendar API the components use; `sync/graph.ts` and `sync/google-drive.ts` talk to the storage APIs directly (`sync/mock.ts` in dev); `auth/provider.ts` drives the BFF flow; `org/resolve.ts` resolves the workplace. |
 | `packages/api` | Azure Functions v4 (CommonJS, Node 20) token mediator for **both** providers: PKCE transactions, HttpOnly session cookie, short-lived access tokens. Encrypted token caches + transactions in Azure Table Storage. |
 
@@ -73,7 +73,6 @@ A sparse last-write-wins map of **overrides**, one cell per key, each stamped wi
 |---|---|
 | `d\|YYYY-MM-DD` | `Status` for a specific date |
 | `pat\|<0-6>` | "usual week" default status per weekday (0 = Sunday) |
-| `m\|<Sunday ISO>` | meetup-week toggle |
 | `h\|YYYY-MM-DD` | boolean, or a custom holiday display name |
 | `n\|<uuid>` | `CalendarNote` (`null` = tombstone) |
 | `cfg\|targetBelt`, `cfg\|holidayRegion` | settings |
@@ -85,8 +84,10 @@ A sparse last-write-wins map of **overrides**, one cell per key, each stamped wi
 - There is no delete: "clearing" a day writes its *default* value, and notes write `null`.
 - Unset days resolve in this order: explicit `d|` override → holiday → `pat|` weekday pattern →
   unconfigured weekend `none` → `office` (`resolveDay` in `sync/doc.ts`).
-- `migrate()` upgrades legacy v1 weekly-grid docs; it runs on every cache load and every pull. The
-  `cfg|org` and `cfg|scheme` keys are purely additive and need no migration.
+- `migrate()` upgrades legacy v1 weekly-grid docs; it runs on every cache load and every pull. It
+  also drops retired keys (`y|`, `cfg|activeYear`, and `m|` from the removed meetup-week feature), so
+  never reuse those prefixes. The `cfg|org` and `cfg|scheme` keys are purely additive and need no
+  migration.
 - **Org presets seed, they never lock.** `store.seedOrgDefaults()` writes `cfg|org` only after the
   first successful pull proves the cell is unset — seeding on a failed or offline first sync would
   let whichever URL a returning user opened silently overwrite the workplace they already chose.
@@ -220,8 +221,6 @@ and its 2026/2027 output is pinned by a parity test — don't change those rules
 - `sw.ts` must never intercept `/api/` (it would turn a BFF redirect into the SPA shell). Bump
   `VERSION` when the cached shell changes — and remember the SW will happily serve a stale bundle
   during local testing, so unregister it when a dev-mode change seems not to apply.
-- Default meetup weeks are a hardcoded per-year registry in `calendar.ts` (`MEETUP_WEEKS`); new
-  years need an entry, and users can toggle weeks on top of it.
 - `packages/shared/src/generated/` is **generated and gitignored**. A fresh clone must run
   `npm run gen:data` before a bare `npx vitest`; the npm `pre*` hooks handle every normal path.
 - `MSAL_CLIENT_ID` is public and is set in `.github/workflows/deploy.yml`; `MSAL_CLIENT_SECRET`,

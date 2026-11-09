@@ -10,12 +10,11 @@ import {
   type Status,
   WEEK_DAYS,
   type Weekday,
-  weekStartsOfYear,
 } from '@badgy/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 import { type InteractiveAuthFlow, providerMeta, switchAccount } from '../auth/provider.js';
 import { getSession, type Session } from '../auth/session.js';
-import { formatPct, formatWeekLabel } from '../lib/format.js';
+import { formatPct } from '../lib/format.js';
 import {
   draftEqual,
   draftFromOrg,
@@ -467,8 +466,6 @@ export class SettingsPage extends BadgyElement {
         return this.renderTarget();
       case 'holidays':
         return this.renderHolidays();
-      case 'meetup-weeks':
-        return this.renderMeetupWeeks();
       case 'appearance':
         return this.renderAppearance();
       case 'account':
@@ -593,48 +590,6 @@ export class SettingsPage extends BadgyElement {
             </button>`,
           )}
         </div>
-      </div>
-    `;
-  }
-
-  private renderMeetupWeeks(): TemplateResult {
-    const year = new Date().getFullYear();
-    const weekStarts = weekStartsOfYear(year);
-    const meetups = weekStarts.filter((w) => store.isMeetupWeek(w));
-    const nonMeetups = weekStarts.filter((w) => !store.isMeetupWeek(w));
-    return html`
-      <div class="setting">
-        <p class="setting-help">
-          Highlighted on the calendar for ${year}; they never affect your score.
-        </p>
-        <div class="chip-row">
-          ${
-            meetups.length
-              ? meetups.map(
-                  (m) => html`<button
-                    class="chip chip--meetup"
-                    @click=${() => store.toggleMeetup(m)}
-                  >
-                    ${formatWeekLabel(m)} ✕
-                  </button>`,
-                )
-              : html`<span class="setting-help">None marked.</span>`
-          }
-        </div>
-        <label class="field field--inline">
-          <span class="field-label">Add</span>
-          <select
-            class="select"
-            @change=${(e: Event) => {
-              const v = (e.target as HTMLSelectElement).value;
-              if (v) store.toggleMeetup(v);
-              (e.target as HTMLSelectElement).value = '';
-            }}
-          >
-            <option value="">Pick a week…</option>
-            ${nonMeetups.map((m) => html`<option value=${m}>${formatWeekLabel(m)}</option>`)}
-          </select>
-        </label>
       </div>
     `;
   }

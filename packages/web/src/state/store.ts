@@ -34,10 +34,7 @@ import {
   isComplianceScheme,
   isHolidayOverride,
   isHolidayRegionId,
-  isMeetupWeek as isMeetupBuiltin,
-  isMeetupOverride,
   isWeekend,
-  meetupKey,
   merge,
   migrate,
   monthGrid,
@@ -251,9 +248,6 @@ export class Store extends EventTarget {
   plan(horizon: number, hold: boolean): ProjectionResult {
     return planOfficeDays(this.doc, this.scheme, todayISO(), horizon, this.target, hold);
   }
-  isMeetupWeek(weekStart: string): boolean {
-    return isMeetupOverride(this.doc, weekStart);
-  }
   get holidayRegion(): HolidayRegionId {
     return getHolidayRegion(this.doc);
   }
@@ -309,10 +303,6 @@ export class Store extends EventTarget {
   setTarget(target: number): void {
     const t = clampTarget(target);
     this.apply((d) => setCell(d, CFG_TARGET, t, this.hlc.tick()));
-  }
-  toggleMeetup(weekStart: string): void {
-    const cur = this.isMeetupWeek(weekStart);
-    this.apply((d) => setCell(d, meetupKey(weekStart), !cur, this.hlc.tick()));
   }
   setHolidayRegion(region: HolidayRegionId): void {
     this.apply((d) => setCell(d, CFG_HOLIDAY_REGION, region, this.hlc.tick()));
@@ -455,7 +445,6 @@ export class Store extends EventTarget {
   private cellDefault(key: string): CellValue {
     if (key.startsWith('d|')) return this.defaultStatusFor(key.slice(2));
     if (key.startsWith('pat|')) return 'office';
-    if (key.startsWith('m|')) return isMeetupBuiltin(key.slice(2));
     if (key.startsWith('h|')) return holidayNameFor(this.holidayRegion, key.slice(2)) !== null;
     if (key.startsWith('n|')) return null;
     if (key === CFG_TARGET) return this.org.target;

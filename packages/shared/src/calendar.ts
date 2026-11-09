@@ -1,4 +1,4 @@
-/** Date + calendar helpers (UTC / ISO) and the meetup-week registry. */
+/** Date + calendar helpers (UTC / ISO). */
 import type { Weekday } from './types.js';
 
 const MS_PER_DAY = 86_400_000;
@@ -74,21 +74,4 @@ export function monthGrid(year: number, month0: number): { first: string; weekSt
   for (let weekStart = start; weekStart <= end; weekStart = addDays(weekStart, 7))
     weekStarts.push(weekStart);
   return { first, weekStarts };
-}
-
-// --- meetup weeks (Sunday ISO dates; defaults, editable per user in Settings) ---
-export const MEETUP_WEEKS: Record<number, readonly string[]> = {
-  2026: ['2026-01-11', '2026-03-08', '2026-05-10', '2026-07-12', '2026-09-20'],
-  2027: ['2027-01-10'],
-};
-const MEETUP_SET = new Set<string>(Object.values(MEETUP_WEEKS).flat());
-export function isMeetupWeek(weekStartISO: string): boolean {
-  return MEETUP_SET.has(weekStartISO);
-}
-
-/** Stable cycle label for a default meetup week; user-added weeks have no cycle number. */
-export function meetupCycleLabel(weekStartISO: string): string | null {
-  const year = Number(weekStartISO.slice(0, 4));
-  const cycle = MEETUP_WEEKS[year]?.indexOf(weekStartISO) ?? -1;
-  return cycle >= 0 ? `${String(year).slice(-2)}-C${cycle + 1}` : null;
 }

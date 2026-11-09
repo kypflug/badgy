@@ -21,8 +21,8 @@ attendance data never transits it.
   contributor guide. Never edit `packages/shared/src/generated/` by hand.
 - `packages/shared` — **source of truth**: taxonomy (`types.ts`), the policy engine
   (`policy/types.ts` taxonomy, `policy/engine.ts` evaluation, `policy/planner.ts` what-if,
-  `policy/registry.ts` presets), BELT's pinned numeric core (`belt.ts`), date/calendar utils +
-  meetup registry (`calendar.ts`), the holiday rule engine (`holidays.ts`), and the **CRDT sync
+  `policy/registry.ts` presets), BELT's pinned numeric core (`belt.ts`), date/calendar utils
+  (`calendar.ts`), the holiday rule engine (`holidays.ts`), and the **CRDT sync
   core** (`sync/hlc.ts`, `sync/doc.ts`). Heavily unit-tested.
 - `packages/web` — Lit + esbuild SPA + PWA.
   - `auth/provider.ts` — multi-provider BFF session + auth transaction client;
@@ -50,11 +50,13 @@ attendance data never transits it.
 
 ## Data model (don't break)
 - Sparse CRDT doc of **overrides**, keyed per ISO date (`d|YYYY-MM-DD`) + weekly pattern (`pat|<0-6>`)
-  + meetup (`m|<Sun>`) + holiday (`h|YYYY-MM-DD`, boolean or a display name) + note (`n|<uuid>`)
+  + holiday (`h|YYYY-MM-DD`, boolean or a display name) + note (`n|<uuid>`)
   + `cfg|targetBelt`, `cfg|holidayRegion`, `cfg|org`, `cfg|scheme` (a JSON `ComplianceScheme`).
   Unset days resolve from defaults: holiday→holiday, configured pattern, unconfigured
   weekend→none, else office. `merge` must stay commutative + idempotent; every write gets a fresh
-  `hlc.tick()`. `migrate()` upgrades v1 weekly-grid docs. New `cfg|` keys are additive.
+  `hlc.tick()`. `migrate()` upgrades v1 weekly-grid docs and drops retired keys (`y|`,
+  `cfg|activeYear`, and the removed meetup-week `m|` toggles — don't reuse `m|`). New `cfg|` keys
+  are additive.
 - **Taxonomy:** office/remote/travel/vacation/sick/holiday/oof (+ `none`). Display order is In office,
   Remote, Business Travel, Time off, Sick, Holiday, Other. Only `office` counts toward the score
   unless a policy sets `travelCountsAsOffice`.

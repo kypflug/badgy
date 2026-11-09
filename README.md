@@ -28,8 +28,8 @@ Settings, so any organisation with an RTO target can use it.
   forecast (outlined), with a clear *today* line.
 - **Date and range notes.** Add a required label and accent color from a date menu or drag-range
   toolbar. Notes can span weeks, months, and years; click a label to edit or delete it. They sync
-  with the calendar but never change statuses or your score. Overlaps with other notes or Meetup
-  weeks use multicolor dashed outlines while retaining every label.
+  with the calendar but never change statuses or your score. Overlapping notes use multicolor
+  dashed outlines while retaining every label.
 - **"Usual week" pattern** auto-fills future weekdays (e.g. Tue/Thu remote); specific days override it.
 - **Headline compliance** ring ("are you on track?") with actual-to-date + projected score, plus an
   integrated what-if planner ("aim for ~N office days/week to hold 80%").
@@ -75,7 +75,6 @@ Everything the score depends on lives in **Settings**:
 | **Workplace policy** | Scheme, its parameters, and how time off is treated. Seeded by your employer preset; always editable. |
 | **Your usual week** | Per-weekday default status; any specific date overrides it. |
 | **Target** | Drives the "on track?" ring and the what-if planner. |
-| **Meetup weeks** | Weeks highlighted for planning context. They never affect your score. |
 | **Holidays** | Pick a set, then add or remove individual days, or import an `.ics`. |
 
 Bundled holiday sets are generated from rules (fixed dates, nth-weekday, Easter offsets and

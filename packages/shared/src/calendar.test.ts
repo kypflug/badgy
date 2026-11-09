@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
-  isMeetupWeek,
-  meetupCycleLabel,
   monthGrid,
   shiftMonth,
   weekdayOf,
@@ -41,23 +39,5 @@ describe('date utils', () => {
     const g = monthGrid(2026, 0); // Jan 2026 (Jan 1 = Thu)
     expect(g.weekStarts[0]).toBe('2025-12-28');
     expect(g.weekStarts.length).toBe(5);
-  });
-  it('recognizes default meetup weeks', () => {
-    expect(isMeetupWeek('2026-03-08')).toBe(true);
-    expect(isMeetupWeek('2026-03-15')).toBe(false);
-    expect(isMeetupWeek('2026-09-20')).toBe(true);
-    expect(isMeetupWeek('2026-10-11')).toBe(false);
-    expect(isMeetupWeek('2026-11-15')).toBe(false);
-    expect(isMeetupWeek('2027-01-10')).toBe(true);
-    expect(isMeetupWeek('2027-04-11')).toBe(false);
-  });
-  it('labels published meetup cycles without naming custom weeks', () => {
-    expect(meetupCycleLabel('2026-01-11')).toBe('26-C1');
-    expect(meetupCycleLabel('2026-07-12')).toBe('26-C4');
-    expect(meetupCycleLabel('2026-09-20')).toBe('26-C5');
-    expect(meetupCycleLabel('2026-10-11')).toBeNull();
-    expect(meetupCycleLabel('2027-01-10')).toBe('27-C1');
-    expect(meetupCycleLabel('2027-04-11')).toBeNull();
-    expect(meetupCycleLabel('2026-08-09')).toBeNull();
   });
 });

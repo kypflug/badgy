@@ -19,7 +19,6 @@ import {
   dateKey,
   emptyDoc,
   holidayNameFor,
-  meetupKey,
   noteKey,
   patternKey,
   setCell,
@@ -35,7 +34,6 @@ const weekdayOf = (s) => new Date(`${s}T00:00:00Z`).getUTCDay();
 
 const now = new Date();
 const today = toISO(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())));
-const monthFirst = `${today.slice(0, 7)}-01`;
 
 let seq = 0;
 const stamp = () => [Date.now() + seq++, 0];
@@ -83,10 +81,7 @@ for (let i = 0; i < 3; i++) set(addDays(tripMonday, i), 'travel');
 const sickDay = addDays(today, -weekdayOf(today) - 2);
 if (weekdayOf(sickDay) >= 1 && weekdayOf(sickDay) <= 5 && !isHoliday(sickDay)) set(sickDay, 'sick');
 
-// A meetup week and two labelled ranges in the captured month.
-const meetupWeek = addDays(monthFirst, -weekdayOf(monthFirst) + 14);
-setCell(doc, meetupKey(meetupWeek), true, stamp());
-
+// Two labelled ranges in the captured month.
 const noteStart = addDays(tripMonday, 0);
 for (const note of [
   {

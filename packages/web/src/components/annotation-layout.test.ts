@@ -1,11 +1,6 @@
 import type { CalendarNote } from '@badgy/shared';
 import { describe, expect, it } from 'vitest';
-import {
-  layoutWeekAnnotations,
-  meetupAnnotation,
-  noteAnnotation,
-  segmentOutlines,
-} from './annotation-layout.js';
+import { layoutWeekAnnotations, noteAnnotation, segmentOutlines } from './annotation-layout.js';
 
 const note = (id: string, start: string, end: string, color: string, label = id): CalendarNote => ({
   id,
@@ -36,10 +31,10 @@ describe('layoutWeekAnnotations', () => {
     ).toMatchObject([{ start: '2026-07-01', end: '2026-07-03', startColumn: 3, endColumn: 5 }]);
   });
 
-  it('partitions meetup and note collisions and retains every deterministic label and color', () => {
+  it('partitions note collisions and retains every deterministic label and color', () => {
     const inputs = [
       noteAnnotation(note('z', '2026-07-14', '2026-07-17', '#ff0000', 'Zebra')),
-      meetupAnnotation('2026-07-12', '26-C4'),
+      noteAnnotation(note('w', '2026-07-12', '2026-07-18', '#0000ff', 'Whole week')),
       noteAnnotation(note('a', '2026-07-15', '2026-07-16', '#00ff00', 'Alpha')),
     ];
     const segments = layoutWeekAnnotations('2026-07-12', inputs);
@@ -51,8 +46,12 @@ describe('layoutWeekAnnotations', () => {
       { start: '2026-07-17', end: '2026-07-17', collision: true },
       { start: '2026-07-18', end: '2026-07-18', collision: false },
     ]);
-    expect(segments[2].annotations.map((item) => item.label)).toEqual(['26-C4', 'Zebra', 'Alpha']);
-    expect(segments[2].colors).toEqual(['var(--badgy-meetup)', '#ff0000', '#00ff00']);
+    expect(segments[2].annotations.map((item) => item.label)).toEqual([
+      'Whole week',
+      'Zebra',
+      'Alpha',
+    ]);
+    expect(segments[2].colors).toEqual(['#0000ff', '#ff0000', '#00ff00']);
   });
 });
 

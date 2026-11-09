@@ -1,6 +1,5 @@
 import {
   type CalendarNote,
-  meetupCycleLabel,
   type PickableStatus,
   type ResolvedDay,
   STATUS_LABEL,
@@ -13,12 +12,7 @@ import { scoreColumnPresentation } from '../lib/score-column.js';
 import { statusClass } from '../lib/status.js';
 import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
-import {
-  annotationOverlay,
-  layoutWeekAnnotations,
-  meetupAnnotation,
-  noteAnnotation,
-} from './annotation-layout.js';
+import { annotationOverlay, layoutWeekAnnotations, noteAnnotation } from './annotation-layout.js';
 import { BadgyElement } from './base.js';
 import {
   DEFAULT_NOTE_COLOR,
@@ -359,8 +353,9 @@ export class MonthCalendar extends BadgyElement {
     const days = store.monthDays(this.year, this.month0);
     const weekStarts = store.monthWeekStarts(this.year, this.month0);
     const selected = this.selectedSet();
-    const notes =
-      days.length > 0 ? store.notesInRange(days[0].date, days[days.length - 1].date) : [];
+    const annotations = (
+      days.length > 0 ? store.notesInRange(days[0].date, days[days.length - 1].date) : []
+    ).map(noteAnnotation);
     const weeks: ResolvedDay[][] = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
     const scoreTitle = `${store.org.label} — ${store.org.summary}`;
@@ -380,11 +375,6 @@ export class MonthCalendar extends BadgyElement {
           const score = scoreColumn.showPercentage ? store.weekScore(weekStart) : null;
           const officeDays = store.weekOfficeDays(weekStart);
           const scoreClass = score == null ? '' : `score-${store.band(score)}`;
-          const meetupLabel = store.isMeetupWeek(weekStart)
-            ? (meetupCycleLabel(weekStart) ?? 'Meetup')
-            : null;
-          const annotations = notes.map(noteAnnotation);
-          if (meetupLabel) annotations.push(meetupAnnotation(weekStart, meetupLabel));
           const segments = layoutWeekAnnotations(weekStart, annotations);
           return html`<div class="month-row">
             ${annotationOverlay(segments, (note) => this.editNote(note))}
