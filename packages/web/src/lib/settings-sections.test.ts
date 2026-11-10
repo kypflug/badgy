@@ -12,7 +12,6 @@ describe('SETTINGS_SECTIONS', () => {
       'workplace-policy',
       'target',
       'holidays',
-      'meetup-weeks',
       'appearance',
       'account',
     ]);

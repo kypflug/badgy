@@ -3,12 +3,11 @@ import { html, nothing, type TemplateResult } from 'lit';
 
 export interface CalendarAnnotation {
   id: string;
-  kind: 'meetup' | 'note';
   start: string;
   end: string;
   label: string;
   color: string;
-  note?: CalendarNote;
+  note: CalendarNote;
 }
 
 export interface AnnotationSegment {
@@ -23,23 +22,11 @@ export interface AnnotationSegment {
 }
 
 export function noteAnnotation(note: CalendarNote): CalendarAnnotation {
-  return { ...note, kind: 'note', note };
-}
-
-export function meetupAnnotation(weekStart: string, label: string): CalendarAnnotation {
-  return {
-    id: `meetup-${weekStart}`,
-    kind: 'meetup',
-    start: weekStart,
-    end: addDays(weekStart, 6),
-    label,
-    color: 'var(--badgy-meetup)',
-  };
+  return { ...note, note };
 }
 
 function annotationOrder(a: CalendarAnnotation, b: CalendarAnnotation): number {
   return (
-    a.kind.localeCompare(b.kind) ||
     a.start.localeCompare(b.start) ||
     a.end.localeCompare(b.end) ||
     a.label.localeCompare(b.label) ||
@@ -148,29 +135,21 @@ export function annotationOverlay(
         >
           ${outlines(segment)}
           <span class="annotation-labels">
-            ${segment.annotations.map((annotation) =>
-              annotation.note
-                ? html`<button
-                    type="button"
-                    class="annotation-label"
-                    style=${`--annotation-color:${annotation.color}`}
-                    title=${annotation.label}
-                    aria-label=${`Edit note: ${annotation.label}, ${annotation.start} through ${annotation.end}`}
-                    @pointerdown=${(event: Event) => event.stopPropagation()}
-                    @click=${(event: Event) => {
-                      event.stopPropagation();
-                      onEdit(annotation.note as CalendarNote);
-                    }}
-                  >
-                    ${annotation.label}
-                  </button>`
-                : html`<span
-                    class="annotation-label annotation-label--meetup"
-                    style=${`--annotation-color:${annotation.color}`}
-                    title=${annotation.label}
-                  >
-                    ${annotation.label}
-                  </span>`,
+            ${segment.annotations.map(
+              (annotation) => html`<button
+                type="button"
+                class="annotation-label"
+                style=${`--annotation-color:${annotation.color}`}
+                title=${annotation.label}
+                aria-label=${`Edit note: ${annotation.label}, ${annotation.start} through ${annotation.end}`}
+                @pointerdown=${(event: Event) => event.stopPropagation()}
+                @click=${(event: Event) => {
+                  event.stopPropagation();
+                  onEdit(annotation.note);
+                }}
+              >
+                ${annotation.label}
+              </button>`,
             )}
           </span>
         </div>

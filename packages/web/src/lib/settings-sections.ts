@@ -4,7 +4,6 @@ export type SettingsSectionId =
   | 'workplace-policy'
   | 'target'
   | 'holidays'
-  | 'meetup-weeks'
   | 'appearance'
   | 'account';
 
@@ -19,7 +18,6 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionMeta[] = [
   { id: 'workplace-policy', label: 'Workplace policy' },
   { id: 'target', label: 'Target' },
   { id: 'holidays', label: 'Holidays' },
-  { id: 'meetup-weeks', label: 'Meetup weeks' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'account', label: 'Account' },
 ];

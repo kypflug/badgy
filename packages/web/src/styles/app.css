@@ -96,9 +96,6 @@ button, input, select, textarea { font-family: inherit; }
   font-size: var(--badgy-text-xs); font-weight: 550;
 }
 .chip:hover { background: var(--badgy-surface-ctrl-hover); }
-.chip--meetup {
-  background: var(--badgy-accent-soft); border-color: transparent; color: var(--badgy-accent-ink);
-}
 .chip--holiday {
   background: var(--badgy-status-holiday-soft); border-color: transparent;
   color: var(--badgy-status-holiday);
@@ -453,7 +450,6 @@ month-scroller, month-calendar, year-planner { display: block; min-width: 0; }
   font: inherit; font-size: 10px; font-weight: 650; line-height: 17px; letter-spacing: 0;
   text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
 }
-.annotation-label--meetup { color: var(--badgy-on-meetup); }
 button.annotation-label { cursor: pointer; pointer-events: auto; }
 button.annotation-label:hover { filter: brightness(1.12); }
 button.annotation-label:focus-visible { outline: 2px solid var(--badgy-accent); outline-offset: 1px; }

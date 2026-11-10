@@ -89,8 +89,6 @@
   --badgy-accent-hover: #185175;
   --badgy-accent-ink: #185175;
   --badgy-accent-soft: rgb(31 95 139 / 9%);
-  --badgy-meetup: #1f5f8b;
-  --badgy-on-meetup: #fbfcfe;
   --badgy-on-annotation: #fbfcfe;
 
   /* elevation — reserved for the inset rail, sign-in sheet and transient popups */
@@ -162,8 +160,6 @@
   --badgy-accent-hover: #6bb3da;
   --badgy-accent-ink: #93c8e4;
   --badgy-accent-soft: rgb(77 158 203 / 14%);
-  --badgy-meetup: #4d9ecb;
-  --badgy-on-meetup: #07202e;
   --badgy-on-annotation: #07202e;
 
   --badgy-shadow-sheet: 0 18px 50px rgb(0 0 0 / 55%);

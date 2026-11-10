@@ -164,15 +164,14 @@ export class HelpDialog extends BadgyElement {
             <li>Past and current days use filled status bars. Future plans use hollow bars.</li>
             <li>The target controls on-track status. The planner estimates office days per week.</li>
             <li>Use undo/redo (⌘Z / Ctrl+Z, shift to redo) for edits, and Settings to tune your
-              policy, target, holidays and meetup weeks.</li>
-            <li>Meetup weeks are highlighted for planning context and never affect your score.</li>
+              policy, target and holidays.</li>
             <li>
               Add a note from a date menu or selected range. Notes outline their inclusive dates
               without changing statuses or your score; click a note label to edit or delete it.
             </li>
             <li>
-              Notes can span weeks, months, or years. Overlapping notes and Meetup weeks use a
-              multicolor dashed outline and keep every label available.
+              Notes can span weeks, months, or years. Overlapping notes use a multicolor dashed
+              outline and keep every label available.
             </li>
           </ul>
         </section>
@@ -188,10 +187,6 @@ export class HelpDialog extends BadgyElement {
               <strong>Holidays</strong> are filled in from the set you pick in Settings. National
               and employer sets are built in, and you can add or remove single days or import an
               <code>.ics</code> export from Google, Outlook or Apple Calendar.
-            </li>
-            <li>
-              <strong>Meetup weeks</strong> ship with a default set and are fully editable — add or
-              remove any week in Settings.
             </li>
             <li>
               Badgy runs client-side. Your attendance document is stored privately in this app's own

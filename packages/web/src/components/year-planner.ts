@@ -1,7 +1,6 @@
 import {
   addDays,
   type CalendarNote,
-  meetupCycleLabel,
   type PickableStatus,
   type ResolvedDay,
   toISO,
@@ -12,12 +11,7 @@ import { undoShortcutLabel } from '../lib/platform.js';
 import { statusClass } from '../lib/status.js';
 import { toast } from '../lib/toast.js';
 import { store } from '../state/store.js';
-import {
-  annotationOverlay,
-  layoutWeekAnnotations,
-  meetupAnnotation,
-  noteAnnotation,
-} from './annotation-layout.js';
+import { annotationOverlay, layoutWeekAnnotations, noteAnnotation } from './annotation-layout.js';
 import { BadgyElement } from './base.js';
 import {
   type DayMenuPosition,
@@ -378,6 +372,8 @@ export class YearPlanner extends BadgyElement {
     for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
     const monthDays = cells.filter((day): day is ResolvedDay => day !== null);
     const month = YEAR_MONTHS[month0];
+    const annotations = notes.map(noteAnnotation);
+    const monthEnd = toISO(new Date(Date.UTC(this.year, month0 + 1, 0)));
 
     return html`
       <section
@@ -398,14 +394,7 @@ export class YearPlanner extends BadgyElement {
         <div class="year-month-weeks">
           ${weeks.map((week, weekIndex) => {
             const weekStart = addDays(firstWeekStart, weekIndex * 7);
-            const meetupLabel = store.isMeetupWeek(weekStart)
-              ? (meetupCycleLabel(weekStart) ?? 'Meetup')
-              : null;
-            const annotations = notes.map(noteAnnotation);
-            if (meetupLabel) annotations.push(meetupAnnotation(weekStart, meetupLabel));
-            const monthStart = `${this.year}-${String(month0 + 1).padStart(2, '0')}-01`;
-            const monthEnd = toISO(new Date(Date.UTC(this.year, month0 + 1, 0)));
-            const segments = layoutWeekAnnotations(weekStart, annotations, monthStart, monthEnd);
+            const segments = layoutWeekAnnotations(weekStart, annotations, firstDate, monthEnd);
             return html`
               <div class="year-week">
                 ${annotationOverlay(segments, (note) => this.editNote(note))}
