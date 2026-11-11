@@ -11,7 +11,7 @@
   "dependencies": {
     "@azure/msal-browser": "^5.17.1",
     "@badgy/shared": "*",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.13",
     "lit": "^3.3.3"
   },
   "devDependencies": {
